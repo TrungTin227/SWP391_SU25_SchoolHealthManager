@@ -14,13 +14,13 @@ namespace WebAPI.Controllers
             _userService = userService;
         }
 
-        [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] UserRegisterRequest request)
-        {
-            var result = await _userService.RegisterAsync(request);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //[HttpPost("register")]
+        //[AllowAnonymous]
+        //public async Task<IActionResult> Register([FromBody] UserRegisterRequest request)
+        //{
+        //    var result = await _userService.RegisterAsync(request);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
         [HttpGet("confirm-email")]
         [AllowAnonymous]

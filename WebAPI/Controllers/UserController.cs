@@ -76,16 +76,16 @@ namespace WebAPI.Controllers
             return Ok(response);
         }
 
-        [HttpPost("admin/register")]
-        public async Task<IActionResult> RegisterAdmin([FromBody] AdminCreateUserRequest request)
-        {
-            var result = await _userService.AdminRegisterAsync(request);
-            if (!result.IsSuccess)
-                return BadRequest(result);
+        //[HttpPost("admin/register")]
+        //public async Task<IActionResult> RegisterAdmin([FromBody] AdminCreateUserRequest request)
+        //{
+        //    var result = await _userService.AdminRegisterAsync(request);
+        //    if (!result.IsSuccess)
+        //        return BadRequest(result);
 
-            return CreatedAtAction(nameof(GetUserById),
-                                   new { id = result.Data!.Id },
-                                   result);
-        }
+        //    return CreatedAtAction(nameof(GetUserById),
+        //                           new { id = result.Data!.Id },
+        //                           result);
+        //}
     }
 }

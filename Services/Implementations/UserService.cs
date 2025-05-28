@@ -41,38 +41,38 @@ namespace Services.Implementations
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         }
 
-        public async Task<ApiResult<UserResponse>> RegisterAsync(UserRegisterRequest req)
-        {
-            if (req == null || string.IsNullOrWhiteSpace(req.Email))
-                return ApiResult<UserResponse>.Failure("Invalid request");
+        //public async Task<ApiResult<UserResponse>> RegisterAsync(UserRegisterRequest req)
+        //{
+        //    if (req == null || string.IsNullOrWhiteSpace(req.Email))
+        //        return ApiResult<UserResponse>.Failure("Invalid request");
 
-            if (await _userRepository.ExistsByEmailAsync(req.Email))
-                return ApiResult<UserResponse>.Failure("Email already in use");
+        //    if (await _userRepository.ExistsByEmailAsync(req.Email))
+        //        return ApiResult<UserResponse>.Failure("Email already in use");
 
-            var result = await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                var user = UserMappings.ToDomainUser(req);
-                var createRes = await _userManager.CreateUserAsync(user, req.Password);
-                if (!createRes.Succeeded)
-                    return ApiResult<UserResponse>.Failure(createRes.ErrorMessage);
+        //    var result = await _unitOfWork.ExecuteTransactionAsync(async () =>
+        //    {
+        //        var user = UserMappings.ToDomainUser(req);
+        //        var createRes = await _userManager.CreateUserAsync(user, req.Password);
+        //        if (!createRes.Succeeded)
+        //            return ApiResult<UserResponse>.Failure(createRes.ErrorMessage);
 
-                await _userManager.AddDefaultRoleAsync(user);
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
-            });
+        //        await _userManager.AddDefaultRoleAsync(user);
+        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
+        //    });
 
-            if (result.IsSuccess)
-            {
-                try
-                {
-                    await SendWelcomeEmailsAsync(req.Email);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to send welcome emails for {Email}", req.Email);
-                }
-            }
-            return result;
-        }
+        //    if (result.IsSuccess)
+        //    {
+        //        try
+        //        {
+        //            await SendWelcomeEmailsAsync(req.Email);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogError(ex, "Failed to send welcome emails for {Email}", req.Email);
+        //        }
+        //    }
+        //    return result;
+        //}
 
         private async Task SendWelcomeEmailsAsync(string email)
         {
@@ -203,31 +203,31 @@ namespace Services.Implementations
             return ApiResult<string>.Success("2FA code sent");
         }
 
-        public async Task<ApiResult<UserResponse>> AdminRegisterAsync(AdminCreateUserRequest req)
-        {
-            if (req == null || string.IsNullOrWhiteSpace(req.Email))
-                return ApiResult<UserResponse>.Failure("Invalid request");
+        //public async Task<ApiResult<UserResponse>> AdminRegisterAsync(AdminCreateUserRequest req)
+        //{
+        //    if (req == null || string.IsNullOrWhiteSpace(req.Email))
+        //        return ApiResult<UserResponse>.Failure("Invalid request");
 
-            if (!_currentUserService.IsAdmin())
-                return ApiResult<UserResponse>.Failure("Forbidden: Only admins can register users");
+        //    if (!_currentUserService.IsAdmin())
+        //        return ApiResult<UserResponse>.Failure("Forbidden: Only admins can register users");
 
-            if (await _userRepository.ExistsByEmailAsync(req.Email))
-                return ApiResult<UserResponse>.Failure("Email already in use");
+        //    if (await _userRepository.ExistsByEmailAsync(req.Email))
+        //        return ApiResult<UserResponse>.Failure("Email already in use");
 
-            _logger.LogInformation("Admin registering user: {Email}", req.Email);
+        //    _logger.LogInformation("Admin registering user: {Email}", req.Email);
 
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                var user = UserMappings.ToDomainUser(req);
-                var create = await _userManager.CreateUserAsync(user, req.Password);
-                if (!create.Succeeded)
-                    return ApiResult<UserResponse>.Failure(create.ErrorMessage);
+        //    return await _unitOfWork.ExecuteTransactionAsync(async () =>
+        //    {
+        //        var user = UserMappings.ToDomainUser(req);
+        //        var create = await _userManager.CreateUserAsync(user, req.Password);
+        //        if (!create.Succeeded)
+        //            return ApiResult<UserResponse>.Failure(create.ErrorMessage);
 
-                await _userManager.AddRolesAsync(user, req.Roles);
-                var token = await _tokenService.GenerateToken(user);
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data));
-            });
-        }
+        //        await _userManager.AddRolesAsync(user, req.Roles);
+        //        var token = await _tokenService.GenerateToken(user);
+        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data));
+        //    });
+        //}
 
         public async Task<ApiResult<UserResponse>> LoginAsync(UserLoginRequest req)
         {

@@ -6,31 +6,31 @@ namespace Services.Helpers.Mapers
     public static class UserMappings
     {
         // Request to Domain mappings
-        public static User ToDomainUser(this UserRegisterRequest req)
-        {
-            return new User
-            {
-                FirstName = req.FirstName ?? string.Empty,
-                LastName = req.LastName ?? string.Empty,
-                Email = req.Email,
-                Gender = req.Gender?.ToString() ?? Gender.Other.ToString(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-        }
+        //public static User ToDomainUser(this UserRegisterRequest req)
+        //{
+        //    return new User
+        //    {
+        //        FirstName = req.FirstName ?? string.Empty,
+        //        LastName = req.LastName ?? string.Empty,
+        //        Email = req.Email,
+        //        Gender = req.Gender?.ToString() ?? Gender.Other.ToString(),
+        //        CreatedAt = DateTime.UtcNow,
+        //        UpdatedAt = DateTime.UtcNow
+        //    };
+        //}
 
-        public static User ToDomainUser(this AdminCreateUserRequest req)
-        {
-            return new User
-            {
-                FirstName = req.FirstName ?? string.Empty,
-                LastName = req.LastName ?? string.Empty,
-                Email = req.Email,
-                Gender = req.Gender ?? Gender.Other.ToString(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-        }
+        //public static User ToDomainUser(this AdminCreateUserRequest req)
+        //{
+        //    return new User
+        //    {
+        //        FirstName = req.FirstName ?? string.Empty,
+        //        LastName = req.LastName ?? string.Empty,
+        //        Email = req.Email,
+        //        Gender = req.Gender ?? Gender.Other.ToString(),
+        //        CreatedAt = DateTime.UtcNow,
+        //        UpdatedAt = DateTime.UtcNow
+        //    };
+        //}
 
         public static void ApplyUpdate(this UpdateUserRequest req, User user)
         {

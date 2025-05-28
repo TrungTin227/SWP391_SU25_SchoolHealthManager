@@ -8,34 +8,34 @@ namespace Services.Helpers
             this UserManager<User> mgr, string email)
             => await mgr.FindByEmailAsync(email) != null;
 
-        public static async Task<IdentityResultWrapper> CreateUserAsync(
-            this UserManager<User> mgr, User user, string password = null)
-        {
-            // Đảm bảo UserName được đặt bằng email trước khi tạo người dùng
-            if (string.IsNullOrEmpty(user.UserName))
-                user.UserName = user.Email;
+        //public static async Task<IdentityResultWrapper> CreateUserAsync(
+        //    this UserManager<User> mgr, User user, string password = null)
+        //{
+        //    // Đảm bảo UserName được đặt bằng email trước khi tạo người dùng
+        //    if (string.IsNullOrEmpty(user.UserName))
+        //        user.UserName = user.Email;
 
-            var res = password != null
-                ? await mgr.CreateAsync(user, password)
-                : await mgr.CreateAsync(user);
-            return new IdentityResultWrapper(res);
-        }
+        //    var res = password != null
+        //        ? await mgr.CreateAsync(user, password)
+        //        : await mgr.CreateAsync(user);
+        //    return new IdentityResultWrapper(res);
+        //}
 
         public static Task AddDefaultRoleAsync(
             this UserManager<User> mgr, User user)
-            => mgr.AddToRoleAsync(user, "USER");
+            => mgr.AddToRoleAsync(user, "Parent");
 
         public static Task AddRolesAsync(
             this UserManager<User> mgr, User user, IEnumerable<string> roles)
-            => mgr.AddToRolesAsync(user, roles ?? new[] { "USER" });
+            => mgr.AddToRolesAsync(user, roles ?? new[] { "Parent" });
 
         public static Task SetRefreshTokenAsync(
             this UserManager<User> mgr, User user, string token)
-            => mgr.SetAuthenticationTokenAsync(user, "MyApp", "RefreshToken", token);
+            => mgr.SetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken", token);
 
         public static async Task<bool> ValidateRefreshTokenAsync(
             this UserManager<User> mgr, User user, string token)
-            => await mgr.GetAuthenticationTokenAsync(user, "MyApp", "RefreshToken") == token;
+            => await mgr.GetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken") == token;
 
         public static Task ResetAccessFailedAsync(
             this UserManager<User> mgr, User user)
@@ -45,7 +45,7 @@ namespace Services.Helpers
             this UserManager<User> mgr, User user)
         {
             var res = await mgr.RemoveAuthenticationTokenAsync(
-                user, "MyApp", "RefreshToken");
+                user, "SchoolHealthManager", "RefreshToken");
             return new IdentityResultWrapper(res);
         }
 
