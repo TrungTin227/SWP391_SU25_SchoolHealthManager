@@ -1,0 +1,12 @@
+﻿global using BusinessObjects;
+global using BusinessObjects.Common;
+global using DTOs.UserDTOs.Identities;
+global using Services.Interfaces;
+global using DTOs.UserDTOs.Request;
+global using DTOs.UserDTOs.Response;
+global using UserDTOs.DTOs.Response;
+global using Repositories.Helpers;
+global using Repositories.WorkSeeds.Interfaces;
+global using Services.Commons.Gmail;
+global using Services.Helpers;
+global using Services.Helpers.Mapers;
