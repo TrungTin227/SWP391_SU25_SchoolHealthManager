@@ -25,12 +25,17 @@ namespace Services.Implementations
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         }
 
-        public string GenerateRefreshToken()
+        public RefreshTokenInfo GenerateRefreshToken()
         {
             var randomNumber = new byte[64];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
-            return Convert.ToBase64String(randomNumber);
+
+            return new RefreshTokenInfo
+            {
+                Token = Convert.ToBase64String(randomNumber),
+                Expiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenDays)
+            };
         }
 
         private async Task<List<Claim>> GetClaimsAsync(User user)

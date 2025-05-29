@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
 
 namespace Services.Helpers
 {
@@ -8,19 +9,6 @@ namespace Services.Helpers
             this UserManager<User> mgr, string email)
             => await mgr.FindByEmailAsync(email) != null;
 
-        //public static async Task<IdentityResultWrapper> CreateUserAsync(
-        //    this UserManager<User> mgr, User user, string password = null)
-        //{
-        //    // Đảm bảo UserName được đặt bằng email trước khi tạo người dùng
-        //    if (string.IsNullOrEmpty(user.UserName))
-        //        user.UserName = user.Email;
-
-        //    var res = password != null
-        //        ? await mgr.CreateAsync(user, password)
-        //        : await mgr.CreateAsync(user);
-        //    return new IdentityResultWrapper(res);
-        //}
-
         public static Task AddDefaultRoleAsync(
             this UserManager<User> mgr, User user)
             => mgr.AddToRoleAsync(user, "Parent");
@@ -29,13 +17,50 @@ namespace Services.Helpers
             this UserManager<User> mgr, User user, IEnumerable<string> roles)
             => mgr.AddToRolesAsync(user, roles ?? new[] { "Parent" });
 
-        public static Task SetRefreshTokenAsync(
-            this UserManager<User> mgr, User user, string token)
-            => mgr.SetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken", token);
+        
+        public static async Task<IdentityResult> SetRefreshTokenAsync(
+            this UserManager<User> mgr, User user, RefreshTokenInfo refreshTokenInfo)
+        {
+            var tokenJson = JsonSerializer.Serialize(refreshTokenInfo);
+            return await mgr.SetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken", tokenJson);
+        }
 
+
+        public static async Task<RefreshTokenInfo?> GetRefreshTokenAsync(this UserManager<User> mgr, User user)
+        {
+            var tokenJson = await mgr.GetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken");
+            if (string.IsNullOrEmpty(tokenJson))
+                return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<RefreshTokenInfo>(tokenJson);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // CẬP NHẬT: Thay đổi method này để validate với expiry time
         public static async Task<bool> ValidateRefreshTokenAsync(
             this UserManager<User> mgr, User user, string token)
-            => await mgr.GetAuthenticationTokenAsync(user, "SchoolHealthManager", "RefreshToken") == token;
+        {
+            var storedTokenInfo = await mgr.GetRefreshTokenAsync(user);
+
+            if (storedTokenInfo == null)
+                return false;
+
+            // Kiểm tra token có match không
+            if (storedTokenInfo.Token != token)
+                return false;
+
+            // Kiểm tra token có expired không
+            if (storedTokenInfo.Expiry <= DateTime.UtcNow)
+                return false;
+
+            return true;
+        }
 
         public static Task ResetAccessFailedAsync(
             this UserManager<User> mgr, User user)
