@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
-    public class StaffProfile : BaseEntity
+    public class NurseProfile : BaseEntity
     {
         [Key]
         [ForeignKey(nameof(User))]
@@ -16,5 +16,7 @@ namespace BusinessObjects
 
         [MaxLength(100)]
         public string Department { get; set; }
+        public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; }
+         = new List<CounselingAppointment>();
     }
 }

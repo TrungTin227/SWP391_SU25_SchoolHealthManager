@@ -136,7 +136,7 @@ namespace Repositories
             #endregion
 
             #region Seed School Nurse Users cùng StaffProfile
-            if (!await context.StaffProfiles.AnyAsync())
+            if (!await context.NurseProfiles.AnyAsync())
             {
                 var seedNurses = new List<(string Email, string FirstName, string LastName, string Position, string Department)>
                     {
@@ -171,7 +171,7 @@ namespace Repositories
                     await userManager.AddToRoleAsync(nurseUser, "SchoolNurse");
 
                     // Tạo StaffProfile tương ứng
-                    var profile = new StaffProfile
+                    var profile = new NurseProfile
                     {
                         UserId = nurseUser.Id,
                         Position = position,
@@ -182,7 +182,7 @@ namespace Repositories
                         UpdatedBy = systemGuid,
                         IsDeleted = false
                     };
-                    await context.StaffProfiles.AddAsync(profile);
+                    await context.NurseProfiles.AddAsync(profile);
 
                     Console.WriteLine($"Seeded School Nurse and StaffProfile for {email}");
                 }
