@@ -28,6 +28,6 @@ namespace BusinessObjects
 
         // Navigation đến thông tin phụ huynh và nhân viên (nullable nếu chưa gán)
         public Parent? Parent { get; set; }
-        public StaffProfile? StaffProfile { get; set; }
+        public NurseProfile? StaffProfile { get; set; }
     }
 }

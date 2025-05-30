@@ -6,7 +6,7 @@ namespace BusinessObjects
     {
         [Key]
         public Guid Id { get; set; }
-   
+
         public Guid StudentId { get; set; }
         public Student Student { get; set; }
 
@@ -37,6 +37,11 @@ namespace BusinessObjects
         // Các thuốc/vật tư đã dùng khi xử lý sự kiện
         public ICollection<EventMedication> EventMedications { get; set; }
             = new List<EventMedication>();
+
+        // THÊM: Quan hệ với SupplyUsage
+        public virtual ICollection<SupplyUsage> SupplyUsages { get; set; }
+            = new List<SupplyUsage>();
+
         public ICollection<Report> Reports { get; set; }
             = new List<Report>();
     }
