@@ -1,10 +1,11 @@
-﻿using System.Text;
+﻿using DTOs.UserDTOs.Identities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
 using Services.Interfaces.Services.Commons.User;
+using System.Text;
 
 namespace Services.Implementations
 {
@@ -252,10 +253,10 @@ namespace Services.Implementations
             await _userManager.ResetAccessFailedAsync(user);
 
             var token = await _tokenService.GenerateToken(user);
-            var refreshToken = _tokenService.GenerateRefreshToken();
-            await _userManager.SetAuthenticationTokenAsync(user, "MyApp", "RefreshToken", refreshToken);
+            var refreshTokenInfo = _tokenService.GenerateRefreshToken(); 
+            await _userManager.SetRefreshTokenAsync(user, refreshTokenInfo); 
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshToken));
+            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshTokenInfo.Token));
         }
 
         public async Task<ApiResult<UserResponse>> GetByIdAsync(Guid id)

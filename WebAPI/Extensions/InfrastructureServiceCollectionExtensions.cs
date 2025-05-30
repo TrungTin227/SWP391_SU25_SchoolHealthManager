@@ -68,6 +68,7 @@ namespace WebAPI.Extensions
                     ValidAudience = jwt.ValidAudience,
                     IssuerSigningKey = key
                 };
+                // Custom error handling
                 opts.Events = new JwtBearerEvents
                 {
                     OnChallenge = ctx =>

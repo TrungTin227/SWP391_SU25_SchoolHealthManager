@@ -15,5 +15,7 @@ namespace BusinessObjects
         public decimal? BloodPressureDiastolic { get; set; } //huyết áp 
         public string? Notes { get; set; }           // phát hiện bất thường
         public bool FollowUpNeeded { get; set; }    // cần hẹn tư vấn
+        public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
+
     }
 }

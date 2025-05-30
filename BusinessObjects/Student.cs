@@ -33,5 +33,7 @@ namespace BusinessObjects
         public ICollection<HealthProfile> HealthProfiles { get; set; }
         public ICollection<HealthEvent> HealthEvents { get; set; }
         public ICollection<VaccinationRecord> VaccinationRecords { get; set; }
+        public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
+
     }
 }

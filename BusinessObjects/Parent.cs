@@ -35,5 +35,8 @@ namespace BusinessObjects
         // 7: (Nếu có) Những mũi tiêm phụ huynh tự ghi nhận tại nhà
         public ICollection<ParentVaccinationRecord> ParentVaccinationRecords { get; set; }
             = new List<ParentVaccinationRecord>();
+
+        public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
+
     }
 }

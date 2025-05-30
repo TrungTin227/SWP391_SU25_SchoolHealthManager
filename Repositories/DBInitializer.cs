@@ -136,7 +136,7 @@ namespace Repositories
             #endregion
 
             #region Seed School Nurse Users cùng StaffProfile
-            if (!await context.StaffProfiles.AnyAsync())
+            if (!await context.NurseProfiles.AnyAsync())
             {
                 var seedNurses = new List<(string Email, string FirstName, string LastName, string Position, string Department)>
                     {
@@ -171,7 +171,7 @@ namespace Repositories
                     await userManager.AddToRoleAsync(nurseUser, "SchoolNurse");
 
                     // Tạo StaffProfile tương ứng
-                    var profile = new StaffProfile
+                    var profile = new NurseProfile
                     {
                         UserId = nurseUser.Id,
                         Position = position,
@@ -182,7 +182,7 @@ namespace Repositories
                         UpdatedBy = systemGuid,
                         IsDeleted = false
                     };
-                    await context.StaffProfiles.AddAsync(profile);
+                    await context.NurseProfiles.AddAsync(profile);
 
                     Console.WriteLine($"Seeded School Nurse and StaffProfile for {email}");
                 }
@@ -218,6 +218,382 @@ namespace Repositories
                     };
 
                 await context.VaccineTypes.AddRangeAsync(vaccines);
+                await context.SaveChangesAsync();
+            }
+            #endregion
+            #region Seed Medical Supplies for Elementary School Health Office
+            if (!await context.MedicalSupplies.AnyAsync())
+            {
+                var medicalSupplies = new List<MedicalSupply>
+    {
+        // Dụng cụ sơ cứu cơ bản
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Băng gạc vô trùng",
+            Unit = "cuộn",
+            CurrentStock = 50,
+            MinimumStock = 10,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Bông y tế",
+            Unit = "gói",
+            CurrentStock = 30,
+            MinimumStock = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Miếng dán cá nhân (Band-Aid)",
+            Unit = "hộp",
+            CurrentStock = 25,
+            MinimumStock = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Cồn 70%",
+            Unit = "chai",
+            CurrentStock = 20,
+            MinimumStock = 3,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Betadine (Povidone Iodine)",
+            Unit = "chai",
+            CurrentStock = 15,
+            MinimumStock = 3,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Dụng cụ đo và kiểm tra
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Nhiệt kế điện tử",
+            Unit = "cái",
+            CurrentStock = 10,
+            MinimumStock = 2,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Máy đo huyết áp trẻ em",
+            Unit = "cái",
+            CurrentStock = 3,
+            MinimumStock = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Đèn pin y tế",
+            Unit = "cái",
+            CurrentStock = 5,
+            MinimumStock = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Thuốc cơ bản (không kê đơn)
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Paracetamol syrup trẻ em",
+            Unit = "chai",
+            CurrentStock = 12,
+            MinimumStock = 3,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Dung dịch ORS (Oresol)",
+            Unit = "gói",
+            CurrentStock = 20,
+            MinimumStock = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Gel rửa tay khô",
+            Unit = "chai",
+            CurrentStock = 40,
+            MinimumStock = 10,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Dụng cụ bảo hộ
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Găng tay y tế",
+            Unit = "hộp",
+            CurrentStock = 15,
+            MinimumStock = 3,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Khẩu trang y tế",
+            Unit = "hộp",
+            CurrentStock = 25,
+            MinimumStock = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Dụng cụ khác
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kéo y tế",
+            Unit = "cái",
+            CurrentStock = 5,
+            MinimumStock = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Nhíp y tế",
+            Unit = "cái",
+            CurrentStock = 8,
+            MinimumStock = 2,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Túi đá lạnh tức thì",
+            Unit = "cái",
+            CurrentStock = 20,
+            MinimumStock = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Bình xịt nước muối sinh lý",
+            Unit = "chai",
+            CurrentStock = 18,
+            MinimumStock = 4,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Vật tư đặc biệt cho trẻ em
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Miếng dán hạ sốt trẻ em",
+            Unit = "hộp",
+            CurrentStock = 10,
+            MinimumStock = 2,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kem chống muỗi trẻ em",
+            Unit = "tuýp",
+            CurrentStock = 15,
+            MinimumStock = 3,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Dây đeo thẻ y tế học sinh",
+            Unit = "cái",
+            CurrentStock = 100,
+            MinimumStock = 20,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Thiết bị đo chiều cao cân nặng
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Thước đo chiều cao trẻ em",
+            Unit = "cái",
+            CurrentStock = 2,
+            MinimumStock = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Cân điện tử y tế",
+            Unit = "cái",
+            CurrentStock = 2,
+            MinimumStock = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+
+        // Các vật tư vệ sinh và khử trùng
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Khăn giấy y tế",
+            Unit = "hộp",
+            CurrentStock = 30,
+            MinimumStock = 8,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Dung dịch sát khuẩn tay",
+            Unit = "chai",
+            CurrentStock = 25,
+            MinimumStock = 6,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        },
+        new MedicalSupply
+        {
+            Id = Guid.NewGuid(),
+            Name = "Túi rác y tế",
+            Unit = "cuộn",
+            CurrentStock = 20,
+            MinimumStock = 4,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = systemGuid,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = systemGuid,
+            IsDeleted = false
+        }
+    };
+
+                await context.MedicalSupplies.AddRangeAsync(medicalSupplies);
                 await context.SaveChangesAsync();
             }
             #endregion
