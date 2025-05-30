@@ -59,15 +59,16 @@ namespace Repositories
             #endregion
 
             #region Seed Parent Users cùng Student tương ứng
+            #region Seed Parent Users cùng Student tương ứng
             if (!await context.Parents.AnyAsync())
             {
                 // Danh sách phụ huynh và học sinh mẫu
                 var seedParents = new List<(string ParentEmail, string ParentFirst, string ParentLast, string StudentFirst, string StudentLast)>
-                    {
-                        ("tinvtse@gmail.com", "Nguyen", "An", "Le", "Minh"),
-                        ("parent2@gmail.com", "Tran", "Binh", "Pham", "Hoa")
-                    };
-
+                {
+                    ("tinvtse@gmail.com", "Nguyen", "An", "Le", "Minh"),
+                    ("parent2@gmail.com", "Tran", "Binh", "Pham", "Hoa")
+                };
+                    
                 foreach (var (email, parentFirst, parentLast, studentFirst, studentLast) in seedParents)
                 {
                     // Tạo User cho Parent
@@ -96,29 +97,10 @@ namespace Repositories
                     // Gán role Parent
                     await userManager.AddToRoleAsync(parentUser, "Parent");
 
-                    // Tạo Student tương ứng cho Parent
-                    var student = new Student
-                    {
-                        Id = Guid.NewGuid(),
-                        StudentCode = $"HS{DateTime.UtcNow:yyyyMMddHHmmssxx}",
-                        FirstName = studentFirst,
-                        LastName = studentLast,
-                        DateOfBirth = DateTime.UtcNow.AddYears(-10),
-                        Grade = "1",
-                        Section = "1A",
-                        CreatedAt = DateTime.UtcNow,
-                        CreatedBy = systemGuid,
-                        UpdatedAt = DateTime.UtcNow,
-                        UpdatedBy = systemGuid,
-                        IsDeleted = false
-                    };
-                    await context.Students.AddAsync(student);
-
-                    // Tạo bản ghi Parent liên kết
+                    // Tạo Parent trước
                     var parent = new Parent
                     {
                         UserId = parentUser.Id,
-                        StudentId = student.Id,
                         Relationship = "Other",
                         CreatedAt = DateTime.UtcNow,
                         CreatedBy = systemGuid,
@@ -128,11 +110,36 @@ namespace Repositories
                     };
                     await context.Parents.AddAsync(parent);
 
+                    // Lưu trước để có Id của Parent
+                    await context.SaveChangesAsync();
+
+                    // Tạo Student tương ứng cho Parent
+                    var student = new Student
+                    {
+                        Id = Guid.NewGuid(),
+                        StudentCode = $"HS{DateTime.UtcNow:yyyyMMddHHmmss}",  // Removed 'xx' that might cause formatting issues
+                        FirstName = studentFirst,
+                        LastName = studentLast,
+                        DateOfBirth = DateTime.UtcNow.AddYears(-10),
+                        Grade = "1",
+                        Section = "1A",
+                        ParentUserId = parent.UserId, // Set the required ParentUserId
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = systemGuid,
+                        UpdatedAt = DateTime.UtcNow,
+                        UpdatedBy = systemGuid,
+                        IsDeleted = false
+                    };
+                    await context.Students.AddAsync(student);
+
+                    // Remove the reflection part - it's not needed as StudentId is no longer part of Parent class
+
                     Console.WriteLine($"Seeded Parent+Student for {email}");
                 }
 
                 await context.SaveChangesAsync();
             }
+            #endregion
             #endregion
 
             #region Seed School Nurse Users cùng StaffProfile

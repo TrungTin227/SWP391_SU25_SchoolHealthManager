@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
@@ -20,20 +21,24 @@ namespace BusinessObjects
         public DateTime DateOfBirth { get; set; }    // Ngày sinh
 
         [MaxLength(20)]
-        public string? Grade { get; set; }            // Khối lớp (ví dụ: “5”)
+        public string? Grade { get; set; }            // Khối lớp (ví dụ: "5")
 
         [MaxLength(10)]
-        public string? Section { get; set; }          // Lớp (ví dụ: “5A”)
+        public string? Section { get; set; }          // Lớp (ví dụ: "5A")
 
         [MaxLength(150)]
         public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
 
-        public ICollection<Parent> Parents { get; set; }        // Quan hệ tới Parent
+        // Foreign Key đến Parent
+        [Required]
+        public Guid ParentUserId { get; set; }
 
-        public ICollection<HealthProfile> HealthProfiles { get; set; }
-        public ICollection<HealthEvent> HealthEvents { get; set; }
-        public ICollection<VaccinationRecord> VaccinationRecords { get; set; }
+        [ForeignKey(nameof(ParentUserId))]
+        public Parent Parent { get; set; } = null!;  // Quan hệ tới Parent (Many-to-One)
+
+        public ICollection<HealthProfile> HealthProfiles { get; set; } = new List<HealthProfile>();
+        public ICollection<HealthEvent> HealthEvents { get; set; } = new List<HealthEvent>();
+        public ICollection<VaccinationRecord> VaccinationRecords { get; set; } = new List<VaccinationRecord>();
         public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
-
     }
 }
