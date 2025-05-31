@@ -74,13 +74,12 @@ namespace Repositories
                 .HasForeignKey<Parent>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Parent ↔ Student optional one-to-many
-            builder.Entity<Parent>()
-                .HasOne(p => p.Student)
-                .WithMany(s => s.Parents)
-                .HasForeignKey(p => p.StudentId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict);
+            // Parent ↔ Student relationship (1 Parent có nhiều Students)
+            builder.Entity<Student>()
+                .HasOne(s => s.Parent)  // Student có 1 Parent
+                .WithMany(p => p.Students)  // Parent có nhiều Students
+                .HasForeignKey(s => s.ParentUserId)  
+                .OnDelete(DeleteBehavior.NoAction);
 
             // NurseProfile ↔ User one-to-one
             builder.Entity<NurseProfile>()
@@ -207,6 +206,9 @@ namespace Repositories
 
             builder.Entity<VaccinationRecord>()
                    .HasIndex(vr => vr.StudentId);
+            builder.Entity<Student>()
+                .HasIndex(s => s.ParentUserId)
+                .HasDatabaseName("IX_Students_ParentUserId");
         }
     }
 }
