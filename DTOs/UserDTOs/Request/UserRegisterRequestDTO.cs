@@ -10,6 +10,11 @@ namespace DTOs.UserDTOs.Request
 {
     public class UserRegisterRequestDTO
     {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; }
+        [Required]
+        public string Password { get; set; } = string.Empty;
         [MaxLength(100)]
         public string FirstName { get; set; }
 
@@ -29,8 +34,5 @@ namespace DTOs.UserDTOs.Request
         // Lưu Guid của User đã cập nhật
         public Guid UpdatedBy { get; set; }
 
-        public bool IsDeleted { get; set; }
-
-        // Navigation đến thông tin phụ huynh và nhân viên (nullable nếu chưa gán)
     }
 }
