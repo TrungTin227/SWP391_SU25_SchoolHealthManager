@@ -70,15 +70,41 @@ namespace Services.Implementations
 
         public async Task<ApiResult<string>> GenerateToken(User user)
         {
+            // Kiểm tra tham số đầu vào: nếu user bằng null, trả về Error với thông báo rõ ràng
             if (user == null)
-                return ApiResult<string>.Failure("User is null.");
+            {
+                return ApiResult<string>.Error(
+                    data: null,
+                    error: new ArgumentNullException(nameof(user), "User is null.")
+                );
+            }
 
-            var signingCredentials = new SigningCredentials(_secretKey, SecurityAlgorithms.HmacSha256);
-            var claims = await GetClaimsAsync(user).ConfigureAwait(false);
-            var tokenOptions = GenerateTokenOptions(signingCredentials, claims);
-            var token = _tokenHandler.WriteToken(tokenOptions);
+            try
+            {
+                // Tạo SigningCredentials từ secret key và thuật toán HmacSha256
+                var signingCredentials = new SigningCredentials(_secretKey, SecurityAlgorithms.HmacSha256);
 
-            return ApiResult<string>.Success(token);
+                // Lấy danh sách claims của user (bao gồm username, email, roles, v.v.)
+                var claims = await GetClaimsAsync(user).ConfigureAwait(false);
+
+                // Sinh JwtSecurityToken dựa trên signingCredentials và danh sách claims
+                var tokenOptions = GenerateTokenOptions(signingCredentials, claims);
+
+                // Chuyển JwtSecurityToken thành chuỗi JWT
+                var token = _tokenHandler.WriteToken(tokenOptions);
+
+                // Trả về kết quả thành công: bao gồm token và thông báo
+                return ApiResult<string>.Success(
+                    data: token,
+                    message: "Token generated successfully."
+                );
+            }
+            catch (Exception ex)
+            {
+                // Nếu xảy ra ngoại lệ trong quá trình tạo token, trả về Failure kèm exception
+                return ApiResult<string>.Failure(ex);
+            }
         }
+
     }
 }

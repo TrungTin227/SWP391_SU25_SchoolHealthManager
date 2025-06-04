@@ -12,8 +12,8 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    [Migration("20250521081343_FixUserSeedGenderV2")]
-    partial class FixUserSeedGenderV2
+    [Migration("20250604101447_SchoolHealthManagerInitial")]
+    partial class SchoolHealthManagerInitial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -164,6 +164,86 @@ namespace Repositories.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("CheckupSchedules");
+                });
+
+            modelBuilder.Entity("BusinessObjects.CounselingAppointment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AppointmentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CheckupRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Duration")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Recommendations")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StaffUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("VaccinationRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheckupRecordId")
+                        .HasDatabaseName("IX_CounselingAppointments_CheckupRecordId");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("IX_CounselingAppointments_ParentId");
+
+                    b.HasIndex("StaffUserId")
+                        .HasDatabaseName("IX_CounselingAppointments_StaffUserId");
+
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_CounselingAppointments_StudentId");
+
+                    b.HasIndex("VaccinationRecordId")
+                        .HasDatabaseName("IX_CounselingAppointments_VaccinationRecordId");
+
+                    b.ToTable("CounselingAppointments");
                 });
 
             modelBuilder.Entity("BusinessObjects.Dispense", b =>
@@ -361,7 +441,8 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ReportedUserId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_HealthEvents_StudentId");
 
                     b.HasIndex("VaccinationRecordId");
 
@@ -431,9 +512,55 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_HealthProfiles_StudentId");
 
                     b.ToTable("HealthProfiles");
+                });
+
+            modelBuilder.Entity("BusinessObjects.MedicalSupply", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CurrentStock")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MinimumStock")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MedicalSupplies");
                 });
 
             modelBuilder.Entity("BusinessObjects.Medication", b =>
@@ -539,13 +666,16 @@ namespace Repositories.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("ParentId")
+                    b.Property<Guid?>("MedicalSupplyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ParentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("ScheduleId")
+                    b.Property<Guid?>("ScheduleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("SentAt")
@@ -556,6 +686,10 @@ namespace Repositories.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -564,11 +698,48 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MedicalSupplyId");
+
                     b.HasIndex("ParentId");
 
                     b.HasIndex("ScheduleId");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("BusinessObjects.NurseProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("NurseProfiles");
                 });
 
             modelBuilder.Entity("BusinessObjects.Parent", b =>
@@ -590,9 +761,6 @@ namespace Repositories.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid?>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -600,8 +768,6 @@ namespace Repositories.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("UserId");
-
-                    b.HasIndex("StudentId");
 
                     b.ToTable("Parents");
                 });
@@ -621,15 +787,15 @@ namespace Repositories.Migrations
                     b.Property<DateTime>("DeliveredAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("DeliveredBy")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ParentId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ParentUserId")
                         .HasColumnType("uniqueidentifier");
@@ -655,7 +821,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeliveredBy");
+                    b.HasIndex("ParentId");
 
                     b.HasIndex("ParentUserId");
 
@@ -804,41 +970,6 @@ namespace Repositories.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
-            modelBuilder.Entity("BusinessObjects.StaffProfile", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Department")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("StaffProfiles");
-                });
-
             modelBuilder.Entity("BusinessObjects.Student", b =>
                 {
                     b.Property<Guid>("Id")
@@ -875,6 +1006,9 @@ namespace Repositories.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("ParentUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Section")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
@@ -892,10 +1026,63 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ParentUserId")
+                        .HasDatabaseName("IX_Students_ParentUserId");
+
                     b.HasIndex("StudentCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Students_StudentCode_Unique");
 
                     b.ToTable("Students");
+                });
+
+            modelBuilder.Entity("BusinessObjects.SupplyUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HealthEventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("MedicalSupplyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("NurseProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("QuantityUsed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HealthEventId");
+
+                    b.HasIndex("MedicalSupplyId");
+
+                    b.HasIndex("NurseProfileId");
+
+                    b.ToTable("SupplyUsages");
                 });
 
             modelBuilder.Entity("BusinessObjects.User", b =>
@@ -1091,7 +1278,8 @@ namespace Repositories.Migrations
 
                     b.HasIndex("CampaignId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_VaccinationRecords_StudentId");
 
                     b.HasIndex("VaccinatedUserId");
 
@@ -1149,34 +1337,7 @@ namespace Repositories.Migrations
                     b.ToTable("VaccinationSchedules");
                 });
 
-            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
-                {
-                    b.Property<Guid>("VaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("DoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MinIntervalDays")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RecommendedAgeMonths")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("VaccineDoseInfoDoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("VaccineDoseInfoVaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("VaccineTypeId", "DoseNumber");
-
-                    b.HasIndex("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
-
-                    b.ToTable("VaccineDoseInfos");
-                });
-
-            modelBuilder.Entity("BusinessObjects.VaccineType", b =>
+            modelBuilder.Entity("BusinessObjects.VaccinationType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1184,8 +1345,8 @@ namespace Repositories.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1223,7 +1384,34 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("VaccineTypes");
+                    b.ToTable("VaccinationTypes");
+                });
+
+            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
+                {
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DoseNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinIntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecommendedAgeMonths")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VaccineDoseInfoDoseNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("VaccineDoseInfoVaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("VaccineTypeId", "DoseNumber");
+
+                    b.HasIndex("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
+
+                    b.ToTable("VaccineDoseInfos");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1359,6 +1547,47 @@ namespace Repositories.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("BusinessObjects.CounselingAppointment", b =>
+                {
+                    b.HasOne("BusinessObjects.CheckupRecord", "CheckupRecord")
+                        .WithMany("CounselingAppointments")
+                        .HasForeignKey("CheckupRecordId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("BusinessObjects.Parent", "Parent")
+                        .WithMany("CounselingAppointments")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObjects.NurseProfile", "StaffUser")
+                        .WithMany("CounselingAppointments")
+                        .HasForeignKey("StaffUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObjects.Student", "Student")
+                        .WithMany("CounselingAppointments")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObjects.VaccinationRecord", "VaccinationRecord")
+                        .WithMany("CounselingAppointments")
+                        .HasForeignKey("VaccinationRecordId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("CheckupRecord");
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("StaffUser");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("VaccinationRecord");
+                });
+
             modelBuilder.Entity("BusinessObjects.Dispense", b =>
                 {
                     b.HasOne("BusinessObjects.User", "AdministeredUser")
@@ -1462,37 +1691,43 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("BusinessObjects.Notification", b =>
                 {
+                    b.HasOne("BusinessObjects.MedicalSupply", "MedicalSupply")
+                        .WithMany()
+                        .HasForeignKey("MedicalSupplyId");
+
                     b.HasOne("BusinessObjects.Parent", "Parent")
                         .WithMany("Notifications")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ParentId");
 
                     b.HasOne("BusinessObjects.VaccinationSchedule", "Schedule")
                         .WithMany()
-                        .HasForeignKey("ScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ScheduleId");
+
+                    b.Navigation("MedicalSupply");
 
                     b.Navigation("Parent");
 
                     b.Navigation("Schedule");
                 });
 
+            modelBuilder.Entity("BusinessObjects.NurseProfile", b =>
+                {
+                    b.HasOne("BusinessObjects.User", "User")
+                        .WithOne("StaffProfile")
+                        .HasForeignKey("BusinessObjects.NurseProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("BusinessObjects.Parent", b =>
                 {
-                    b.HasOne("BusinessObjects.Student", "Student")
-                        .WithMany("Parents")
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("BusinessObjects.User", "User")
                         .WithOne("Parent")
                         .HasForeignKey("BusinessObjects.Parent", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Student");
 
                     b.Navigation("User");
                 });
@@ -1501,7 +1736,7 @@ namespace Repositories.Migrations
                 {
                     b.HasOne("BusinessObjects.Parent", "Parent")
                         .WithMany()
-                        .HasForeignKey("DeliveredBy")
+                        .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1518,7 +1753,7 @@ namespace Repositories.Migrations
                     b.HasOne("BusinessObjects.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Parent");
@@ -1542,7 +1777,7 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1564,15 +1799,42 @@ namespace Repositories.Migrations
                     b.Navigation("HealthEvent");
                 });
 
-            modelBuilder.Entity("BusinessObjects.StaffProfile", b =>
+            modelBuilder.Entity("BusinessObjects.Student", b =>
                 {
-                    b.HasOne("BusinessObjects.User", "User")
-                        .WithOne("StaffProfile")
-                        .HasForeignKey("BusinessObjects.StaffProfile", "UserId")
+                    b.HasOne("BusinessObjects.Parent", "Parent")
+                        .WithMany("Students")
+                        .HasForeignKey("ParentUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("BusinessObjects.SupplyUsage", b =>
+                {
+                    b.HasOne("BusinessObjects.HealthEvent", "HealthEvent")
+                        .WithMany("SupplyUsages")
+                        .HasForeignKey("HealthEventId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObjects.MedicalSupply", "MedicalSupply")
+                        .WithMany("SupplyUsages")
+                        .HasForeignKey("MedicalSupplyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
+                    b.HasOne("BusinessObjects.NurseProfile", "UsedByNurse")
+                        .WithMany()
+                        .HasForeignKey("NurseProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HealthEvent");
+
+                    b.Navigation("MedicalSupply");
+
+                    b.Navigation("UsedByNurse");
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationRecord", b =>
@@ -1601,7 +1863,7 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1639,7 +1901,7 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
                 {
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1708,11 +1970,23 @@ namespace Repositories.Migrations
                     b.Navigation("Schedules");
                 });
 
+            modelBuilder.Entity("BusinessObjects.CheckupRecord", b =>
+                {
+                    b.Navigation("CounselingAppointments");
+                });
+
             modelBuilder.Entity("BusinessObjects.HealthEvent", b =>
                 {
                     b.Navigation("EventMedications");
 
                     b.Navigation("Reports");
+
+                    b.Navigation("SupplyUsages");
+                });
+
+            modelBuilder.Entity("BusinessObjects.MedicalSupply", b =>
+                {
+                    b.Navigation("SupplyUsages");
                 });
 
             modelBuilder.Entity("BusinessObjects.Medication", b =>
@@ -1729,8 +2003,15 @@ namespace Repositories.Migrations
                     b.Navigation("VaccinationRecords");
                 });
 
+            modelBuilder.Entity("BusinessObjects.NurseProfile", b =>
+                {
+                    b.Navigation("CounselingAppointments");
+                });
+
             modelBuilder.Entity("BusinessObjects.Parent", b =>
                 {
+                    b.Navigation("CounselingAppointments");
+
                     b.Navigation("HealthProfiles");
 
                     b.Navigation("Notifications");
@@ -1738,15 +2019,17 @@ namespace Repositories.Migrations
                     b.Navigation("ParentMedicationDeliveries");
 
                     b.Navigation("ParentVaccinationRecords");
+
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("BusinessObjects.Student", b =>
                 {
+                    b.Navigation("CounselingAppointments");
+
                     b.Navigation("HealthEvents");
 
                     b.Navigation("HealthProfiles");
-
-                    b.Navigation("Parents");
 
                     b.Navigation("VaccinationRecords");
                 });
@@ -1761,6 +2044,11 @@ namespace Repositories.Migrations
             modelBuilder.Entity("BusinessObjects.VaccinationCampaign", b =>
                 {
                     b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("BusinessObjects.VaccinationRecord", b =>
+                {
+                    b.Navigation("CounselingAppointments");
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
