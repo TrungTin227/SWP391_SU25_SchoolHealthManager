@@ -2,7 +2,7 @@
 {
     public interface ICurrentUserService
     {
-        public string? GetUserId();
+        public Guid? GetUserId();
         public bool IsAdmin();
 
     }

@@ -10,10 +10,17 @@ namespace Services.Implementations
         {
             _httpContextAccessor = httpContextAccessor;
         }
-        public string? GetUserId()
+        public Guid? GetUserId()
         {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            return userId;
+            var userIdString = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdString))
+                return null;
+
+            if (Guid.TryParse(userIdString, out var userId))
+                return userId;
+
+            return null;
         }
         public bool IsAdmin()
         {

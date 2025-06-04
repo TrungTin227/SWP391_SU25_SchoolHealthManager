@@ -11,7 +11,7 @@ namespace BusinessObjects
         public Guid StudentId { get; set; }
         public Student Student { get; set; }
         public Guid VaccineTypeId { get; set; }
-        public VaccineType VaccineType { get; set; }
+        public VaccinationType VaccineType { get; set; }
         public Guid VaccineLotId { get; set; }
         public MedicationLot VaccineLot { get; set; }
         public DateTime AdministeredDate { get; set; }
