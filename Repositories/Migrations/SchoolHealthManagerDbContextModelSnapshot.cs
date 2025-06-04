@@ -225,15 +225,20 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CheckupRecordId");
+                    b.HasIndex("CheckupRecordId")
+                        .HasDatabaseName("IX_CounselingAppointments_CheckupRecordId");
 
-                    b.HasIndex("ParentId");
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("IX_CounselingAppointments_ParentId");
 
-                    b.HasIndex("StaffUserId");
+                    b.HasIndex("StaffUserId")
+                        .HasDatabaseName("IX_CounselingAppointments_StaffUserId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_CounselingAppointments_StudentId");
 
-                    b.HasIndex("VaccinationRecordId");
+                    b.HasIndex("VaccinationRecordId")
+                        .HasDatabaseName("IX_CounselingAppointments_VaccinationRecordId");
 
                     b.ToTable("CounselingAppointments");
                 });
@@ -433,7 +438,8 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ReportedUserId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_HealthEvents_StudentId");
 
                     b.HasIndex("VaccinationRecordId");
 
@@ -503,7 +509,8 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_HealthProfiles_StudentId");
 
                     b.ToTable("HealthProfiles");
                 });
@@ -1020,7 +1027,8 @@ namespace Repositories.Migrations
                         .HasDatabaseName("IX_Students_ParentUserId");
 
                     b.HasIndex("StudentCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Students_StudentCode_Unique");
 
                     b.ToTable("Students");
                 });
@@ -1267,7 +1275,8 @@ namespace Repositories.Migrations
 
                     b.HasIndex("CampaignId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_VaccinationRecords_StudentId");
 
                     b.HasIndex("VaccinatedUserId");
 
@@ -1325,34 +1334,7 @@ namespace Repositories.Migrations
                     b.ToTable("VaccinationSchedules");
                 });
 
-            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
-                {
-                    b.Property<Guid>("VaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("DoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MinIntervalDays")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RecommendedAgeMonths")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("VaccineDoseInfoDoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("VaccineDoseInfoVaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("VaccineTypeId", "DoseNumber");
-
-                    b.HasIndex("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
-
-                    b.ToTable("VaccineDoseInfos");
-                });
-
-            modelBuilder.Entity("BusinessObjects.VaccineType", b =>
+            modelBuilder.Entity("BusinessObjects.VaccinationType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1399,7 +1381,34 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("VaccineTypes");
+                    b.ToTable("VaccinationTypes");
+                });
+
+            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
+                {
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DoseNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinIntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecommendedAgeMonths")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VaccineDoseInfoDoseNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("VaccineDoseInfoVaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("VaccineTypeId", "DoseNumber");
+
+                    b.HasIndex("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
+
+                    b.ToTable("VaccineDoseInfos");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1765,7 +1774,7 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1851,7 +1860,7 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1889,7 +1898,7 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
                 {
-                    b.HasOne("BusinessObjects.VaccineType", "VaccineType")
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
                         .WithMany()
                         .HasForeignKey("VaccineTypeId")
                         .OnDelete(DeleteBehavior.Cascade)

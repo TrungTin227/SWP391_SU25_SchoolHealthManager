@@ -26,7 +26,7 @@ namespace Services.Implementations
             var existing = await _parentRepository.FindByEmailAsync(user.Email);
             if (existing != null)
             {
-                return ApiResult<User>.Failure($"User with email {user.Email} already exists.");
+                return ApiResult<User>.Failure(new Exception($"User with email {user.Email} already exists."));
             }
 
             var newUser = new User
@@ -49,14 +49,14 @@ namespace Services.Implementations
             if (!result.Succeeded)
             {
                 var errors = string.Join("; ", result.Errors.Select(e => e.Description));
-                return ApiResult<User>.Failure($"Register failed: {errors}");
+                return ApiResult<User>.Failure(new Exception($"Register failed: {errors}"));
             }
             else if (result.Succeeded)
-                {
+            {
                 await _userManager.AddToRoleAsync(newUser, "Parent");
             }
 
-            return ApiResult<User>.Success(newUser);
+            return ApiResult<User>.Success(newUser, "User registered successfully.");
         }
     }
 }

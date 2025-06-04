@@ -51,6 +51,27 @@ namespace Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "MedicalSupplies",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CurrentStock = table.Column<int>(type: "int", nullable: false),
+                    MinimumStock = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MedicalSupplies", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Medications",
                 columns: table => new
                 {
@@ -89,36 +110,13 @@ namespace Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Students",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Grade = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Section = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    Image = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Students", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     FirstName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Gender = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Gender = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -165,11 +163,11 @@ namespace Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "VaccineTypes",
+                name: "VaccinationTypes",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Code = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Group = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
@@ -183,7 +181,7 @@ namespace Repositories.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_VaccineTypes", x => x.Id);
+                    table.PrimaryKey("PK_VaccinationTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -235,69 +233,7 @@ namespace Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CheckupSchedules",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CampaignId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    NotifiedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CheckupSchedules", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_CheckupSchedules_CheckupCampaigns_CampaignId",
-                        column: x => x.CampaignId,
-                        principalTable: "CheckupCampaigns",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CheckupSchedules_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Parents",
-                columns: table => new
-                {
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Relationship = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Parents", x => x.UserId);
-                    table.ForeignKey(
-                        name: "FK_Parents_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Parents_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "StaffProfiles",
+                name: "NurseProfiles",
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -311,9 +247,32 @@ namespace Repositories.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_StaffProfiles", x => x.UserId);
+                    table.PrimaryKey("PK_NurseProfiles", x => x.UserId);
                     table.ForeignKey(
-                        name: "FK_StaffProfiles_Users_UserId",
+                        name: "FK_NurseProfiles_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Parents",
+                columns: table => new
+                {
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Relationship = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Parents", x => x.UserId);
+                    table.ForeignKey(
+                        name: "FK_Parents_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -406,39 +365,6 @@ namespace Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "VaccinationSchedules",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ScheduleType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CampaignId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ScheduledAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ScheduleStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_VaccinationSchedules", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_VaccinationSchedules_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_VaccinationSchedules_VaccinationCampaigns_CampaignId",
-                        column: x => x.CampaignId,
-                        principalTable: "VaccinationCampaigns",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "VaccineDoseInfos",
                 columns: table => new
                 {
@@ -453,14 +379,75 @@ namespace Repositories.Migrations
                 {
                     table.PrimaryKey("PK_VaccineDoseInfos", x => new { x.VaccineTypeId, x.DoseNumber });
                     table.ForeignKey(
+                        name: "FK_VaccineDoseInfos_VaccinationTypes_VaccineTypeId",
+                        column: x => x.VaccineTypeId,
+                        principalTable: "VaccinationTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
                         name: "FK_VaccineDoseInfos_VaccineDoseInfos_VaccineDoseInfoVaccineTypeId_VaccineDoseInfoDoseNumber",
                         columns: x => new { x.VaccineDoseInfoVaccineTypeId, x.VaccineDoseInfoDoseNumber },
                         principalTable: "VaccineDoseInfos",
                         principalColumns: new[] { "VaccineTypeId", "DoseNumber" });
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Students",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Grade = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Section = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Image = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
+                    ParentUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Students", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_VaccineDoseInfos_VaccineTypes_VaccineTypeId",
-                        column: x => x.VaccineTypeId,
-                        principalTable: "VaccineTypes",
+                        name: "FK_Students_Parents_ParentUserId",
+                        column: x => x.ParentUserId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CheckupSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CampaignId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    NotifiedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CheckupSchedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CheckupSchedules_CheckupCampaigns_CampaignId",
+                        column: x => x.CampaignId,
+                        principalTable: "CheckupCampaigns",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CheckupSchedules_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -502,6 +489,129 @@ namespace Repositories.Migrations
                         name: "FK_Dispenses_Users_AdministeredUserId",
                         column: x => x.AdministeredUserId,
                         principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "HealthProfiles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Version = table.Column<int>(type: "int", nullable: false),
+                    ProfileDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Allergies = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ChronicConditions = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TreatmentHistory = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Vision = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Hearing = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    VaccinationSummary = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HealthProfiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_HealthProfiles_Parents_ParentId",
+                        column: x => x.ParentId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_HealthProfiles_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ParentMedicationDeliveries",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ReceivedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    QuantityDelivered = table.Column<int>(type: "int", nullable: false),
+                    DeliveredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ParentUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ParentMedicationDeliveries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ParentMedicationDeliveries_Parents_ParentId",
+                        column: x => x.ParentId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ParentMedicationDeliveries_Parents_ParentUserId",
+                        column: x => x.ParentUserId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId");
+                    table.ForeignKey(
+                        name: "FK_ParentMedicationDeliveries_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ParentMedicationDeliveries_Users_ReceivedBy",
+                        column: x => x.ReceivedBy,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ParentVaccinationRecord",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    VaccineTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DoseNumber = table.Column<int>(type: "int", nullable: false),
+                    AdministeredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ParentUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ParentVaccinationRecord", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ParentVaccinationRecord_Parents_ParentUserId",
+                        column: x => x.ParentUserId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ParentVaccinationRecord_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ParentVaccinationRecord_VaccinationTypes_VaccineTypeId",
+                        column: x => x.VaccineTypeId,
+                        principalTable: "VaccinationTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -556,9 +666,42 @@ namespace Repositories.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_VaccinationRecords_VaccineTypes_VaccineTypeId",
+                        name: "FK_VaccinationRecords_VaccinationTypes_VaccineTypeId",
                         column: x => x.VaccineTypeId,
-                        principalTable: "VaccineTypes",
+                        principalTable: "VaccinationTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VaccinationSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ScheduleType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CampaignId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ScheduledAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ScheduleStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VaccinationSchedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VaccinationSchedules_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_VaccinationSchedules_VaccinationCampaigns_CampaignId",
+                        column: x => x.CampaignId,
+                        principalTable: "VaccinationCampaigns",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -590,163 +733,6 @@ namespace Repositories.Migrations
                         name: "FK_CheckupRecords_CheckupSchedules_ScheduleId",
                         column: x => x.ScheduleId,
                         principalTable: "CheckupSchedules",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "HealthProfiles",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Version = table.Column<int>(type: "int", nullable: false),
-                    ProfileDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Allergies = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ChronicConditions = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TreatmentHistory = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Vision = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Hearing = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    VaccinationSummary = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_HealthProfiles", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_HealthProfiles_Parents_ParentId",
-                        column: x => x.ParentId,
-                        principalTable: "Parents",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_HealthProfiles_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ParentMedicationDeliveries",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    QuantityDelivered = table.Column<int>(type: "int", nullable: false),
-                    DeliveredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    DeliveredBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ReceivedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ParentUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ParentMedicationDeliveries", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ParentMedicationDeliveries_Parents_DeliveredBy",
-                        column: x => x.DeliveredBy,
-                        principalTable: "Parents",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ParentMedicationDeliveries_Parents_ParentUserId",
-                        column: x => x.ParentUserId,
-                        principalTable: "Parents",
-                        principalColumn: "UserId");
-                    table.ForeignKey(
-                        name: "FK_ParentMedicationDeliveries_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ParentMedicationDeliveries_Users_ReceivedBy",
-                        column: x => x.ReceivedBy,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ParentVaccinationRecord",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VaccineTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DoseNumber = table.Column<int>(type: "int", nullable: false),
-                    AdministeredAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ParentUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ParentVaccinationRecord", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ParentVaccinationRecord_Parents_ParentUserId",
-                        column: x => x.ParentUserId,
-                        principalTable: "Parents",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ParentVaccinationRecord_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ParentVaccinationRecord_VaccineTypes_VaccineTypeId",
-                        column: x => x.VaccineTypeId,
-                        principalTable: "VaccineTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Notifications",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ScheduleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    RetryCount = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Notifications", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Notifications_Parents_ParentId",
-                        column: x => x.ParentId,
-                        principalTable: "Parents",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Notifications_VaccinationSchedules_ScheduleId",
-                        column: x => x.ScheduleId,
-                        principalTable: "VaccinationSchedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -788,6 +774,97 @@ namespace Repositories.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_HealthEvents_VaccinationRecords_VaccinationRecordId",
+                        column: x => x.VaccinationRecordId,
+                        principalTable: "VaccinationRecords",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ScheduleId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    MedicalSupplyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    RetryCount = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_MedicalSupplies_MedicalSupplyId",
+                        column: x => x.MedicalSupplyId,
+                        principalTable: "MedicalSupplies",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Notifications_Parents_ParentId",
+                        column: x => x.ParentId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId");
+                    table.ForeignKey(
+                        name: "FK_Notifications_VaccinationSchedules_ScheduleId",
+                        column: x => x.ScheduleId,
+                        principalTable: "VaccinationSchedules",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CounselingAppointments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StaffUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CheckupRecordId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    AppointmentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Duration = table.Column<int>(type: "int", nullable: false),
+                    Purpose = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Recommendations = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    VaccinationRecordId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CounselingAppointments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CounselingAppointments_CheckupRecords_CheckupRecordId",
+                        column: x => x.CheckupRecordId,
+                        principalTable: "CheckupRecords",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_CounselingAppointments_NurseProfiles_StaffUserId",
+                        column: x => x.StaffUserId,
+                        principalTable: "NurseProfiles",
+                        principalColumn: "UserId");
+                    table.ForeignKey(
+                        name: "FK_CounselingAppointments_Parents_ParentId",
+                        column: x => x.ParentId,
+                        principalTable: "Parents",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CounselingAppointments_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_CounselingAppointments_VaccinationRecords_VaccinationRecordId",
                         column: x => x.VaccinationRecordId,
                         principalTable: "VaccinationRecords",
                         principalColumn: "Id");
@@ -850,6 +927,44 @@ namespace Repositories.Migrations
                         principalColumn: "Id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "SupplyUsages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    HealthEventId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MedicalSupplyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    QuantityUsed = table.Column<int>(type: "int", nullable: false),
+                    NurseProfileId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SupplyUsages", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SupplyUsages_HealthEvents_HealthEventId",
+                        column: x => x.HealthEventId,
+                        principalTable: "HealthEvents",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_SupplyUsages_MedicalSupplies_MedicalSupplyId",
+                        column: x => x.MedicalSupplyId,
+                        principalTable: "MedicalSupplies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SupplyUsages_NurseProfiles_NurseProfileId",
+                        column: x => x.NurseProfileId,
+                        principalTable: "NurseProfiles",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_CheckupRecords_ScheduleId",
                 table: "CheckupRecords",
@@ -864,6 +979,31 @@ namespace Repositories.Migrations
                 name: "IX_CheckupSchedules_StudentId",
                 table: "CheckupSchedules",
                 column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CounselingAppointments_CheckupRecordId",
+                table: "CounselingAppointments",
+                column: "CheckupRecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CounselingAppointments_ParentId",
+                table: "CounselingAppointments",
+                column: "ParentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CounselingAppointments_StaffUserId",
+                table: "CounselingAppointments",
+                column: "StaffUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CounselingAppointments_StudentId",
+                table: "CounselingAppointments",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CounselingAppointments_VaccinationRecordId",
+                table: "CounselingAppointments",
+                column: "VaccinationRecordId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Dispenses_AdministeredUserId",
@@ -921,6 +1061,11 @@ namespace Repositories.Migrations
                 column: "MedicationId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Notifications_MedicalSupplyId",
+                table: "Notifications",
+                column: "MedicalSupplyId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Notifications_ParentId",
                 table: "Notifications",
                 column: "ParentId");
@@ -931,9 +1076,9 @@ namespace Repositories.Migrations
                 column: "ScheduleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ParentMedicationDeliveries_DeliveredBy",
+                name: "IX_ParentMedicationDeliveries_ParentId",
                 table: "ParentMedicationDeliveries",
-                column: "DeliveredBy");
+                column: "ParentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ParentMedicationDeliveries_ParentUserId",
@@ -948,11 +1093,6 @@ namespace Repositories.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ParentMedicationDeliveries_StudentId",
                 table: "ParentMedicationDeliveries",
-                column: "StudentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Parents_StudentId",
-                table: "Parents",
                 column: "StudentId");
 
             migrationBuilder.CreateIndex(
@@ -988,10 +1128,30 @@ namespace Repositories.Migrations
                 filter: "[NormalizedName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_StudentCode",
+                name: "IX_Students_ParentUserId",
+                table: "Students",
+                column: "ParentUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Students_StudentCode_Unique",
                 table: "Students",
                 column: "StudentCode",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SupplyUsages_HealthEventId",
+                table: "SupplyUsages",
+                column: "HealthEventId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SupplyUsages_MedicalSupplyId",
+                table: "SupplyUsages",
+                column: "MedicalSupplyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SupplyUsages_NurseProfileId",
+                table: "SupplyUsages",
+                column: "NurseProfileId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserClaims_UserId",
@@ -1065,7 +1225,7 @@ namespace Repositories.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "CheckupRecords");
+                name: "CounselingAppointments");
 
             migrationBuilder.DropTable(
                 name: "Dispenses");
@@ -1095,7 +1255,7 @@ namespace Repositories.Migrations
                 name: "RoleClaims");
 
             migrationBuilder.DropTable(
-                name: "StaffProfiles");
+                name: "SupplyUsages");
 
             migrationBuilder.DropTable(
                 name: "UserClaims");
@@ -1113,25 +1273,31 @@ namespace Repositories.Migrations
                 name: "VaccineDoseInfos");
 
             migrationBuilder.DropTable(
-                name: "CheckupSchedules");
+                name: "CheckupRecords");
 
             migrationBuilder.DropTable(
                 name: "VaccinationSchedules");
 
             migrationBuilder.DropTable(
-                name: "Parents");
+                name: "HealthEvents");
 
             migrationBuilder.DropTable(
-                name: "HealthEvents");
+                name: "MedicalSupplies");
+
+            migrationBuilder.DropTable(
+                name: "NurseProfiles");
 
             migrationBuilder.DropTable(
                 name: "Roles");
 
             migrationBuilder.DropTable(
-                name: "CheckupCampaigns");
+                name: "CheckupSchedules");
 
             migrationBuilder.DropTable(
                 name: "VaccinationRecords");
+
+            migrationBuilder.DropTable(
+                name: "CheckupCampaigns");
 
             migrationBuilder.DropTable(
                 name: "MedicationLots");
@@ -1140,16 +1306,19 @@ namespace Repositories.Migrations
                 name: "Students");
 
             migrationBuilder.DropTable(
-                name: "Users");
-
-            migrationBuilder.DropTable(
                 name: "VaccinationCampaigns");
 
             migrationBuilder.DropTable(
-                name: "VaccineTypes");
+                name: "VaccinationTypes");
 
             migrationBuilder.DropTable(
                 name: "Medications");
+
+            migrationBuilder.DropTable(
+                name: "Parents");
+
+            migrationBuilder.DropTable(
+                name: "Users");
         }
     }
 }
