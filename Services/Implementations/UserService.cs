@@ -1,5 +1,4 @@
-﻿using DTOs.UserDTOs.Identities;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -45,20 +44,20 @@ namespace Services.Implementations
         //public async Task<ApiResult<UserResponse>> RegisterAsync(UserRegisterRequest req)
         //{
         //    if (req == null || string.IsNullOrWhiteSpace(req.Email))
-        //        return ApiResult<UserResponse>.Failure("Invalid request");
+        //        return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
         //    if (await _userRepository.ExistsByEmailAsync(req.Email))
-        //        return ApiResult<UserResponse>.Failure("Email already in use");
+        //        return ApiResult<UserResponse>.Failure(new InvalidOperationException("Email already in use"));
 
         //    var result = await _unitOfWork.ExecuteTransactionAsync(async () =>
         //    {
         //        var user = UserMappings.ToDomainUser(req);
         //        var createRes = await _userManager.CreateUserAsync(user, req.Password);
         //        if (!createRes.Succeeded)
-        //            return ApiResult<UserResponse>.Failure(createRes.ErrorMessage);
+        //            return ApiResult<UserResponse>.Failure(new InvalidOperationException(createRes.ErrorMessage));
 
         //        await _userManager.AddDefaultRoleAsync(user);
-        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
+        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), "User registered successfully");
         //    });
 
         //    if (result.IsSuccess)
@@ -92,11 +91,11 @@ namespace Services.Implementations
         public async Task<ApiResult<string>> ConfirmEmailAsync(Guid userId, string encodedToken)
         {
             if (string.IsNullOrWhiteSpace(encodedToken))
-                return ApiResult<string>.Failure("Invalid token");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid token"));
 
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ApiResult<string>.Failure("User not found");
+                return ApiResult<string>.Failure(new InvalidOperationException("User not found"));
 
             string token;
             try
@@ -106,7 +105,7 @@ namespace Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to decode token for user {UserId}", userId);
-                return ApiResult<string>.Failure("Invalid token format");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid token format"));
             }
 
             var res = await _userManager.ConfirmEmailAsync(user, token);
@@ -114,37 +113,37 @@ namespace Services.Implementations
             {
                 _logger.LogWarning("Email confirmation failed for user {UserId}. Errors: {Errors}",
                     userId, string.Join(", ", res.Errors.Select(e => e.Description)));
-                return ApiResult<string>.Failure("Email confirmation failed: " + string.Join(", ", res.Errors.Select(e => e.Description)));
+                return ApiResult<string>.Failure(new InvalidOperationException("Email confirmation failed: " + string.Join(", ", res.Errors.Select(e => e.Description))));
             }
 
-            return ApiResult<string>.Success("Email confirmed successfully");
+            return ApiResult<string>.Success("Email confirmed successfully", "Email confirmed successfully");
         }
 
         public async Task<ApiResult<string>> ResendConfirmationEmailAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
-                return ApiResult<string>.Failure("Invalid email");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid email"));
 
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
-                return ApiResult<string>.Success("If the email is valid and unconfirmed, a confirmation email will be sent");
+                return ApiResult<string>.Success("If the email is valid and unconfirmed, a confirmation email will be sent", "Confirmation email process completed");
 
             if (await _userManager.IsEmailConfirmedAsync(user))
-                return ApiResult<string>.Success("Email is already confirmed");
+                return ApiResult<string>.Success("Email is already confirmed", "Email confirmation status checked");
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
             // Truyền token nguyên bản, để UserEmailService xử lý việc encode
             await _userEmailService.SendEmailConfirmationAsync(email, user.Id, token, _confirmEmailUri);
-            return ApiResult<string>.Success("Confirmation email resent");
+            return ApiResult<string>.Success("Confirmation email resent", "Confirmation email sent successfully");
         }
 
         public async Task<ApiResult<string>> InitiatePasswordResetAsync(ForgotPasswordRequestDTO request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.Email))
-                return ApiResult<string>.Failure("Invalid email");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid email"));
 
-            var genericResponse = ApiResult<string>.Success("If the email is valid, you’ll receive password reset instructions");
+            var genericResponse = ApiResult<string>.Success("If the email is valid, you'll receive password reset instructions", "Password reset process initiated");
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
                 return genericResponse;
@@ -161,11 +160,11 @@ namespace Services.Implementations
         public async Task<ApiResult<string>> ResetPasswordAsync(ResetPasswordRequestDTO request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
-                return ApiResult<string>.Failure("Invalid request");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid request"));
 
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
-                return ApiResult<string>.Failure("Invalid request");
+                return ApiResult<string>.Failure(new InvalidOperationException("Invalid request"));
             _logger.LogDebug("Incoming token (request): {RequestToken}", request.Token);
 
             string token;
@@ -178,42 +177,42 @@ namespace Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi decode token");
-                return ApiResult<string>.Failure("Invalid token");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid token"));
             }
 
             var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
             if (!result.Succeeded)
-                return ApiResult<string>.Failure("Password reset failed. Please try again");
+                return ApiResult<string>.Failure(new InvalidOperationException("Password reset failed. Please try again"));
 
             await _userEmailService.SendPasswordChangedNotificationAsync(request.Email);
-            return ApiResult<string>.Success("Password reset successfully");
+            return ApiResult<string>.Success("Password reset successfully", "Password has been reset successfully");
         }
 
         public async Task<ApiResult<string>> Send2FACodeAsync()
         {
             var userId = _currentUserService.GetUserId();
             if (userId == null)
-                return ApiResult<string>.Failure("User not found");
+                return ApiResult<string>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ApiResult<string>.Failure("User not found");
+                return ApiResult<string>.Failure(new InvalidOperationException("User not found"));
 
             var code = await _userManager.GenerateTwoFactorTokenAsync(user, TokenOptions.DefaultEmailProvider);
             await _userEmailService.Send2FACodeAsync(user.Email, code);
-            return ApiResult<string>.Success("2FA code sent");
+            return ApiResult<string>.Success("2FA code sent", "Two-factor authentication code sent successfully");
         }
 
         //public async Task<ApiResult<UserResponse>> AdminRegisterAsync(AdminCreateUserRequest req)
         //{
         //    if (req == null || string.IsNullOrWhiteSpace(req.Email))
-        //        return ApiResult<UserResponse>.Failure("Invalid request");
+        //        return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
         //    if (!_currentUserService.IsAdmin())
-        //        return ApiResult<UserResponse>.Failure("Forbidden: Only admins can register users");
+        //        return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Forbidden: Only admins can register users"));
 
         //    if (await _userRepository.ExistsByEmailAsync(req.Email))
-        //        return ApiResult<UserResponse>.Failure("Email already in use");
+        //        return ApiResult<UserResponse>.Failure(new InvalidOperationException("Email already in use"));
 
         //    _logger.LogInformation("Admin registering user: {Email}", req.Email);
 
@@ -222,18 +221,18 @@ namespace Services.Implementations
         //        var user = UserMappings.ToDomainUser(req);
         //        var create = await _userManager.CreateUserAsync(user, req.Password);
         //        if (!create.Succeeded)
-        //            return ApiResult<UserResponse>.Failure(create.ErrorMessage);
+        //            return ApiResult<UserResponse>.Failure(new InvalidOperationException(create.ErrorMessage));
 
         //        await _userManager.AddRolesAsync(user, req.Roles);
         //        var token = await _tokenService.GenerateToken(user);
-        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data));
+        //        return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data), "User created successfully by admin");
         //    });
         //}
 
         public async Task<ApiResult<UserResponse>> LoginAsync(UserLoginRequest req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
-                return ApiResult<UserResponse>.Failure("Invalid request");
+                return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
             _logger.LogInformation("Login attempt: {Email}", req.Email);
 
@@ -241,114 +240,114 @@ namespace Services.Implementations
             if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
             {
                 if (user != null) await _userManager.AccessFailedAsync(user);
-                return ApiResult<UserResponse>.Failure("Invalid email or password");
+                return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Invalid email or password"));
             }
 
             if (!await _userManager.IsEmailConfirmedAsync(user))
-                return ApiResult<UserResponse>.Failure("Please confirm your email before logging in");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("Please confirm your email before logging in"));
 
             if (await _userManager.IsLockedOutAsync(user))
-                return ApiResult<UserResponse>.Failure("Account is locked");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("Account is locked"));
 
             await _userManager.ResetAccessFailedAsync(user);
 
             var token = await _tokenService.GenerateToken(user);
-            var refreshTokenInfo = _tokenService.GenerateRefreshToken(); 
-            await _userManager.SetRefreshTokenAsync(user, refreshTokenInfo); 
+            var refreshTokenInfo = _tokenService.GenerateRefreshToken();
+            await _userManager.SetRefreshTokenAsync(user, refreshTokenInfo);
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshTokenInfo.Token));
+            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshTokenInfo.Token), "Login successful");
         }
 
         public async Task<ApiResult<UserResponse>> GetByIdAsync(Guid id)
         {
             var userDetails = await _userRepository.GetUserDetailsByIdAsync(id);
             if (userDetails == null)
-                return ApiResult<UserResponse>.Failure("User not found");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("User not found"));
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(userDetails, _userManager));
+            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(userDetails, _userManager), "User retrieved successfully");
         }
 
         public async Task<ApiResult<CurrentUserResponse>> GetCurrentUserAsync()
         {
             var uid = _currentUserService.GetUserId();
             if (uid == null)
-                return ApiResult<CurrentUserResponse>.Failure("User not found");
+                return ApiResult<CurrentUserResponse>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(uid);
+            var user = await _userManager.FindByIdAsync(uid.ToString());
             if (user == null)
-                return ApiResult<CurrentUserResponse>.Failure("User not found");
+                return ApiResult<CurrentUserResponse>.Failure(new InvalidOperationException("User not found"));
 
             var token = await _tokenService.GenerateToken(user);
-            return ApiResult<CurrentUserResponse>.Success(UserMappings.ToCurrentUserResponse(user, token.Data));
+            return ApiResult<CurrentUserResponse>.Success(UserMappings.ToCurrentUserResponse(user, token.Data), "Current user retrieved successfully");
         }
 
         public async Task<ApiResult<CurrentUserResponse>> RefreshTokenAsync(RefreshTokenRequest req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.RefreshToken))
-                return ApiResult<CurrentUserResponse>.Failure("Invalid request");
+                return ApiResult<CurrentUserResponse>.Failure(new ArgumentException("Invalid request"));
 
             var uid = _currentUserService.GetUserId();
             if (uid == null)
-                return ApiResult<CurrentUserResponse>.Failure("User not found");
+                return ApiResult<CurrentUserResponse>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(uid);
+            var user = await _userManager.FindByIdAsync(uid.ToString());
             if (user == null || !await _userManager.ValidateRefreshTokenAsync(user, req.RefreshToken))
-                return ApiResult<CurrentUserResponse>.Failure("Invalid refresh token");
+                return ApiResult<CurrentUserResponse>.Failure(new UnauthorizedAccessException("Invalid refresh token"));
 
             var token = await _tokenService.GenerateToken(user);
-            return ApiResult<CurrentUserResponse>.Success(UserMappings.ToCurrentUserResponse(user, token.Data));
+            return ApiResult<CurrentUserResponse>.Success(UserMappings.ToCurrentUserResponse(user, token.Data), "Token refreshed successfully");
         }
 
         public async Task<ApiResult<RevokeRefreshTokenResponse>> RevokeRefreshTokenAsync(RefreshTokenRequest req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.RefreshToken))
-                return ApiResult<RevokeRefreshTokenResponse>.Failure("Invalid request");
+                return ApiResult<RevokeRefreshTokenResponse>.Failure(new ArgumentException("Invalid request"));
 
             var uid = _currentUserService.GetUserId();
             if (uid == null)
-                return ApiResult<RevokeRefreshTokenResponse>.Failure("User not found");
+                return ApiResult<RevokeRefreshTokenResponse>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(uid);
+            var user = await _userManager.FindByIdAsync(uid.ToString());
             if (user == null || !await _userManager.ValidateRefreshTokenAsync(user, req.RefreshToken))
-                return ApiResult<RevokeRefreshTokenResponse>.Failure("Invalid refresh token");
+                return ApiResult<RevokeRefreshTokenResponse>.Failure(new UnauthorizedAccessException("Invalid refresh token"));
 
             var rem = await _userManager.RemoveRefreshTokenAsync(user);
             if (!rem.Succeeded)
-                return ApiResult<RevokeRefreshTokenResponse>.Failure(rem.ErrorMessage);
+                return ApiResult<RevokeRefreshTokenResponse>.Failure(new InvalidOperationException(rem.ErrorMessage));
 
-            return ApiResult<RevokeRefreshTokenResponse>.Success(new RevokeRefreshTokenResponse { Message = "Revoked" });
+            return ApiResult<RevokeRefreshTokenResponse>.Success(new RevokeRefreshTokenResponse { Message = "Revoked" }, "Refresh token revoked successfully");
         }
 
         public async Task<ApiResult<string>> ChangePasswordAsync(ChangePasswordRequest req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.OldPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
-                return ApiResult<string>.Failure("Invalid request");
+                return ApiResult<string>.Failure(new ArgumentException("Invalid request"));
 
             var uid = _currentUserService.GetUserId();
             if (uid == null)
-                return ApiResult<string>.Failure("User not found");
+                return ApiResult<string>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(uid);
+            var user = await _userManager.FindByIdAsync(uid.ToString());
             if (user == null)
-                return ApiResult<string>.Failure("User not found");
+                return ApiResult<string>.Failure(new InvalidOperationException("User not found"));
 
             var res = await _userManager.ChangeUserPasswordAsync(user, req.OldPassword, req.NewPassword);
             if (!res.Succeeded)
-                return ApiResult<string>.Failure(res.ErrorMessage);
+                return ApiResult<string>.Failure(new InvalidOperationException(res.ErrorMessage));
 
             await _userManager.UpdateSecurityStampAsync(user);
             await _userEmailService.SendPasswordChangedNotificationAsync(user.Email);
-            return ApiResult<string>.Success("Password changed successfully");
+            return ApiResult<string>.Success("Password changed successfully", "Password changed successfully");
         }
 
         public async Task<ApiResult<UserResponse>> UpdateAsync(Guid id, UpdateUserRequest req)
         {
             if (req == null)
-                return ApiResult<UserResponse>.Failure("Invalid request");
+                return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
             var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
-                return ApiResult<UserResponse>.Failure("User not found");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("User not found"));
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -360,24 +359,24 @@ namespace Services.Implementations
 
                 var upd = await _userManager.UpdateAsync(user);
                 if (!upd.Succeeded)
-                    return ApiResult<UserResponse>.Failure(string.Join(", ", upd.Errors.Select(e => e.Description)));
+                    return ApiResult<UserResponse>.Failure(new InvalidOperationException(string.Join(", ", upd.Errors.Select(e => e.Description))));
 
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
+                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), "User updated successfully");
             });
         }
 
         public async Task<ApiResult<UserResponse>> UpdateCurrentUserAsync(UpdateUserRequest req)
         {
             if (req == null)
-                return ApiResult<UserResponse>.Failure("Invalid request");
+                return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
             var uid = _currentUserService.GetUserId();
             if (uid == null)
-                return ApiResult<UserResponse>.Failure("User not found");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("User not found"));
 
-            var user = await _userManager.FindByIdAsync(uid);
+            var user = await _userManager.FindByIdAsync(uid.ToString());
             if (user == null)
-                return ApiResult<UserResponse>.Failure("User not found");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("User not found"));
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -386,9 +385,9 @@ namespace Services.Implementations
 
                 var upd = await _userManager.UpdateAsync(user);
                 if (!upd.Succeeded)
-                    return ApiResult<UserResponse>.Failure(string.Join(", ", upd.Errors.Select(e => e.Description)));
+                    return ApiResult<UserResponse>.Failure(new InvalidOperationException(string.Join(", ", upd.Errors.Select(e => e.Description))));
 
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
+                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), "Current user updated successfully");
             });
         }
 
@@ -402,19 +401,20 @@ namespace Services.Implementations
         {
             var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
-                return ApiResult<UserResponse>.Failure("User not found");
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException("User not found"));
 
             var res = await _userManager.SetLockoutAsync(user, enable, until);
             if (!res.Succeeded)
-                return ApiResult<UserResponse>.Failure(res.ErrorMessage);
+                return ApiResult<UserResponse>.Failure(new InvalidOperationException(res.ErrorMessage));
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager));
+            string message = enable ? "User locked successfully" : "User unlocked successfully";
+            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), message);
         }
 
         public async Task<ApiResult<object>> DeleteUsersAsync(List<Guid> ids)
         {
             if (ids == null || !ids.Any())
-                return ApiResult<object>.Success(null);
+                return ApiResult<object>.Success(null, "No users to delete");
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -422,22 +422,23 @@ namespace Services.Implementations
                 {
                     var user = await _userManager.FindByIdAsync(id.ToString());
                     if (user == null)
-                        return ApiResult<object>.Failure($"User {id} not found");
+                        return ApiResult<object>.Failure(new InvalidOperationException($"User {id} not found"));
 
                     var del = await _userManager.DeleteAsync(user);
                     if (!del.Succeeded)
-                        return ApiResult<object>.Failure(string.Join(", ", del.Errors.Select(e => e.Description)));
+                        return ApiResult<object>.Failure(new InvalidOperationException(string.Join(", ", del.Errors.Select(e => e.Description))));
                 }
-                return ApiResult<object>.Success(null);
+                return ApiResult<object>.Success(null, $"Successfully deleted {ids.Count} user(s)");
             });
         }
+
         public async Task<ApiResult<PagedList<UserDetailsDTO>>> GetUsersAsync(int page, int size)
         {
             if (page < 1 || size < 1)
-                return ApiResult<PagedList<UserDetailsDTO>>.Failure("Invalid pagination parameters");
+                return ApiResult<PagedList<UserDetailsDTO>>.Failure(new ArgumentException("Invalid pagination parameters"));
 
             var list = await _userRepository.GetUserDetailsAsync(page, size);
-            return ApiResult<PagedList<UserDetailsDTO>>.Success(list);
+            return ApiResult<PagedList<UserDetailsDTO>>.Success(list, $"Retrieved {list.Count} users from page {page}");
         }
     }
 }

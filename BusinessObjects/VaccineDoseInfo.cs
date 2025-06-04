@@ -10,7 +10,7 @@ namespace BusinessObjects
         public int DoseNumber { get; set; }    // Liều 1, 2, 3…
         public int RecommendedAgeMonths { get; set; }
         public int MinIntervalDays { get; set; }
-        public VaccineType VaccineType { get; set; }
+        public VaccinationType VaccineType { get; set; }
         public ICollection<VaccineDoseInfo> NextDoseInfos { get; set; } // các lần liều tiếp theo
     }
 }

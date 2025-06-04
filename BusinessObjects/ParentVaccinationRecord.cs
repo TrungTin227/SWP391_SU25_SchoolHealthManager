@@ -10,7 +10,7 @@ namespace BusinessObjects
         public Student Student { get; set; }
 
         public Guid VaccineTypeId { get; set; }
-        public VaccineType VaccineType { get; set; }
+        public VaccinationType VaccineType { get; set; }
 
         public int DoseNumber { get; set; }          // liều 1, 2…
         public DateTime AdministeredAt { get; set; } // ngày tiêm tại nhà

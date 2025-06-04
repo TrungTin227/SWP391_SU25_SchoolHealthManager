@@ -2,7 +2,7 @@
 
 namespace BusinessObjects
 {
-    public class VaccineType : BaseEntity
+    public class VaccinationType : BaseEntity
     {
         [Key]
         public Guid Id { get; set; }

@@ -11,44 +11,68 @@ namespace Repositories
         {
         }
 
-        #region Core Domain DbSets
+        #region Core User Management
         public DbSet<Student> Students { get; set; }
         public DbSet<Parent> Parents { get; set; }
         public DbSet<NurseProfile> NurseProfiles { get; set; }
-        public DbSet<HealthProfile> HealthProfiles { get; set; }
-        public DbSet<ParentMedicationDelivery> ParentMedicationDeliveries { get; set; }
-        public DbSet<Medication> Medications { get; set; }
-        public DbSet<MedicationLot> MedicationLots { get; set; }
-        public DbSet<Dispense> Dispenses { get; set; }
-        public DbSet<HealthEvent> HealthEvents { get; set; }
-        public DbSet<EventMedication> EventMedications { get; set; }
-        public DbSet<VaccinationCampaign> VaccinationCampaigns { get; set; }
-        public DbSet<VaccinationSchedule> VaccinationSchedules { get; set; }
-        public DbSet<VaccineType> VaccineTypes { get; set; }
-        public DbSet<VaccinationRecord> VaccinationRecords { get; set; }
-        public DbSet<VaccineDoseInfo> VaccineDoseInfos { get; set; }
-        public DbSet<FileAttachment> FileAttachments { get; set; }
-        public DbSet<Notification> Notifications { get; set; }
-        public DbSet<Report> Reports { get; set; }
+        #endregion
 
-        // Quản lý khám sức khỏe
+        #region Health Management
+        public DbSet<HealthProfile> HealthProfiles { get; set; }
+        public DbSet<HealthEvent> HealthEvents { get; set; }
         public DbSet<CheckupCampaign> CheckupCampaigns { get; set; }
         public DbSet<CheckupSchedule> CheckupSchedules { get; set; }
         public DbSet<CheckupRecord> CheckupRecords { get; set; }
+        #endregion
 
-        // Quản lý vật tư y tế
+        #region Medication Management
+        public DbSet<Medication> Medications { get; set; }
+        public DbSet<MedicationLot> MedicationLots { get; set; }
+        public DbSet<Dispense> Dispenses { get; set; }
+        public DbSet<EventMedication> EventMedications { get; set; }
+        public DbSet<ParentMedicationDelivery> ParentMedicationDeliveries { get; set; }
+        #endregion
+
+        #region Vaccination Management
+        public DbSet<VaccinationType> VaccinationTypes { get; set; }
+        public DbSet<VaccinationCampaign> VaccinationCampaigns { get; set; }
+        public DbSet<VaccinationSchedule> VaccinationSchedules { get; set; }
+        public DbSet<VaccinationRecord> VaccinationRecords { get; set; }
+        public DbSet<VaccineDoseInfo> VaccineDoseInfos { get; set; }
+        #endregion
+
+        #region Medical Supply Management
         public DbSet<MedicalSupply> MedicalSupplies { get; set; }
         public DbSet<SupplyUsage> SupplyUsages { get; set; }
+        #endregion
 
-        // Hẹn tư vấn
+        #region Support Services
         public DbSet<CounselingAppointment> CounselingAppointments { get; set; }
+        public DbSet<FileAttachment> FileAttachments { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Report> Reports { get; set; }
         #endregion
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            // Identity table mapping
+            // Configure database schema in logical order
+            ConfigureIdentityTables(builder);
+            ConfigureUserRelationships(builder);
+            ConfigureHealthManagement(builder);
+            ConfigureMedicationManagement(builder);
+            ConfigureVaccinationManagement(builder);
+            ConfigureMedicalSupplyManagement(builder);
+            ConfigureSupportServices(builder);
+            ConfigureIndexes(builder);
+            ConfigurePrecisionAndConstraints(builder);
+        }
+
+        #region Identity Configuration
+        private static void ConfigureIdentityTables(ModelBuilder builder)
+        {
+            // Map Identity tables to custom names
             builder.Entity<User>().ToTable("Users");
             builder.Entity<Role>().ToTable("Roles");
             builder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles");
@@ -56,45 +80,70 @@ namespace Repositories
             builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");
             builder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims");
             builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
+        }
+        #endregion
 
-            // Precision config for CheckupRecord
-            builder.Entity<CheckupRecord>(entity =>
+        #region User Relationships Configuration
+        private static void ConfigureUserRelationships(ModelBuilder builder)
+        {
+            // Parent ↔ User (One-to-One)
+            builder.Entity<Parent>(entity =>
             {
-                entity.Property(e => e.HeightCm).HasPrecision(5, 2);
-                entity.Property(e => e.WeightKg).HasPrecision(5, 2);
-                entity.Property(e => e.BloodPressureDiastolic).HasPrecision(3, 0);
+                entity.HasKey(p => p.UserId);
+                entity.HasOne(p => p.User)
+                      .WithOne(u => u.Parent)
+                      .HasForeignKey<Parent>(p => p.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Parent ↔ User one-to-one
-            builder.Entity<Parent>()
-                .HasKey(p => p.UserId);
-            builder.Entity<Parent>()
-                .HasOne(p => p.User)
-                .WithOne(u => u.Parent)
-                .HasForeignKey<Parent>(p => p.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // NurseProfile ↔ User (One-to-One)
+            builder.Entity<NurseProfile>(entity =>
+            {
+                entity.HasKey(sp => sp.UserId);
+                entity.HasOne(sp => sp.User)
+                      .WithOne(u => u.StaffProfile)
+                      .HasForeignKey<NurseProfile>(sp => sp.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
-            // Parent ↔ Student relationship (1 Parent có nhiều Students)
-            builder.Entity<Student>()
-                .HasOne(s => s.Parent)  // Student có 1 Parent
-                .WithMany(p => p.Students)  // Parent có nhiều Students
-                .HasForeignKey(s => s.ParentUserId)  
-                .OnDelete(DeleteBehavior.NoAction);
+            // Parent ↔ Student (One-to-Many)
+            builder.Entity<Student>(entity =>
+            {
+                entity.HasOne(s => s.Parent)
+                      .WithMany(p => p.Students)
+                      .HasForeignKey(s => s.ParentUserId)
+                      .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+        #endregion
 
-            // NurseProfile ↔ User one-to-one
-            builder.Entity<NurseProfile>()
-                .HasKey(sp => sp.UserId);
-            builder.Entity<NurseProfile>()
-                .HasOne(sp => sp.User)
-                .WithOne(u => u.StaffProfile)
-                .HasForeignKey<NurseProfile>(sp => sp.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+        #region Health Management Configuration
+        private static void ConfigureHealthManagement(ModelBuilder builder)
+        {
+            // HealthEvent relationships
+            builder.Entity<HealthEvent>(entity =>
+            {
+                entity.HasOne(he => he.Student)
+                      .WithMany(s => s.HealthEvents)
+                      .HasForeignKey(he => he.StudentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
-            // Composite key for VaccineDoseInfo
-            builder.Entity<VaccineDoseInfo>()
-                .HasKey(v => new { v.VaccineTypeId, v.DoseNumber });
+            // CheckupRecord relationships
+            builder.Entity<CheckupRecord>(entity =>
+            {
+                entity.HasOne(cr => cr.Schedule)
+                      .WithMany()
+                      .HasForeignKey(cr => cr.ScheduleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+        }
+        #endregion
 
-            // ParentMedicationDelivery relationships - FIX CASCADE PATHS
+        #region Medication Management Configuration
+        private static void ConfigureMedicationManagement(ModelBuilder builder)
+        {
+            // ParentMedicationDelivery relationships
             builder.Entity<ParentMedicationDelivery>(entity =>
             {
                 entity.HasOne(e => e.ReceivedUser)
@@ -110,105 +159,159 @@ namespace Repositories
                 entity.HasOne(e => e.Student)
                       .WithMany()
                       .HasForeignKey(e => e.StudentId)
-                      .OnDelete(DeleteBehavior.NoAction);  // CHANGED: Cascade -> NoAction
+                      .OnDelete(DeleteBehavior.NoAction);
             });
+        }
+        #endregion
 
-            // MedicalSupply ↔ SupplyUsage
-            builder.Entity<MedicalSupply>()
-                .HasMany(ms => ms.SupplyUsages)
-                .WithOne(su => su.MedicalSupply)
-                .HasForeignKey(su => su.MedicalSupplyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // SupplyUsage ↔ HealthEvent - FIX CASCADE PATHS
-            builder.Entity<SupplyUsage>()
-                .HasOne(su => su.HealthEvent)
-                .WithMany(he => he.SupplyUsages)  // Specify the correct collection property
-                .HasForeignKey(su => su.HealthEventId)  // This should match your entity's FK property
-                .OnDelete(DeleteBehavior.NoAction);  
-
-            // SupplyUsage ↔ UsedBy User
-            builder.Entity<SupplyUsage>()
-                .HasOne(su => su.UsedByNurse)
-                .WithMany()
-                .HasForeignKey(su => su.NurseProfileId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // CounselingAppointment relationships & indexes
-            builder.Entity<CounselingAppointment>(ca =>
+        #region Vaccination Management Configuration
+        private static void ConfigureVaccinationManagement(ModelBuilder builder)
+        {
+            // VaccineDoseInfo composite key
+            builder.Entity<VaccineDoseInfo>(entity =>
             {
-                ca.HasOne(x => x.Student)
-                  .WithMany(s => s.CounselingAppointments)
-                  .HasForeignKey(x => x.StudentId)
-                  .OnDelete(DeleteBehavior.NoAction);
-                ca.HasIndex(x => x.StudentId);
-
-                ca.HasOne(x => x.Parent)
-                  .WithMany(p => p.CounselingAppointments)
-                  .HasForeignKey(x => x.ParentId)
-                  .OnDelete(DeleteBehavior.Cascade);
-                ca.HasIndex(x => x.ParentId);
-
-                ca.HasOne(x => x.StaffUser)
-                  .WithMany(u => u.CounselingAppointments)
-                  .HasForeignKey(x => x.StaffUserId)
-                  .OnDelete(DeleteBehavior.NoAction);
-                ca.HasIndex(x => x.StaffUserId);
-
-                ca.HasOne(x => x.CheckupRecord)
-                  .WithMany(cr => cr.CounselingAppointments)
-                  .HasForeignKey(x => x.CheckupRecordId)
-                  .OnDelete(DeleteBehavior.NoAction);
-                ca.HasIndex(x => x.CheckupRecordId);
-
-                ca.HasOne(x => x.VaccinationRecord)
-                  .WithMany(vr => vr.CounselingAppointments)
-                  .HasForeignKey(x => x.VaccinationRecordId)
-                  .OnDelete(DeleteBehavior.NoAction);
-                ca.HasIndex(x => x.VaccinationRecordId);
+                entity.HasKey(v => new { v.VaccineTypeId, v.DoseNumber });
             });
 
-            // THÊM: Cấu hình explicit cho các relationships chính
-            builder.Entity<HealthEvent>(he =>
+            // VaccinationRecord relationships
+            builder.Entity<VaccinationRecord>(entity =>
             {
-                he.HasOne(x => x.Student)
-                  .WithMany(s => s.HealthEvents)
-                  .HasForeignKey(x => x.StudentId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(vr => vr.Student)
+                      .WithMany(s => s.VaccinationRecords)
+                      .HasForeignKey(vr => vr.StudentId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
+        }
+        #endregion
 
-            builder.Entity<VaccinationRecord>(vr =>
+        #region Medical Supply Management Configuration
+        private static void ConfigureMedicalSupplyManagement(ModelBuilder builder)
+        {
+            // MedicalSupply ↔ SupplyUsage (One-to-Many)
+            builder.Entity<MedicalSupply>(entity =>
             {
-                vr.HasOne(x => x.Student)
-                  .WithMany(s => s.VaccinationRecords)
-                  .HasForeignKey(x => x.StudentId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                entity.HasMany(ms => ms.SupplyUsages)
+                      .WithOne(su => su.MedicalSupply)
+                      .HasForeignKey(su => su.MedicalSupplyId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
-            builder.Entity<CheckupRecord>(cr =>
+            // SupplyUsage relationships
+            builder.Entity<SupplyUsage>(entity =>
             {
-                cr.HasOne(x => x.Schedule)
-                  .WithMany()
-                  .HasForeignKey(x => x.ScheduleId)
-                  .OnDelete(DeleteBehavior.Cascade);
-            });
+                entity.HasOne(su => su.HealthEvent)
+                      .WithMany(he => he.SupplyUsages)
+                      .HasForeignKey(su => su.HealthEventId)
+                      .OnDelete(DeleteBehavior.NoAction);
 
-            // Unique and performance indexes
+                entity.HasOne(su => su.UsedByNurse)
+                      .WithMany()
+                      .HasForeignKey(su => su.NurseProfileId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+        #endregion
+
+        #region Support Services Configuration
+        private static void ConfigureSupportServices(ModelBuilder builder)
+        {
+            // CounselingAppointment relationships
+            builder.Entity<CounselingAppointment>(entity =>
+            {
+                entity.HasOne(ca => ca.Student)
+                      .WithMany(s => s.CounselingAppointments)
+                      .HasForeignKey(ca => ca.StudentId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(ca => ca.Parent)
+                      .WithMany(p => p.CounselingAppointments)
+                      .HasForeignKey(ca => ca.ParentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ca => ca.StaffUser)
+                      .WithMany(u => u.CounselingAppointments)
+                      .HasForeignKey(ca => ca.StaffUserId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(ca => ca.CheckupRecord)
+                      .WithMany(cr => cr.CounselingAppointments)
+                      .HasForeignKey(ca => ca.CheckupRecordId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(ca => ca.VaccinationRecord)
+                      .WithMany(vr => vr.CounselingAppointments)
+                      .HasForeignKey(ca => ca.VaccinationRecordId)
+                      .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+        #endregion
+
+        #region Index Configuration
+        private static void ConfigureIndexes(ModelBuilder builder)
+        {
+            // Unique indexes
             builder.Entity<Student>()
                    .HasIndex(s => s.StudentCode)
-                   .IsUnique();
+                   .IsUnique()
+                   .HasDatabaseName("IX_Students_StudentCode_Unique");
+
+            // Performance indexes
+            builder.Entity<Student>()
+                   .HasIndex(s => s.ParentUserId)
+                   .HasDatabaseName("IX_Students_ParentUserId");
 
             builder.Entity<HealthProfile>()
-                   .HasIndex(h => h.StudentId);
+                   .HasIndex(hp => hp.StudentId)
+                   .HasDatabaseName("IX_HealthProfiles_StudentId");
 
             builder.Entity<HealthEvent>()
-                   .HasIndex(e => e.StudentId);
+                   .HasIndex(he => he.StudentId)
+                   .HasDatabaseName("IX_HealthEvents_StudentId");
 
             builder.Entity<VaccinationRecord>()
-                   .HasIndex(vr => vr.StudentId);
-            builder.Entity<Student>()
-                .HasIndex(s => s.ParentUserId)
-                .HasDatabaseName("IX_Students_ParentUserId");
+                   .HasIndex(vr => vr.StudentId)
+                   .HasDatabaseName("IX_VaccinationRecords_StudentId");
+
+            // CounselingAppointment indexes
+            builder.Entity<CounselingAppointment>(entity =>
+            {
+                entity.HasIndex(ca => ca.StudentId)
+                      .HasDatabaseName("IX_CounselingAppointments_StudentId");
+
+                entity.HasIndex(ca => ca.ParentId)
+                      .HasDatabaseName("IX_CounselingAppointments_ParentId");
+
+                entity.HasIndex(ca => ca.StaffUserId)
+                      .HasDatabaseName("IX_CounselingAppointments_StaffUserId");
+
+                entity.HasIndex(ca => ca.CheckupRecordId)
+                      .HasDatabaseName("IX_CounselingAppointments_CheckupRecordId");
+
+                entity.HasIndex(ca => ca.VaccinationRecordId)
+                      .HasDatabaseName("IX_CounselingAppointments_VaccinationRecordId");
+            });
         }
+        #endregion
+
+        #region Precision and Constraints Configuration
+        private static void ConfigurePrecisionAndConstraints(ModelBuilder builder)
+        {
+            // CheckupRecord precision settings
+            builder.Entity<CheckupRecord>(entity =>
+            {
+                entity.Property(e => e.HeightCm)
+                      .HasPrecision(5, 2);
+
+                entity.Property(e => e.WeightKg)
+                      .HasPrecision(5, 2);
+
+                entity.Property(e => e.BloodPressureDiastolic)
+                      .HasPrecision(3, 0);
+            });
+
+            // Add other precision and constraint configurations as needed
+            // Example: String length constraints, decimal precision, etc.
+        }
+        #endregion
     }
 }
