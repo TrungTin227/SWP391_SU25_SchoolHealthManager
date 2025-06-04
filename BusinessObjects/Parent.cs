@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
@@ -17,7 +18,7 @@ namespace BusinessObjects
 
         // 3: Mối quan hệ với con: Father/Mother/Guardian …
         [Required, MaxLength(50)]
-        public string Relationship { get; set; } = "";
+        public Relationship Relationship { get; set; }
 
         //  Collection các students
         public ICollection<Student> Students { get; set; } = new List<Student>();

@@ -12,7 +12,7 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    [Migration("20250604101447_SchoolHealthManagerInitial")]
+    [Migration("20250604153421_SchoolHealthManagerInitial")]
     partial class SchoolHealthManagerInitial
     {
         /// <inheritdoc />
@@ -83,7 +83,9 @@ namespace Repositories.Migrations
 
                     b.Property<string>("Hearing")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("HeightCm")
                         .HasPrecision(5, 2)
@@ -106,11 +108,15 @@ namespace Repositories.Migrations
 
                     b.Property<string>("VisionLeft")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("VisionRight")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("WeightKg")
                         .HasPrecision(5, 2)
@@ -146,7 +152,9 @@ namespace Repositories.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -212,6 +220,7 @@ namespace Repositories.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("StudentId")
@@ -360,6 +369,7 @@ namespace Repositories.Migrations
                     b.Property<string>("FileType")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsDeleted")
@@ -370,7 +380,9 @@ namespace Repositories.Migrations
 
                     b.Property<string>("ReferenceType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -402,16 +414,20 @@ namespace Repositories.Migrations
                     b.Property<string>("EventCategory")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("EventStatus")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("EventType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -472,6 +488,7 @@ namespace Repositories.Migrations
                     b.Property<string>("Hearing")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsDeleted")
@@ -506,6 +523,7 @@ namespace Repositories.Migrations
                     b.Property<string>("Vision")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
@@ -569,6 +587,12 @@ namespace Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -587,6 +611,12 @@ namespace Repositories.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Unit")
                         .IsRequired()
@@ -683,12 +713,15 @@ namespace Repositories.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -759,6 +792,7 @@ namespace Repositories.Migrations
                     b.Property<string>("Relationship")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -808,7 +842,9 @@ namespace Repositories.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -907,6 +943,7 @@ namespace Repositories.Migrations
                     b.Property<string>("ReportType")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Title")
@@ -1117,7 +1154,10 @@ namespace Repositories.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Gender")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -1310,11 +1350,15 @@ namespace Repositories.Migrations
 
                     b.Property<string>("ScheduleStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("ScheduleType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("ScheduledAt")
                         .HasColumnType("datetime2");

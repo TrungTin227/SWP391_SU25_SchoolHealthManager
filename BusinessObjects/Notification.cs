@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -8,7 +9,7 @@ namespace BusinessObjects
         public Guid Id { get; set; }
 
         // chung cho mọi loại
-        public string Type { get; set; }
+        public NotificationType Type { get; set; }
 
         // nếu Type == VaccinationSchedule
         public Guid? ScheduleId { get; set; }
@@ -25,7 +26,7 @@ namespace BusinessObjects
         public DateTime? SentAt { get; set; }
 
         [MaxLength(20)]
-        public string Status { get; set; }
+        public NotificationStatus Status { get; set; }
 
         public int RetryCount { get; set; }
     }

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
@@ -59,8 +60,7 @@ namespace BusinessObjects
         /// <summary>
         /// Trạng thái: Scheduled, Completed, Cancelled
         /// </summary>
-        [MaxLength(50)]
-        public string Status { get; set; }
+        public ScheduleStatus Status { get; set; }
 
         /// <summary>
         /// Ghi chú trong buổi tư vấn

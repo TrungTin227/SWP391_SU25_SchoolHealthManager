@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -12,14 +13,14 @@ namespace BusinessObjects
 
         // Phân loại sự kiện: "General" | "Vaccination"
         [MaxLength(50)]
-        public string EventCategory { get; set; } = "";
+        public EventCategory EventCategory { get; set; }
 
         // Nếu là sự cố tiêm chủng, liên kết đến bản ghi tiêm
         public Guid? VaccinationRecordId { get; set; }
         public VaccinationRecord? VaccinationRecord { get; set; }
 
         // Mô tả chi tiết sự kiện (tai nạn, sốt, phản ứng dị ứng…)
-        public string EventType { get; set; }
+        public EventType EventType { get; set; }
 
         public string Description { get; set; }
 
@@ -28,7 +29,7 @@ namespace BusinessObjects
 
         // Trạng thái xử lý: Pending, InProgress, Resolved…
         [MaxLength(50)]
-        public string EventStatus { get; set; }
+        public EventStatus EventStatus { get; set; }
 
         // Ai ghi nhận
         public Guid ReportedBy { get; set; }

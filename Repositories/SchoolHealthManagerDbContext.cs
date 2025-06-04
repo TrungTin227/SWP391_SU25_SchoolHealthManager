@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Repositories
 {
@@ -67,6 +68,151 @@ namespace Repositories
             ConfigureSupportServices(builder);
             ConfigureIndexes(builder);
             ConfigurePrecisionAndConstraints(builder);
+            // --- Bắt đầu: Thêm cấu hình convert enum -> string cho Medication.Category ---
+            builder.Entity<Medication>()
+                .Property(m => m.Category)
+                .HasConversion(new EnumToStringConverter<MedicationCategory>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // (Tuỳ chọn) Nếu bạn cũng muốn chuyển enum MedicationStatus thành string:
+            builder.Entity<Medication>()
+                .Property(m => m.Status)
+                .HasConversion(new EnumToStringConverter<MedicationStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            // 1. CheckupSchedule
+            builder.Entity<CheckupSchedule>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<CheckupScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 2. HealthEvent
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventCategory)
+                .HasConversion(new EnumToStringConverter<EventCategory>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventType)
+                .HasConversion(new EnumToStringConverter<EventType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventStatus)
+                .HasConversion(new EnumToStringConverter<EventStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 3. HealthProfile
+            builder.Entity<HealthProfile>()
+                .Property(e => e.Vision)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthProfile>()
+                .Property(e => e.Hearing)
+                .HasConversion(new EnumToStringConverter<HearingLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 4. CheckupRecord
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.VisionLeft)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.VisionRight)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.Hearing)
+                .HasConversion(new EnumToStringConverter<HearingLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 5. CounselingAppointment
+            builder.Entity<CounselingAppointment>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 6. FileAttachment
+            builder.Entity<FileAttachment>()
+                .Property(e => e.ReferenceType)
+                .HasConversion(new EnumToStringConverter<ReferenceType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<FileAttachment>()
+                .Property(e => e.FileType)
+                .HasConversion(new EnumToStringConverter<FileType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 7. Notification
+            builder.Entity<Notification>()
+                .Property(e => e.Type)
+                .HasConversion(new EnumToStringConverter<NotificationType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<Notification>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<NotificationStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 8. Parent
+            builder.Entity<Parent>()
+                .Property(e => e.Relationship)
+                .HasConversion(new EnumToStringConverter<Relationship>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 9. ParentMedicationDelivery
+            builder.Entity<ParentMedicationDelivery>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<StatusMedicationDelivery>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 10. Report
+            builder.Entity<Report>()
+                .Property(e => e.ReportType)
+                .HasConversion(new EnumToStringConverter<ReportType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 11. User
+            builder.Entity<User>()
+                .Property(e => e.Gender)
+                .HasConversion(new EnumToStringConverter<Gender>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // 12. VaccinationSchedule
+            builder.Entity<VaccinationSchedule>()
+                .Property(e => e.ScheduleType)
+                .HasConversion(new EnumToStringConverter<ScheduleType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<VaccinationSchedule>()
+                .Property(e => e.ScheduleStatus)
+                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            // --- Kết thúc convert enum -> string ---
         }
 
         #region Identity Configuration

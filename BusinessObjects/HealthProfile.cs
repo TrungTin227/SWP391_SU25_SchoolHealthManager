@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -15,10 +16,8 @@ namespace BusinessObjects
         public string Allergies { get; set; }
         public string ChronicConditions { get; set; }
         public string TreatmentHistory { get; set; }
-        [MaxLength(50)]
-        public string Vision { get; set; }
-        [MaxLength(50)]
-        public string Hearing { get; set; }
+        public VisionLevel Vision { get; set; }
+        public HearingLevel Hearing { get; set; }
         public string VaccinationSummary { get; set; }
     }
 }
