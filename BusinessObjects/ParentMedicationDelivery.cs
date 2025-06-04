@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
@@ -23,6 +24,6 @@ namespace BusinessObjects
         public int QuantityDelivered { get; set; }
         public DateTime DeliveredAt { get; set; }
         public string Notes { get; set; }
-        public string Status { get; set; }
+        public StatusMedicationDelivery Status { get; set; }
     }
 }

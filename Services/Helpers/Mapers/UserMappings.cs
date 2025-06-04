@@ -38,7 +38,7 @@ namespace Services.Helpers.Mapers
             if (!string.IsNullOrEmpty(req.LastName)) user.LastName = req.LastName;
             if (new EmailAddressAttribute().IsValid(req.Email)) user.Email = req.Email;
             if (!string.IsNullOrEmpty(req.PhoneNumbers)) user.PhoneNumber = req.PhoneNumbers;
-            user.Gender = req.Gender.ToString();  // Gender is non-nullable enum
+            user.Gender = req.Gender; 
             user.UpdatedAt = DateTime.UtcNow;
         }
 
@@ -56,7 +56,7 @@ namespace Services.Helpers.Mapers
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email ?? string.Empty,
-                Gender = user.Gender,
+                Gender = user.Gender.ToString(), // Fix for CS0029
                 PhoneNumbers = user.PhoneNumber ?? string.Empty,
                 CreateAt = user.CreatedAt,
                 UpdateAt = user.UpdatedAt,
@@ -73,7 +73,7 @@ namespace Services.Helpers.Mapers
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email ?? string.Empty,
-                Gender = user.Gender,
+                Gender = user.Gender.ToString(), // Fix for CS0029
                 PhoneNumbers = user.PhoneNumber ?? string.Empty,
                 CreateAt = user.CreatedAt,
                 UpdateAt = user.UpdatedAt,

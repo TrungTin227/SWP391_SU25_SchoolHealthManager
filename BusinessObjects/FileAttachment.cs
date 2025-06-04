@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -6,11 +7,11 @@ namespace BusinessObjects
     {
         [Key]
         public Guid Id { get; set; }
-        public string ReferenceType { get; set; }
+        public ReferenceType ReferenceType { get; set; }
         public Guid ReferenceId { get; set; }
         [MaxLength(500)]
         public string FilePath { get; set; }
         [MaxLength(50)]
-        public string FileType { get; set; }
+        public FileType FileType { get; set; }
     }
 }

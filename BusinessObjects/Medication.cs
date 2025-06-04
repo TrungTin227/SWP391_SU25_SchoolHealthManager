@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -12,6 +13,10 @@ namespace BusinessObjects
         public string Unit { get; set; }
         [MaxLength(100)]
         public string DosageForm { get; set; }
+
+        public MedicationCategory Category { get; set; }
+        public MedicationStatus Status { get; set; }
+
         public ICollection<MedicationLot> Lots { get; set; }
     }
 

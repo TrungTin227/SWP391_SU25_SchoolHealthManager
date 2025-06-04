@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -10,6 +11,6 @@ namespace BusinessObjects
         public Guid StudentId { get; set; }
         public Student Student { get; set; } = null!;
         public DateTime NotifiedAt { get; set; }    // gửi phiếu
-        public string Status { get; set; }  // Chưa xác nhận/Đã xác nhận
+        public CheckupScheduleStatus Status { get; set; }  // Chưa xác nhận/Đã xác nhận
     }
 }

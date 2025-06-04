@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -11,7 +12,7 @@ namespace BusinessObjects
         [MaxLength(100)]
         public string LastName { get; set; }
 
-        public string? Gender { get; set; }
+        public Gender Gender { get; set; }
 
         // Audit fields
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
