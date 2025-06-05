@@ -12,4 +12,5 @@ global using Services.Commons.Gmail;
 global using Services.Implementations;
 global using Services.Interfaces;
 global using Services.Interfaces.Services.Commons.User;
-
+global using BusinessObjects.Common;
+global using DTOs.MedicationDTOs.Request;

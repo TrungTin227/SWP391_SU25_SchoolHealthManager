@@ -1,10 +1,8 @@
-﻿using BusinessObjects.Common;
-using DTOs.MedicationDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
-namespace Controllers
+namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -232,6 +230,156 @@ namespace Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in DeleteMedication for ID: {MedicationId}", id);
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Khôi phục thuốc đã bị xóa mềm
+        /// </summary>
+        /// <param name="id">ID của thuốc cần khôi phục</param>
+        /// <returns>Thông tin thuốc sau khi khôi phục</returns>
+        [HttpPost("{id:guid}/restore")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RestoreMedication(Guid id)
+        {
+            try
+            {
+                if (id == Guid.Empty)
+                {
+                    return BadRequest("ID thuốc không hợp lệ");
+                }
+
+                var result = await _medicationService.RestoreMedicationAsync(id);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                if (result.Message?.Contains("Không tìm thấy") == true)
+                {
+                    return NotFound(result);
+                }
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in RestoreMedication for ID: {MedicationId}", id);
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Xóa vĩnh viễn thuốc
+        /// </summary>
+        /// <param name="id">ID của thuốc cần xóa vĩnh viễn</param>
+        /// <returns>Kết quả xóa vĩnh viễn</returns>
+        [HttpDelete("{id:guid}/permanent")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PermanentDeleteMedication(Guid id)
+        {
+            try
+            {
+                if (id == Guid.Empty)
+                {
+                    return BadRequest("ID thuốc không hợp lệ");
+                }
+
+                var result = await _medicationService.PermanentDeleteMedicationAsync(id);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                if (result.Message?.Contains("Không tìm thấy") == true)
+                {
+                    return NotFound(result);
+                }
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in PermanentDeleteMedication for ID: {MedicationId}", id);
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách thuốc đã bị xóa mềm
+        /// </summary>
+        /// <param name="pageNumber">Số trang (mặc định: 1)</param>
+        /// <param name="pageSize">Kích thước trang (mặc định: 10, tối đa: 100)</param>
+        /// <param name="searchTerm">Từ khóa tìm kiếm</param>
+        /// <returns>Danh sách thuốc đã bị xóa mềm</returns>
+        [HttpGet("deleted")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetSoftDeletedMedications(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery][Range(1, 100)] int pageSize = 10,
+            [FromQuery] string? searchTerm = null)
+        {
+            try
+            {
+                if (pageNumber < 1)
+                {
+                    return BadRequest("Số trang phải lớn hơn 0");
+                }
+
+                var result = await _medicationService.GetSoftDeletedMedicationsAsync(
+                    pageNumber, pageSize, searchTerm);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in GetSoftDeletedMedications");
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Dọn dẹp các thuốc đã bị xóa mềm quá thời hạn
+        /// </summary>
+        /// <param name="daysToExpire">Số ngày để coi là hết hạn (mặc định: 30)</param>
+        /// <returns>Kết quả dọn dẹp</returns>
+        [HttpPost("cleanup")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CleanupExpiredMedications(
+            [FromQuery][Range(1, 365)] int daysToExpire = 30)
+        {
+            try
+            {
+                var result = await _medicationService.CleanupExpiredMedicationsAsync(daysToExpire);
+
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in CleanupExpiredMedications");
                 return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
             }
         }

@@ -43,5 +43,13 @@ namespace Services.Interfaces
         /// Lấy danh sách các thuốc đang ở trạng thái Active.
         /// </summary>
         Task<ApiResult<List<MedicationResponse>>> GetActiveMedicationsAsync();
+        Task<ApiResult<MedicationResponse>> RestoreMedicationAsync(Guid id);
+        Task<ApiResult<string>> PermanentDeleteMedicationAsync(Guid id);
+        Task<ApiResult<PagedList<MedicationResponse>>> GetSoftDeletedMedicationsAsync(
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null);
+        Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30);
+        
     }
 }

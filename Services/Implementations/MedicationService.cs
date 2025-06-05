@@ -1,5 +1,5 @@
-﻿using DTOs.MedicationDTOs.Request;                   
-using DTOs.MedicationDTOs.Response;                 
+﻿using DTOs.MedicationDTOs.Request;
+using DTOs.MedicationDTOs.Response;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
@@ -215,7 +215,7 @@ namespace Services.Implementations
         }
 
         /// <summary>
-        /// Xóa mềm (soft delete) một thuốc theo Id.
+        /// Xóa mềm (soft delete) một thuốc theo Id - Sử dụng method mới của repository với user tracking.
         /// </summary>
         public async Task<ApiResult<string>> DeleteMedicationAsync(Guid id)
         {
@@ -223,28 +223,151 @@ namespace Services.Implementations
             {
                 try
                 {
-                    // 1) Lấy medication
-                    var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id);
-                    if (medication == null || medication.IsDeleted)
+                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+
+                    // Sử dụng method SoftDeleteAsync mới của repository
+                    var success = await _unitOfWork.MedicationRepository.SoftDeleteAsync(id, currentUserId);
+
+                    if (!success)
                     {
-                        return ApiResult<string>.Failure(new Exception("Không tìm thấy thuốc"));
+                        return ApiResult<string>.Failure(new Exception("Không tìm thấy thuốc hoặc thuốc đã bị xóa"));
                     }
 
-                    // 2) Soft delete (đánh dấu IsDeleted = true)
-                    medication.IsDeleted = true;
-                    medication.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Empty;
-                    medication.UpdatedAt = DateTime.UtcNow;
-
-                    await _unitOfWork.MedicationRepository.UpdateAsync(medication);
-                    await _unitOfWork.SaveChangesAsync();
-
-                    _logger.LogInformation("Medication deleted successfully: {MedicationId}", id);
+                    _logger.LogInformation("Medication soft deleted successfully: {MedicationId} by user: {UserId}", id, currentUserId);
                     return ApiResult<string>.Success("Xóa thuốc thành công", "Xóa thuốc thành công");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while deleting medication: {MedicationId}", id);
+                    _logger.LogError(ex, "Error occurred while soft deleting medication: {MedicationId}", id);
                     return ApiResult<string>.Failure(new Exception("Đã xảy ra lỗi khi xóa thuốc"));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Khôi phục thuốc đã bị soft delete.
+        /// </summary>
+        public async Task<ApiResult<MedicationResponse>> RestoreMedicationAsync(Guid id)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+
+                    var success = await _unitOfWork.MedicationRepository.RestoreAsync(id, currentUserId);
+
+                    if (!success)
+                    {
+                        return ApiResult<MedicationResponse>.Failure(new Exception("Không tìm thấy thuốc đã bị xóa"));
+                    }
+
+                    // Lấy lại thông tin medication sau khi restore
+                    var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
+                    var totalQuantity = await _unitOfWork.MedicationRepository.GetTotalQuantityByMedicationIdAsync(id);
+
+                    var response = MapToMedicationResponse(medication, totalQuantity);
+
+                    _logger.LogInformation("Medication restored successfully: {MedicationId} by user: {UserId}", id, currentUserId);
+                    return ApiResult<MedicationResponse>.Success(response, "Khôi phục thuốc thành công");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while restoring medication: {MedicationId}", id);
+                    return ApiResult<MedicationResponse>.Failure(new Exception("Đã xảy ra lỗi khi khôi phục thuốc"));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Xóa vĩnh viễn thuốc và tất cả lots liên quan.
+        /// </summary>
+        public async Task<ApiResult<string>> PermanentDeleteMedicationAsync(Guid id)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var success = await _unitOfWork.MedicationRepository.PermanentDeleteAsync(id);
+
+                    if (!success)
+                    {
+                        return ApiResult<string>.Failure(new Exception("Không tìm thấy thuốc"));
+                    }
+
+                    _logger.LogInformation("Medication permanently deleted: {MedicationId}", id);
+                    return ApiResult<string>.Success("Xóa vĩnh viễn thuốc thành công", "Xóa vĩnh viễn thuốc thành công");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while permanently deleting medication: {MedicationId}", id);
+                    return ApiResult<string>.Failure(new Exception("Đã xảy ra lỗi khi xóa vĩnh viễn thuốc"));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Lấy danh sách các thuốc đã bị soft delete với phân trang.
+        /// </summary>
+        public async Task<ApiResult<PagedList<MedicationResponse>>> GetSoftDeletedMedicationsAsync(
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null)
+        {
+            try
+            {
+                
+                var deletedMedicationsPaged = await _unitOfWork.MedicationRepository
+                    .GetSoftDeletedAsync(pageNumber, pageSize, searchTerm);
+
+                var medicationResponses = new List<MedicationResponse>();
+                foreach (var medication in deletedMedicationsPaged)
+                {
+                    // Tính tổng quantity cho cả những thuốc đã bị xóa
+                    int totalQuantity = await _unitOfWork.MedicationRepository
+                        .GetTotalQuantityByMedicationIdAsync(medication.Id);
+
+                    medicationResponses.Add(MapToMedicationResponse(medication, totalQuantity));
+                }
+
+                var pagedResult = new PagedList<MedicationResponse>(
+                    medicationResponses,
+                    deletedMedicationsPaged.MetaData.TotalCount,
+                    pageNumber,
+                    pageSize);
+
+                return ApiResult<PagedList<MedicationResponse>>.Success(pagedResult, "Lấy danh sách thuốc đã xóa thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting soft deleted medications");
+                return ApiResult<PagedList<MedicationResponse>>.Failure(new Exception("Đã xảy ra lỗi khi lấy danh sách thuốc đã xóa"));
+            }
+        }
+
+        /// <summary>
+        /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
+        /// </summary>
+        public async Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var deletedCount = await _unitOfWork.MedicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
+
+                    _logger.LogInformation("Cleaned up {Count} expired medications older than {Days} days", deletedCount, daysToExpire);
+
+                    var message = deletedCount > 0
+                        ? $"Đã xóa vĩnh viễn {deletedCount} thuốc hết hạn"
+                        : "Không có thuốc hết hạn nào để xóa";
+
+                    return ApiResult<string>.Success(message, message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while cleaning up expired medications");
+                    return ApiResult<string>.Failure(new Exception("Đã xảy ra lỗi khi dọn dẹp thuốc hết hạn"));
                 }
             });
         }
