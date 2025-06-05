@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Repositories.Implements;
+using Repositories.Implementations;
 
 
 namespace WebAPI.Extensions
@@ -91,12 +91,15 @@ namespace WebAPI.Extensions
             services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IParentRepository, ParentRepository>();
+            services.AddScoped<IMedicationRepository, MedicationRepository>(); 
+
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IParentService, ParentService>();
             services.AddScoped<IUserEmailService, UserEmailService>();
+            services.AddScoped<IMedicationService, MedicationService>();
             // 5. Email + Quartz
             services.AddEmailServices(opts =>
                 configuration.GetSection("EmailSettings").Bind(opts)
