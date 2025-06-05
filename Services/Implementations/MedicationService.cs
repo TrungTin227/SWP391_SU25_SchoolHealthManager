@@ -1,6 +1,7 @@
 ﻿using DTOs.MedicationDTOs.Request;
 using DTOs.MedicationDTOs.Response;
 using Microsoft.Extensions.Logging;
+using Services.Extensions;
 
 namespace Services.Implementations
 {

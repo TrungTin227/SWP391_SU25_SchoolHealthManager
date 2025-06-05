@@ -14,20 +14,20 @@ namespace Repositories.WorkSeeds
             _dbSet = _context.Set<TEntity>();
         }
 
-        public async Task<TEntity> AddAsync(TEntity entity)
+        public virtual async Task<TEntity> AddAsync(TEntity entity)
         {
             await _dbSet.AddAsync(entity);
             await _context.SaveChangesAsync();
             return entity;
         }
 
-        public async Task AddRangeAsync(IEnumerable<TEntity> entities)
+        public virtual async Task AddRangeAsync(IEnumerable<TEntity> entities)
         {
             await _dbSet.AddRangeAsync(entities);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IReadOnlyList<TEntity>> GetAllAsync(
+        public virtual async Task<IReadOnlyList<TEntity>> GetAllAsync(
             Expression<Func<TEntity, bool>>? predicate = null,
             params Expression<Func<TEntity, object>>[] includes)
         {
@@ -48,7 +48,7 @@ namespace Repositories.WorkSeeds
             return await query.ToListAsync();
         }
 
-        public async Task<TEntity?> GetByIdAsync(TKey id, params Expression<Func<TEntity, object>>[] includes)
+        public virtual async Task<TEntity?> GetByIdAsync(TKey id, params Expression<Func<TEntity, object>>[] includes)
         {
             // Use FindAsync if no includes for efficiency
             if (includes == null || includes.Length == 0)
@@ -75,27 +75,47 @@ namespace Repositories.WorkSeeds
             return await query.FirstOrDefaultAsync(lambda);
         }
 
-        public async Task UpdateAsync(TEntity entity)
+        public virtual async Task UpdateAsync(TEntity entity)
         {
             _dbSet.Update(entity);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateRangeAsync(IEnumerable<TEntity> entities)
+        public virtual async Task UpdateRangeAsync(IEnumerable<TEntity> entities)
         {
             _dbSet.UpdateRange(entities);
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteAsync(TEntity entity)
+        public virtual async Task DeleteAsync(TEntity entity)
         {
             _dbSet.Remove(entity);
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteRangeAsync(IEnumerable<TEntity> entities)
+        public virtual async Task DeleteRangeAsync(IEnumerable<TEntity> entities)
         {
             _dbSet.RemoveRange(entities);
+            await _context.SaveChangesAsync();
+        }
+
+        // Soft delete method - virtual để có thể override
+        public virtual async Task SoftDeleteAsync(TEntity entity)
+        {
+            // Default implementation - có thể override trong derived class
+            var property = entity.GetType().GetProperty("IsDeleted");
+            if (property != null && property.PropertyType == typeof(bool))
+            {
+                property.SetValue(entity, true);
+            }
+
+            var updatedAtProperty = entity.GetType().GetProperty("UpdatedAt");
+            if (updatedAtProperty != null && updatedAtProperty.PropertyType == typeof(DateTime))
+            {
+                updatedAtProperty.SetValue(entity, DateTime.UtcNow);
+            }
+
+            _dbSet.Update(entity);
             await _context.SaveChangesAsync();
         }
     }

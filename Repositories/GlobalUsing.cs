@@ -4,3 +4,4 @@ global using Repositories.Interfaces;
 global using Repositories.Helpers;
 global using DTOs.UserDTOs.Response;
 global using BusinessObjects.Common;
+global using Repositories.WorkSeeds;

@@ -92,6 +92,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IMedicationRepository, MedicationRepository>(); 
+            services.AddScoped<IMedicationLotRepository, MedicationLotRepository>();
 
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -100,6 +101,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IParentService, ParentService>();
             services.AddScoped<IUserEmailService, UserEmailService>();
             services.AddScoped<IMedicationService, MedicationService>();
+            services.AddScoped<IMedicationLotService, MedicationLotService>();
             // 5. Email + Quartz
             services.AddEmailServices(opts =>
                 configuration.GetSection("EmailSettings").Bind(opts)
