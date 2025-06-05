@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Repositories
+namespace Repositories.Implementations
 {
     public class UserRepository : IUserRepository
     {
@@ -27,7 +27,7 @@ namespace Repositories
                 .Select(u => new
                 {
                     User = u,
-                    Id = u.Id
+                    u.Id
                 })
                 .ToListAsync();
 
@@ -41,7 +41,7 @@ namespace Repositories
                     _context.Roles.AsNoTracking(),
                     ur => ur.RoleId,
                     r => r.Id,
-                    (ur, r) => new { UserId = ur.UserId, RoleName = r.Name }
+                    (ur, r) => new { ur.UserId, RoleName = r.Name }
                 )
                 .GroupBy(x => x.UserId)
                 .ToDictionaryAsync(

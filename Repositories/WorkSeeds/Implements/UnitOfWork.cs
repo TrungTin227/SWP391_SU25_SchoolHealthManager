@@ -8,15 +8,18 @@ namespace Repositories.WorkSeeds.Implements
     {
         private readonly SchoolHealthManagerDbContext _context;
         private readonly IUserRepository _userRepository;
+        private readonly IMedicationRepository _medicationRepository;
         private bool _disposed;
 
-        public UnitOfWork(SchoolHealthManagerDbContext context, IUserRepository userRepository)
+        public UnitOfWork(SchoolHealthManagerDbContext context, IUserRepository userRepository, IMedicationRepository medicationRepository)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _medicationRepository = medicationRepository;
         }
 
         public IUserRepository UserRepository => _userRepository;
+        public IMedicationRepository MedicationRepository => _medicationRepository;
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

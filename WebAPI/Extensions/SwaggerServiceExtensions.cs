@@ -29,7 +29,7 @@ namespace WebAPI.Extensions
                 { new OpenApiSecurityScheme
                     {
                         Reference = new OpenApiReference
-                        { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                        { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" }
                     }, new List<string>() }
             });
             });
