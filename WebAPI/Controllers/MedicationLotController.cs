@@ -2,222 +2,95 @@
 using DTOs.MedicationLotDTOs.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Repositories.Helpers;
 
-namespace API.Controllers
+namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Require authentication for all endpoints
+    [Authorize]
     public class MedicationLotController : ControllerBase
     {
         private readonly IMedicationLotService _medicationLotService;
-        private readonly ILogger<MedicationLotController> _logger;
 
-        public MedicationLotController(
-            IMedicationLotService medicationLotService,
-            ILogger<MedicationLotController> logger)
+        public MedicationLotController(IMedicationLotService medicationLotService)
         {
-            _medicationLotService = medicationLotService ?? throw new ArgumentNullException(nameof(medicationLotService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _medicationLotService = medicationLotService;
         }
 
         /// <summary>
         /// Get paginated list of medication lots with optional filters
         /// </summary>
         [HttpGet]
-        public async Task<ActionResult<ApiResult<PagedList<MedicationLotResponseDTO>>>> GetMedicationLots(
+        public async Task<IActionResult> GetMedicationLots(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? searchTerm = null,
             [FromQuery] Guid? medicationId = null,
             [FromQuery] bool? isExpired = null)
         {
-            try
-            {
-                if (pageNumber < 1 || pageSize < 1 || pageSize > 100)
-                {
-                    return BadRequest(ApiResult<PagedList<MedicationLotResponseDTO>>.Failure(
-                        new ArgumentException("Invalid pagination parameters")));
-                }
+            var result = await _medicationLotService.GetMedicationLotsAsync(
+                pageNumber, pageSize, searchTerm, medicationId, isExpired);
 
-                var result = await _medicationLotService.GetMedicationLotsAsync(
-                    pageNumber, pageSize, searchTerm, medicationId, isExpired);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetMedicationLots endpoint");
-                return StatusCode(500, ApiResult<PagedList<MedicationLotResponseDTO>>.Failure(ex));
-            }
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get a specific medication lot by ID
         /// </summary>
         [HttpGet("{id:guid}")]
-        public async Task<ActionResult<ApiResult<MedicationLotResponseDTO>>> GetMedicationLotById(Guid id)
+        public async Task<IActionResult> GetMedicationLotById(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<MedicationLotResponseDTO>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
-
-                var result = await _medicationLotService.GetMedicationLotByIdAsync(id);
-
-                if (!result.IsSuccess)
-                {
-                    return NotFound(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetMedicationLotById endpoint for ID: {LotId}", id);
-                return StatusCode(500, ApiResult<MedicationLotResponseDTO>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetMedicationLotByIdAsync(id);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Create a new medication lot
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ApiResult<MedicationLotResponseDTO>>> CreateMedicationLot(
-            [FromBody] CreateMedicationLotRequest request)
+        public async Task<IActionResult> CreateMedicationLot([FromBody] CreateMedicationLotRequest request)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ApiResult<MedicationLotResponseDTO>.Failure(
-                        new ArgumentException("Invalid request data")));
-                }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-                var result = await _medicationLotService.CreateMedicationLotAsync(request);
+            var result = await _medicationLotService.CreateMedicationLotAsync(request);
 
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return CreatedAtAction(
-                    nameof(GetMedicationLotById),
-                    new { id = result.Data!.Id },
-                    result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in CreateMedicationLot endpoint");
-                return StatusCode(500, ApiResult<MedicationLotResponseDTO>.Failure(ex));
-            }
+            return result.IsSuccess
+                ? CreatedAtAction(nameof(GetMedicationLotById), new { id = result.Data!.Id }, result)
+                : BadRequest(result);
         }
 
         /// <summary>
         /// Update an existing medication lot
         /// </summary>
         [HttpPut("{id:guid}")]
-        public async Task<ActionResult<ApiResult<MedicationLotResponseDTO>>> UpdateMedicationLot(
-            Guid id,
-            [FromBody] UpdateMedicationLotRequest request)
+        public async Task<IActionResult> UpdateMedicationLot(Guid id, [FromBody] UpdateMedicationLotRequest request)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<MedicationLotResponseDTO>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ApiResult<MedicationLotResponseDTO>.Failure(
-                        new ArgumentException("Invalid request data")));
-                }
-
-                var result = await _medicationLotService.UpdateMedicationLotAsync(id, request);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in UpdateMedicationLot endpoint for ID: {LotId}", id);
-                return StatusCode(500, ApiResult<MedicationLotResponseDTO>.Failure(ex));
-            }
+            var result = await _medicationLotService.UpdateMedicationLotAsync(id, request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Soft delete a medication lot
         /// </summary>
         [HttpDelete("{id:guid}")]
-        public async Task<ActionResult<ApiResult<bool>>> DeleteMedicationLot(Guid id)
+        public async Task<IActionResult> DeleteMedicationLot(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<bool>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
-
-                var result = await _medicationLotService.DeleteMedicationLotAsync(id);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in DeleteMedicationLot endpoint for ID: {LotId}", id);
-                return StatusCode(500, ApiResult<bool>.Failure(ex));
-            }
+            var result = await _medicationLotService.DeleteMedicationLotAsync(id);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Restore a soft-deleted medication lot
         /// </summary>
         [HttpPost("{id:guid}/restore")]
-        public async Task<ActionResult<ApiResult<MedicationLotResponseDTO>>> RestoreMedicationLot(Guid id)
+        public async Task<IActionResult> RestoreMedicationLot(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<MedicationLotResponseDTO>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
-
-                var result = await _medicationLotService.RestoreMedicationLotAsync(id);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in RestoreMedicationLot endpoint for ID: {LotId}", id);
-                return StatusCode(500, ApiResult<MedicationLotResponseDTO>.Failure(ex));
-            }
+            var result = await _medicationLotService.RestoreMedicationLotAsync(id);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
@@ -225,30 +98,10 @@ namespace API.Controllers
         /// </summary>
         [HttpDelete("{id:guid}/permanent")]
         [Authorize(Roles = "ADMIN")]
-        public async Task<ActionResult<ApiResult<bool>>> PermanentDeleteMedicationLot(Guid id)
+        public async Task<IActionResult> PermanentDeleteMedicationLot(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<bool>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
-
-                var result = await _medicationLotService.PermanentDeleteMedicationLotAsync(id);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in PermanentDeleteMedicationLot endpoint for ID: {LotId}", id);
-                return StatusCode(500, ApiResult<bool>.Failure(ex));
-            }
+            var result = await _medicationLotService.PermanentDeleteMedicationLotAsync(id);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
@@ -256,187 +109,63 @@ namespace API.Controllers
         /// </summary>
         [HttpGet("soft-deleted")]
         [Authorize(Roles = "ADMIN")]
-        public async Task<ActionResult<ApiResult<PagedList<MedicationLotResponseDTO>>>> GetSoftDeletedLots(
+        public async Task<IActionResult> GetSoftDeletedLots(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? searchTerm = null)
         {
-            try
-            {
-                if (pageNumber < 1 || pageSize < 1 || pageSize > 100)
-                {
-                    return BadRequest(ApiResult<PagedList<MedicationLotResponseDTO>>.Failure(
-                        new ArgumentException("Invalid pagination parameters")));
-                }
-
-                var result = await _medicationLotService.GetSoftDeletedLotsAsync(
-                    pageNumber, pageSize, searchTerm);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetSoftDeletedLots endpoint");
-                return StatusCode(500, ApiResult<PagedList<MedicationLotResponseDTO>>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetSoftDeletedLotsAsync(pageNumber, pageSize, searchTerm);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get medication lots that are expiring soon
         /// </summary>
         [HttpGet("expiring")]
-        public async Task<ActionResult<ApiResult<List<MedicationLotResponseDTO>>>> GetExpiringLots(
-            [FromQuery] int daysBeforeExpiry = 30)
+        public async Task<IActionResult> GetExpiringLots([FromQuery] int daysBeforeExpiry = 30)
         {
-            try
-            {
-                if (daysBeforeExpiry < 0 || daysBeforeExpiry > 365)
-                {
-                    return BadRequest(ApiResult<List<MedicationLotResponseDTO>>.Failure(
-                        new ArgumentException("Days before expiry must be between 0 and 365")));
-                }
-
-                var result = await _medicationLotService.GetExpiringLotsAsync(daysBeforeExpiry);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetExpiringLots endpoint");
-                return StatusCode(500, ApiResult<List<MedicationLotResponseDTO>>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetExpiringLotsAsync(daysBeforeExpiry);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get medication lots that are already expired
         /// </summary>
         [HttpGet("expired")]
-        public async Task<ActionResult<ApiResult<List<MedicationLotResponseDTO>>>> GetExpiredLots()
+        public async Task<IActionResult> GetExpiredLots()
         {
-            try
-            {
-                var result = await _medicationLotService.GetExpiredLotsAsync();
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetExpiredLots endpoint");
-                return StatusCode(500, ApiResult<List<MedicationLotResponseDTO>>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetExpiredLotsAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get all lots for a specific medication
         /// </summary>
         [HttpGet("by-medication/{medicationId:guid}")]
-        public async Task<ActionResult<ApiResult<List<MedicationLotResponseDTO>>>> GetLotsByMedicationId(Guid medicationId)
+        public async Task<IActionResult> GetLotsByMedicationId(Guid medicationId)
         {
-            try
-            {
-                if (medicationId == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<List<MedicationLotResponseDTO>>.Failure(
-                        new ArgumentException("Invalid medication ID")));
-                }
-
-                var result = await _medicationLotService.GetLotsByMedicationIdAsync(medicationId);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetLotsByMedicationId endpoint for medication: {MedicationId}", medicationId);
-                return StatusCode(500, ApiResult<List<MedicationLotResponseDTO>>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetLotsByMedicationIdAsync(medicationId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get available quantity for a specific medication
         /// </summary>
         [HttpGet("available-quantity/{medicationId:guid}")]
-        public async Task<ActionResult<ApiResult<int>>> GetAvailableQuantity(Guid medicationId)
+        public async Task<IActionResult> GetAvailableQuantity(Guid medicationId)
         {
-            try
-            {
-                if (medicationId == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<int>.Failure(
-                        new ArgumentException("Invalid medication ID")));
-                }
-
-                var result = await _medicationLotService.GetAvailableQuantityAsync(medicationId);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetAvailableQuantity endpoint for medication: {MedicationId}", medicationId);
-                return StatusCode(500, ApiResult<int>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetAvailableQuantityAsync(medicationId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Update quantity for a specific lot
         /// </summary>
         [HttpPatch("{id:guid}/quantity")]
-        public async Task<ActionResult<ApiResult<bool>>> UpdateQuantity(
-            Guid id,
-            [FromBody] UpdateQuantityRequest request)
+        public async Task<IActionResult> UpdateQuantity(Guid id, [FromBody] UpdateQuantityRequest request)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest(ApiResult<bool>.Failure(
-                        new ArgumentException("Invalid lot ID")));
-                }
-
-                if (request.Quantity < 0)
-                {
-                    return BadRequest(ApiResult<bool>.Failure(
-                        new ArgumentException("Quantity cannot be negative")));
-                }
-
-                var result = await _medicationLotService.UpdateQuantityAsync(id, request.Quantity);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in UpdateQuantity endpoint for lot: {LotId}", id);
-                return StatusCode(500, ApiResult<bool>.Failure(ex));
-            }
+            var result = await _medicationLotService.UpdateQuantityAsync(id, request.Quantity);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
@@ -444,69 +173,77 @@ namespace API.Controllers
         /// </summary>
         [HttpPost("cleanup-expired")]
         [Authorize(Roles = "ADMIN")]
-        public async Task<ActionResult<ApiResult<int>>> CleanupExpiredLots(
-            [FromQuery] int daysToExpire = 90)
+        public async Task<IActionResult> CleanupExpiredLots([FromQuery] int daysToExpire = 90)
         {
-            try
-            {
-                if (daysToExpire < 0 || daysToExpire > 365)
-                {
-                    return BadRequest(ApiResult<int>.Failure(
-                        new ArgumentException("Days to expire must be between 0 and 365")));
-                }
-
-                var result = await _medicationLotService.CleanupExpiredLotsAsync(daysToExpire);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result);
-                }
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in CleanupExpiredLots endpoint");
-                return StatusCode(500, ApiResult<int>.Failure(ex));
-            }
+            var result = await _medicationLotService.CleanupExpiredLotsAsync(daysToExpire);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
         /// Get medication lot statistics
         /// </summary>
         [HttpGet("statistics")]
-        public async Task<ActionResult<ApiResult<MedicationLotStatisticsResponseDTO>>> GetStatistics()
+        public async Task<IActionResult> GetStatistics()
         {
-            try
-            {
-                // Get various statistics
-                var expiringLots = await _medicationLotService.GetExpiringLotsAsync(30);
-                var expiredLots = await _medicationLotService.GetExpiredLotsAsync();
-                var allLots = await _medicationLotService.GetMedicationLotsAsync(1, int.MaxValue);
-
-                if (!expiringLots.IsSuccess || !expiredLots.IsSuccess || !allLots.IsSuccess)
-                {
-                    return BadRequest(ApiResult<MedicationLotStatisticsResponseDTO>.Failure(
-                        new Exception("Failed to retrieve statistics")));
-                }
-
-                var statistics = new MedicationLotStatisticsResponseDTO
-                {
-                    TotalLots = allLots.Data!.MetaData.TotalCount,
-                    ExpiringInNext30Days = expiringLots.Data!.Count,
-                    ExpiredLots = expiredLots.Data!.Count,
-                    ActiveLots = allLots.Data.MetaData.TotalCount - expiredLots.Data.Count,
-                    GeneratedAt = DateTime.UtcNow
-                };
-
-                return Ok(ApiResult<MedicationLotStatisticsResponseDTO>.Success(
-                    statistics, "Statistics retrieved successfully"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in GetStatistics endpoint");
-                return StatusCode(500, ApiResult<MedicationLotStatisticsResponseDTO>.Failure(ex));
-            }
+            var result = await _medicationLotService.GetStatisticsAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        /// <summary>
+        /// Get detailed medication lot statistics with custom parameters
+        /// </summary>
+        [HttpGet("statistics/detailed")]
+        public async Task<IActionResult> GetDetailedStatistics(
+            [FromQuery] int expiringDays = 30,
+            [FromQuery] bool includeDeleted = false)
+        {
+            if (expiringDays < 1 || expiringDays > 365)
+                return BadRequest("Số ngày hết hạn phải trong khoảng từ 1 đến 365");
+
+            if (includeDeleted && !User.IsInRole("ADMIN"))
+                return Forbid();
+
+            var result = await _medicationLotService.GetStatisticsAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Get real-time statistics summary for dashboard
+        /// </summary>
+        [HttpGet("statistics/summary")]
+        public async Task<IActionResult> GetStatisticsSummary()
+        {
+            var result = await _medicationLotService.GetStatisticsAsync();
+
+            if (!result.IsSuccess)
+                return BadRequest(result);
+
+            var summary = new
+            {
+                total = result.Data!.TotalLots,
+                active = result.Data.ActiveLots,
+                expired = result.Data.ExpiredLots,
+                expiring = result.Data.ExpiringInNext30Days,
+                healthScore = CalculateHealthScore(result.Data),
+                lastUpdated = result.Data.GeneratedAt
+            };
+
+            return Ok(ApiResult<object>.Success(summary, "Lấy tóm tắt thống kê thành công"));
+        }
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Calculate health score based on lot statistics
+        /// </summary>
+        private static int CalculateHealthScore(MedicationLotStatisticsResponseDTO stats)
+        {
+            if (stats.TotalLots == 0) return 100;
+
+            var healthScore = 100 - stats.ExpiredPercentage * 1.5 - stats.ExpiringPercentage * 0.5;
+            return Math.Max(0, Math.Min(100, (int)Math.Round(healthScore)));
+        }
+
+        #endregion
     }
 }

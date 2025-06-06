@@ -5,6 +5,7 @@
         public bool IsSuccess { get; set; }
         public T? Data { get; set; }
         public string? Message { get; set; }
+        public Exception? Exception { get; set; }
         public static ApiResult<T> Success(T data, string message) =>
             new ApiResult<T> { IsSuccess = true, Data = data, Message = message };
         public static ApiResult<T> Failure(Exception error) =>

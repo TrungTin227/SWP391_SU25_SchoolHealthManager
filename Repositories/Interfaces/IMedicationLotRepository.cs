@@ -1,4 +1,6 @@
-﻿namespace Repositories.Interfaces
+﻿using DTOs.MedicationLotDTOs.Response;
+
+namespace Repositories.Interfaces
 {
     public interface IMedicationLotRepository : IGenericRepository<MedicationLot, Guid>
     {
@@ -18,9 +20,31 @@
         Task<MedicationLot?> GetByIdAsync(Guid id, bool includeDeleted = false);
 
         // Thêm các method cho soft delete operations
+        //Từ khóa new là để ghi đè các phương thức của IGenericRepository
         new Task<MedicationLot> AddAsync(MedicationLot entity);
         new Task UpdateAsync(MedicationLot entity);
         new Task SoftDeleteAsync(MedicationLot entity);
         new Task DeleteAsync(MedicationLot entity);
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc đang hoạt động (chưa hết hạn, chưa bị xóa)
+        /// </summary>
+        Task<int> GetActiveLotCountAsync();
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc đã hết hạn (chưa bị xóa)
+        /// </summary>
+        Task<int> GetExpiredLotCountAsync();
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc sắp hết hạn trong số ngày được chỉ định
+        /// </summary>
+        Task<int> GetExpiringLotCountAsync(int daysBeforeExpiry);
+
+        /// <summary>
+        /// Đếm tổng số lô thuốc (chưa bị xóa)
+        /// </summary>
+        Task<int> GetTotalLotCountAsync();
+        public Task<MedicationLotStatisticsResponseDTO> GetAllStatisticsAsync(DateTime currentDate, DateTime expiryThreshold);
     }
 }

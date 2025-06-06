@@ -22,5 +22,7 @@ namespace Services.Interfaces
         Task<ApiResult<int>> GetAvailableQuantityAsync(Guid medicationId);
         Task<ApiResult<bool>> UpdateQuantityAsync(Guid lotId, int newQuantity);
         Task<ApiResult<int>> CleanupExpiredLotsAsync(int daysToExpire = 90);
+        Task<ApiResult<MedicationLotStatisticsResponseDTO>> GetStatisticsAsync();
+
     }
 }
