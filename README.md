@@ -7,7 +7,7 @@ Hệ thống quản lý sức khỏe trường học được xây dựng bằng
 ```
 SWP391_SU25_SchoolHealthManager/
 ├── BusinessObjects/     # Entities và Models
-├── DTOs/               # Data Transfer Objects  
+├── DTOs/               # Data Transfer Objects
 ├── Repositories/       # Data Access Layer
 ├── Services/           # Business Logic Layer
 └── WebAPI/            # Presentation Layer (Controllers)
@@ -74,7 +74,22 @@ dotnet ef database update --project WebAPI
 dotnet run --project WebAPI
 ```
 
-## 🎯 Tính năng chính
+## 🎯 Tính năng chính (Mô tả phần mềm)
+
+Phần mềm quản lý y tế học đường cho phòng y tế của 01 trường học.
+- Trang chủ giới thiệu thông tin trường học, tài liệu về sức khỏe học đường, blog chia sẻ kinh nghiệm, ...
+- Chức năng cho phép phụ huynh khai báo hồ sơ sức khỏe của học sinh: dị ứng, bệnh mãn tính, tiền sử điều trị, thị lực, thính lực, tiêm chủng, ...
+- Chức năng cho phép phụ huynh gửi thuốc cho trường để nhân viên y tế cho học sinh uống.
+- Chức năng cho phép nhân viên y tế ghi nhận và xử lý sự kiện y tế (tai nạn, sốt, té ngã, dịch bệnh, ...) trong trường.
+- Quản lý thuốc và các vật tư y tế trong quá trình xử lý các sự kiện y tế.
+- Quản lý quá trình tiêm chủng tại trường
+          << Gửi phiếu thông báo đồng ý tiêm chủng cho phụ huynh xác nhận --> Chuẩn bị danh sách học sinh tiêm --> Tiêm chủng và ghi nhận kết quả --> Theo dõi sau tiêm >>
+- Quản lý quá trình kiểm tra y tế định kỳ tại trường học
+          << Gửi phiếu thông báo kiểm tra y tế các nội dung kiểm tra cho phụ huynh xác nhận --> Chuẩn bị danh sách học sinh kiểm tra --> Thực hiện kiểm tra và ghi nhận kết quả --> Gửi kết quả cho phụ huynh và lập lịch hẹn tư vấn riêng nếu có dấu hiệu bất thường >>
+- Quản lý hồ sơ người dùng, lịch sử kiểm tra y tế.
+- Dashboard & Report.
+
+### Tính năng kỹ thuật
 - **JWT Authentication**: Xác thực người dùng
 - **Email Service**: Gửi email tự động (MailKit)
 - **Background Jobs**: Lập lịch công việc (Quartz)
@@ -86,3 +101,4 @@ dotnet run --project WebAPI
 - DTOs được sử dụng ở tất cả các layer
 
 *Lưu ý: Danh sách packages có thể không đầy đủ. [Xem thêm tại GitHub](https://github.com/TrungTin227/SWP391_SU25_SchoolHealthManager/search?q=*.csproj)*
+````
