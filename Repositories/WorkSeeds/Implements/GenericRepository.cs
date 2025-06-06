@@ -3,7 +3,8 @@ using System.Linq.Expressions;
 
 namespace Repositories.WorkSeeds.Implements
 {
-    public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey> where TEntity : class
+    public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey>
+        where TEntity : class
     {
         protected readonly DbContext _context;
         protected readonly DbSet<TEntity> _dbSet;
@@ -11,112 +12,223 @@ namespace Repositories.WorkSeeds.Implements
         public GenericRepository(DbContext context)
         {
             _context = context;
-            _dbSet = _context.Set<TEntity>();
+            _dbSet = _context.Set<TEntity>(); // Sửa lỗi syntax *dbSet = *context.Set<TEntity>()
         }
 
+        // Repository chỉ làm việc với data, không set audit fields
         public virtual async Task<TEntity> AddAsync(TEntity entity)
         {
             await _dbSet.AddAsync(entity);
-            await _context.SaveChangesAsync();
             return entity;
         }
 
-        public virtual async Task AddRangeAsync(IEnumerable<TEntity> entities)
+        public virtual async Task<TEntity> UpdateAsync(TEntity entity)
         {
-            await _dbSet.AddRangeAsync(entities);
-            await _context.SaveChangesAsync();
+            _dbSet.Update(entity);
+            return entity;
         }
 
-        public virtual async Task<IReadOnlyList<TEntity>> GetAllAsync(
-            Expression<Func<TEntity, bool>>? predicate = null,
-            params Expression<Func<TEntity, object>>[] includes)
+        public virtual async Task<bool> DeleteAsync(TKey id)
         {
-            // Apply AsNoTracking for better read performance
-            var query = _dbSet.AsNoTracking().AsQueryable();
+            var entity = await _dbSet.FindAsync(id);
+            if (entity == null) return false;
 
-            if (predicate is not null)
-                query = query.Where(predicate);
-
-            if (includes?.Any() == true)
-            {
-                foreach (var include in includes)
-                {
-                    query = query.Include(include);
-                }
-            }
-
-            return await query.ToListAsync();
+            _dbSet.Remove(entity);
+            return true;
         }
 
         public virtual async Task<TEntity?> GetByIdAsync(TKey id, params Expression<Func<TEntity, object>>[] includes)
         {
-            // Use FindAsync if no includes for efficiency
-            if (includes == null || includes.Length == 0)
-                return await _dbSet.FindAsync(id);
+            IQueryable<TEntity> query = _dbSet;
 
-            // Build query with includes
-            var query = _dbSet.AsNoTracking().AsQueryable();
             foreach (var include in includes)
             {
                 query = query.Include(include);
             }
 
-            // Dynamically build a predicate for the entity key
-            var key = _context.Model.FindEntityType(typeof(TEntity))?.FindPrimaryKey();
-            if (key == null || key.Properties.Count != 1)
-                throw new InvalidOperationException("Entity không có khóa chính duy nhất được hỗ trợ.");
-
-            var keyProperty = key.Properties.First();
-            var parameter = Expression.Parameter(typeof(TEntity), "entity");
-            var propertyAccess = Expression.Property(parameter, keyProperty.Name);
-            var equalsExpression = Expression.Equal(propertyAccess, Expression.Constant(id));
-            var lambda = Expression.Lambda<Func<TEntity, bool>>(equalsExpression, parameter);
-
-            return await query.FirstOrDefaultAsync(lambda);
+            return await query.FirstOrDefaultAsync(e => EF.Property<TKey>(e, "Id").Equals(id));
         }
 
-        public virtual async Task UpdateAsync(TEntity entity)
+        public virtual async Task AddRangeAsync(IEnumerable<TEntity> entities)
         {
-            _dbSet.Update(entity);
-            await _context.SaveChangesAsync();
+            await _dbSet.AddRangeAsync(entities);
         }
 
         public virtual async Task UpdateRangeAsync(IEnumerable<TEntity> entities)
         {
             _dbSet.UpdateRange(entities);
-            await _context.SaveChangesAsync();
         }
 
-        public virtual async Task DeleteAsync(TEntity entity)
+        public virtual async Task DeleteRangeAsync(IEnumerable<TKey> ids)
         {
-            _dbSet.Remove(entity);
-            await _context.SaveChangesAsync();
-        }
-
-        public virtual async Task DeleteRangeAsync(IEnumerable<TEntity> entities)
-        {
+            var entities = await _dbSet.Where(e => ids.Contains(EF.Property<TKey>(e, "Id"))).ToListAsync();
             _dbSet.RemoveRange(entities);
-            await _context.SaveChangesAsync();
         }
 
-        // Soft delete method - virtual để có thể override
-        public virtual async Task SoftDeleteAsync(TEntity entity)
+        public virtual async Task<IReadOnlyList<TEntity>> GetAllAsync(
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            params Expression<Func<TEntity, object>>[] includes)
         {
-            // Default implementation - có thể override trong derived class
-            var property = entity.GetType().GetProperty("IsDeleted");
-            if (property != null && property.PropertyType == typeof(bool))
+            IQueryable<TEntity> query = _dbSet;
+
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            foreach (var include in includes)
             {
-                property.SetValue(entity, true);
+                query = query.Include(include);
             }
 
-            var updatedAtProperty = entity.GetType().GetProperty("UpdatedAt");
-            if (updatedAtProperty != null && updatedAtProperty.PropertyType == typeof(DateTime))
+            if (orderBy != null)
+                query = orderBy(query);
+
+            return await query.ToListAsync();
+        }
+
+        public virtual async Task<PagedList<TEntity>> GetPagedAsync(
+            int pageNumber,
+            int pageSize,
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            params Expression<Func<TEntity, object>>[] includes)
+        {
+            IQueryable<TEntity> query = _dbSet;
+
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            foreach (var include in includes)
             {
-                updatedAtProperty.SetValue(entity, DateTime.UtcNow);
+                query = query.Include(include);
+            }
+
+            if (orderBy != null)
+                query = orderBy(query);
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new PagedList<TEntity>(items, totalCount, pageNumber, pageSize);
+        }
+
+        public virtual async Task<TEntity?> FirstOrDefaultAsync(
+            Expression<Func<TEntity, bool>> predicate,
+            params Expression<Func<TEntity, object>>[] includes)
+        {
+            IQueryable<TEntity> query = _dbSet;
+
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+
+            return await query.FirstOrDefaultAsync(predicate);
+        }
+
+        public virtual async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate)
+        {
+            return await _dbSet.AnyAsync(predicate);
+        }
+
+        public virtual async Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null)
+        {
+            if (predicate == null)
+                return await _dbSet.CountAsync();
+
+            return await _dbSet.CountAsync(predicate);
+        }
+
+        // Soft delete nhận audit info từ bên ngoài
+        public virtual async Task<bool> SoftDeleteAsync(TKey id, Guid? deletedBy = null)
+        {
+            var entity = await _dbSet.FindAsync(id);
+            if (entity == null) return false;
+
+            // Handle BaseEntity cũ
+            if (IsInheritedFromBaseEntity(entity.GetType()))
+            {
+                SetProperty(entity, "IsDeleted", true);
+                SetProperty(entity, "DeletedAt", DateTime.UtcNow);
+                if (deletedBy.HasValue)
+                {
+                    SetProperty(entity, "DeletedBy", deletedBy.Value);
+                    SetProperty(entity, "UpdatedAt", DateTime.UtcNow);
+                    SetProperty(entity, "UpdatedBy", deletedBy.Value);
+                }
+            }
+            else if (entity is ISoftDeletable softDeletable)
+            {
+                softDeletable.IsDeleted = true;
+                softDeletable.DeletedAt = DateTime.UtcNow;
+                if (deletedBy.HasValue)
+                {
+                    softDeletable.DeletedBy = deletedBy.Value;
+                }
+
+                if (entity is IBaseEntity<TKey> auditableEntity && deletedBy.HasValue)
+                {
+                    auditableEntity.UpdatedAt = DateTime.UtcNow;
+                    auditableEntity.UpdatedBy = deletedBy.Value;
+                }
+            }
+            else
+            {
+                _dbSet.Remove(entity);
+                return true;
             }
 
             _dbSet.Update(entity);
-            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public virtual async Task<bool> RestoreAsync(TKey id, Guid? restoredBy = null)
+        {
+            var entity = await _dbSet.IgnoreQueryFilters().FirstOrDefaultAsync(e => EF.Property<TKey>(e, "Id").Equals(id));
+            if (entity == null) return false;
+
+            if (IsInheritedFromBaseEntity(entity.GetType()))
+            {
+                SetProperty(entity, "IsDeleted", false);
+                SetProperty(entity, "DeletedAt", null);
+                SetProperty(entity, "DeletedBy", null);
+                if (restoredBy.HasValue)
+                {
+                    SetProperty(entity, "UpdatedAt", DateTime.UtcNow);
+                    SetProperty(entity, "UpdatedBy", restoredBy.Value);
+                }
+            }
+            else if (entity is ISoftDeletable softDeletable)
+            {
+                softDeletable.IsDeleted = false;
+                softDeletable.DeletedAt = null;
+                softDeletable.DeletedBy = null;
+
+                if (entity is IBaseEntity<TKey> auditableEntity && restoredBy.HasValue)
+                {
+                    auditableEntity.UpdatedAt = DateTime.UtcNow;
+                    auditableEntity.UpdatedBy = restoredBy.Value;
+                }
+            }
+            else
+            {
+                return false; // Entity không support soft delete
+            }
+
+            _dbSet.Update(entity);
+            return true;
+        }
+
+        // Helper methods
+        private bool IsInheritedFromBaseEntity(Type type)
+        {
+            return typeof(BusinessObjects.BaseEntity).IsAssignableFrom(type);
+        }
+
+        private void SetProperty(object obj, string propertyName, object? value)
+        {
+            var property = obj.GetType().GetProperty(propertyName);
+            property?.SetValue(obj, value);
         }
     }
 }
