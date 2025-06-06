@@ -417,6 +417,42 @@ namespace Services.Implementations
                 return ApiResult<int>.Failure(ex);
             }
         }
+        /// <summary>
+        /// Get comprehensive statistics for medication lots - SINGLE QUERY VERSION
+        /// </summary>
+        public async Task<ApiResult<MedicationLotStatisticsResponseDTO>> GetStatisticsAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Starting to calculate medication lot statistics");
+
+                // Use existing repository methods to gather statistics
+                var totalLots = await _unitOfWork.MedicationLotRepository.GetTotalLotCountAsync();
+                var activeLots = await _unitOfWork.MedicationLotRepository.GetActiveLotCountAsync();
+                var expiredLots = await _unitOfWork.MedicationLotRepository.GetExpiredLotCountAsync();
+                var expiringLots = await _unitOfWork.MedicationLotRepository.GetExpiringLotCountAsync(30);
+
+                var statistics = new MedicationLotStatisticsResponseDTO
+                {
+                    TotalLots = totalLots,
+                    ActiveLots = activeLots,
+                    ExpiredLots = expiredLots,
+                    ExpiringInNext30Days = expiringLots,
+                    GeneratedAt = DateTime.UtcNow
+                };
+
+                _logger.LogInformation("Successfully calculated medication lot statistics: Total={TotalLots}, Active={ActiveLots}, Expired={ExpiredLots}, Expiring={ExpiringLots}",
+                    statistics.TotalLots, statistics.ActiveLots, statistics.ExpiredLots, statistics.ExpiringInNext30Days);
+
+                return ApiResult<MedicationLotStatisticsResponseDTO>.Success(
+                    statistics, "Lấy thống kê lô thuốc thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating medication lot statistics");
+                return ApiResult<MedicationLotStatisticsResponseDTO>.Failure(ex);
+            }
+        }
 
         // Manual mapping methods
         private static MedicationLotResponseDTO MapToResponseDTO(MedicationLot lot)

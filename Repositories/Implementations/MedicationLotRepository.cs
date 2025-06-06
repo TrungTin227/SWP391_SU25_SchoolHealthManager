@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.MedicationLotDTOs.Response;
+using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations
 {
@@ -58,7 +59,63 @@ namespace Repositories.Implementations
             // Không gọi SaveChangesAsync ở đây
         }
 
-        // Các method khác giữ nguyên như code ban đầu...
+        // ===== CÁC METHOD THỐNG KÊ TỐI ƯU HÓA HIỆU SUẤT =====
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc đang hoạt động - tính toán trực tiếp trên database
+        /// </summary>
+        public async Task<int> GetActiveLotCountAsync()
+        {
+            var currentDate = DateTime.UtcNow.Date;
+
+            return await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(lot => !lot.IsDeleted && lot.ExpiryDate.Date > currentDate)
+                .CountAsync();
+        }
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc đã hết hạn - tính toán trực tiếp trên database
+        /// </summary>
+        public async Task<int> GetExpiredLotCountAsync()
+        {
+            var currentDate = DateTime.UtcNow.Date;
+
+            return await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(lot => !lot.IsDeleted && lot.ExpiryDate.Date <= currentDate)
+                .CountAsync();
+        }
+
+        /// <summary>
+        /// Đếm số lượng lô thuốc sắp hết hạn - tính toán trực tiếp trên database
+        /// </summary>
+        public async Task<int> GetExpiringLotCountAsync(int daysBeforeExpiry)
+        {
+            var currentDate = DateTime.UtcNow.Date;
+            var expiryThreshold = currentDate.AddDays(daysBeforeExpiry);
+
+            return await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(lot => !lot.IsDeleted &&
+                             lot.ExpiryDate.Date > currentDate &&
+                             lot.ExpiryDate.Date <= expiryThreshold)
+                .CountAsync();
+        }
+
+        /// <summary>
+        /// Đếm tổng số lô thuốc - tính toán trực tiếp trên database
+        /// </summary>
+        public async Task<int> GetTotalLotCountAsync()
+        {
+            return await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(lot => !lot.IsDeleted)
+                .CountAsync();
+        }
+
+        // ===== CÁC METHOD HIỆN TẠI GIỮ NGUYÊN =====
+
         public async Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             Guid? medicationId = null, bool? isExpired = null)
@@ -103,7 +160,6 @@ namespace Repositories.Implementations
             return await PagedList<MedicationLot>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
-        // Các method khác giữ nguyên...
         public async Task<List<MedicationLot>> GetExpiringLotsAsync(int daysBeforeExpiry = 30)
         {
             var thresholdDate = DateTime.UtcNow.Date.AddDays(daysBeforeExpiry);
@@ -208,6 +264,30 @@ namespace Repositories.Implementations
             query = query.OrderByDescending(ml => ml.UpdatedAt);
 
             return await PagedList<MedicationLot>.ToPagedListAsync(query, pageNumber, pageSize);
+        }
+
+        public async Task<MedicationLotStatisticsResponseDTO> GetAllStatisticsAsync(DateTime currentDate, DateTime expiryThreshold)
+        {
+            // Use a single database query to fetch all statistics at once
+            var stats = await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(ml => !ml.IsDeleted)
+                .GroupBy(ml => 1) // Group all records together
+                .Select(g => new MedicationLotStatisticsResponseDTO
+                {
+                    TotalLots = g.Count(),
+                    ActiveLots = g.Count(ml => ml.ExpiryDate.Date > currentDate),
+                    ExpiredLots = g.Count(ml => ml.ExpiryDate.Date <= currentDate),
+                    ExpiringInNext30Days = g.Count(ml => ml.ExpiryDate.Date > currentDate &&
+                                         ml.ExpiryDate.Date <= expiryThreshold),
+                    GeneratedAt = DateTime.UtcNow
+                })
+                .FirstOrDefaultAsync() ?? new MedicationLotStatisticsResponseDTO
+                {
+                    GeneratedAt = DateTime.UtcNow
+                };
+
+            return stats;
         }
     }
 }
