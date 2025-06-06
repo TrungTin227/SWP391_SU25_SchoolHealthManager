@@ -75,7 +75,7 @@ namespace Services.Implementations
         //    return result;
         //}
 
-        private async Task SendWelcomeEmailsAsync(string email)
+        public async Task SendWelcomeEmailsAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null) return;
@@ -441,5 +441,7 @@ namespace Services.Implementations
             var list = await _userRepository.GetUserDetailsAsync(page, size);
             return ApiResult<PagedList<UserDetailsDTO>>.Success(list, $"Retrieved {list.Count} users from page {page}");
         }
+
+        
     }
 }

@@ -8,7 +8,7 @@ namespace Services.Interfaces
 {
     public interface IParentService
     {
-        Task<ApiResult<User>> RegisterUserAsync(UserRegisterRequestDTO user);
+        Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user);
 
     }
 }

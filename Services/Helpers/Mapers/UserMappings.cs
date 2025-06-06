@@ -38,7 +38,7 @@ namespace Services.Helpers.Mapers
             if (!string.IsNullOrEmpty(req.LastName)) user.LastName = req.LastName;
             if (new EmailAddressAttribute().IsValid(req.Email)) user.Email = req.Email;
             if (!string.IsNullOrEmpty(req.PhoneNumbers)) user.PhoneNumber = req.PhoneNumbers;
-            user.Gender = req.Gender; 
+            user.Gender = req.Gender;
             user.UpdatedAt = DateTime.UtcNow;
         }
 
@@ -78,6 +78,17 @@ namespace Services.Helpers.Mapers
                 CreateAt = user.CreatedAt,
                 UpdateAt = user.UpdatedAt,
                 AccessToken = accessToken
+            };
+        }
+
+        public static UserRegisterRespondDTO ToUserRegisterResponse(this User user)
+        {
+            return new UserRegisterRespondDTO
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email ?? string.Empty,
+                Gender = user?.Gender.ToString()
             };
         }
     }

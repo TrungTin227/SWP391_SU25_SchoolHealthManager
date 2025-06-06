@@ -21,9 +21,12 @@ namespace Repositories.Implementations
             await _userManager.CreateAsync(user);
         }
 
-        public async Task<User> FindByEmailAsync(string email)
+        public async Task<string> FindByEmailAsync(string email)
         {
-            return await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                return null; // hoặc throw exception, tuỳ logic đại ca
+            return user.Email;
         }
     }
 }
