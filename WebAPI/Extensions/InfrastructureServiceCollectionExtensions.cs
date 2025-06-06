@@ -93,6 +93,8 @@ namespace WebAPI.Extensions
             services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IMedicationRepository, MedicationRepository>(); 
             services.AddScoped<IMedicationLotRepository, MedicationLotRepository>();
+            services.AddScoped<IRepositoryFactory, RepositoryFactory>();
+
 
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();

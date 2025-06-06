@@ -6,137 +6,100 @@ namespace Repositories.WorkSeeds.Implements
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly SchoolHealthManagerDbContext _context;
-        private readonly IUserRepository _userRepository;
-        private readonly IMedicationRepository _medicationRepository;
-        private readonly IMedicationLotRepository _medicationLotRepository;
-        private IDbContextTransaction? _currentTransaction;
-        private bool _disposed;
+        private readonly DbContext _context;
+        private readonly IRepositoryFactory _repositoryFactory;
+        private IDbContextTransaction? _transaction;
 
-        public UnitOfWork(SchoolHealthManagerDbContext context,
-                         IUserRepository userRepository,
-                         IMedicationRepository medicationRepository,
-                         IMedicationLotRepository medicationLotRepository)
+        // Specific repositories
+        private IUserRepository? _userRepository;
+        private IMedicationRepository? _medicationRepository;
+        private IMedicationLotRepository? _medicationLotRepository;
+
+        public UnitOfWork(DbContext context, IRepositoryFactory repositoryFactory)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
-            _medicationRepository = medicationRepository ?? throw new ArgumentNullException(nameof(medicationRepository));
-            _medicationLotRepository = medicationLotRepository ?? throw new ArgumentNullException(nameof(medicationLotRepository));
+            _context = context;
+            _repositoryFactory = repositoryFactory;
         }
 
-        public IUserRepository UserRepository => _userRepository;
-        public IMedicationRepository MedicationRepository => _medicationRepository;
-        public IMedicationLotRepository MedicationLotRepository => _medicationLotRepository;
+        public IUserRepository UserRepository =>
+            _userRepository ??= _repositoryFactory.GetCustomRepository<IUserRepository>();
 
-        // Property to check if there's an active transaction
-        public bool HasActiveTransaction => _currentTransaction != null;
+        public IMedicationRepository MedicationRepository =>
+            _medicationRepository ??= _repositoryFactory.GetCustomRepository<IMedicationRepository>();
+
+        public IMedicationLotRepository MedicationLotRepository =>
+            _medicationLotRepository ??= _repositoryFactory.GetCustomRepository<IMedicationLotRepository>();
+
+        public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
+            where TEntity : class
+        {
+            return _repositoryFactory.GetRepository<TEntity, TKey>();
+        }
+
+        public bool HasActiveTransaction => _transaction != null;
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync(
+            IsolationLevel isolationLevel = IsolationLevel.ReadCommitted,
+            CancellationToken cancellationToken = default)
+        {
+            if (_transaction != null)
+                throw new InvalidOperationException("A transaction is already active.");
+
+            _transaction = await _context.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
+            return _transaction;
+        }
+
+        public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            if (_transaction == null)
+                throw new InvalidOperationException("No active transaction to commit.");
+
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+                await _transaction.CommitAsync(cancellationToken);
+            }
+            finally
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+
+        public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            if (_transaction == null)
+                throw new InvalidOperationException("No active transaction to rollback.");
+
+            try
+            {
+                await _transaction.RollbackAsync(cancellationToken);
+            }
+            finally
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             return await _context.SaveChangesAsync(cancellationToken);
         }
 
-        // Implementation of BeginTransactionAsync
-        public async Task<IDbContextTransaction> BeginTransactionAsync(
-           IsolationLevel isolationLevel = IsolationLevel.ReadCommitted,
-           CancellationToken cancellationToken = default)
+        public void Dispose()
         {
-            if (_currentTransaction != null)
-            {
-                throw new InvalidOperationException("A transaction is already active. Only one transaction can be active at a time.");
-            }
-
-            _currentTransaction = await _context.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
-            return _currentTransaction;
-        }
-
-        public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
-        {
-            if (_currentTransaction == null)
-            {
-                throw new InvalidOperationException("No active transaction to commit.");
-            }
-
-            try
-            {
-                await _currentTransaction.CommitAsync(cancellationToken);
-            }
-            catch
-            {
-                await RollbackTransactionAsync(cancellationToken);
-                throw;
-            }
-            finally
-            {
-                _currentTransaction.Dispose();
-                _currentTransaction = null;
-            }
-        }
-
-        public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
-        {
-            if (_currentTransaction == null)
-            {
-                return; // No transaction to rollback
-            }
-
-            try
-            {
-                await _currentTransaction.RollbackAsync(cancellationToken);
-            }
-            finally
-            {
-                _currentTransaction.Dispose();
-                _currentTransaction = null;
-            }
+            _transaction?.Dispose();
+            _context?.Dispose();
         }
 
         public async ValueTask DisposeAsync()
         {
-            if (!_disposed)
-            {
-                // Rollback any active transaction
-                if (_currentTransaction != null)
-                {
-                    await RollbackTransactionAsync();
-                }
+            if (_transaction != null)
+                await _transaction.DisposeAsync();
+
+            if (_context != null)
                 await _context.DisposeAsync();
-                _disposed = true;
-            }
-            GC.SuppressFinalize(this);
-        }
-
-        // Implement IDisposable for synchronous disposal
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
-            {
-                // Rollback any active transaction synchronously
-                if (_currentTransaction != null)
-                {
-                    try
-                    {
-                        _currentTransaction.Rollback();
-                    }
-                    catch
-                    {
-                        // Ignore rollback exceptions during disposal
-                    }
-                    finally
-                    {
-                        _currentTransaction.Dispose();
-                        _currentTransaction = null;
-                    }
-                }
-                _context.Dispose();
-                _disposed = true;
-            }
         }
     }
 }

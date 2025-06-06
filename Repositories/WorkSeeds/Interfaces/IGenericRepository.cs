@@ -1,32 +1,41 @@
 ﻿using System.Linq.Expressions;
 namespace Repositories.WorkSeeds.Interfaces
 {
-    public interface IGenericRepository<TEntity, TKey> where TEntity : class 
+    public interface IGenericRepository<TEntity, TKey> where TEntity : class
     {
-        // Thêm một entity mới
+        // Basic CRUD
         Task<TEntity> AddAsync(TEntity entity);
-
-        // Thêm nhiều entity cùng lúc
-        Task AddRangeAsync(IEnumerable<TEntity> entities);
-
-        // Lấy tất cả các entity với điều kiện lọc tùy chọn và includes
-        Task<IReadOnlyList<TEntity>> GetAllAsync(
-            Expression<Func<TEntity, bool>>? predicate = null,
-            params Expression<Func<TEntity, object>>[] includes);
-
-        // Lấy entity theo ID
+        Task<TEntity> UpdateAsync(TEntity entity);
+        Task<bool> DeleteAsync(TKey id);
         Task<TEntity?> GetByIdAsync(TKey id, params Expression<Func<TEntity, object>>[] includes);
 
-        // Cập nhật một entity
-        Task UpdateAsync(TEntity entity);
-
-        // Cập nhật nhiều entity cùng lúc
+        // Batch operations
+        Task AddRangeAsync(IEnumerable<TEntity> entities);
         Task UpdateRangeAsync(IEnumerable<TEntity> entities);
+        Task DeleteRangeAsync(IEnumerable<TKey> ids);
 
-        // Xóa một entity
-        Task DeleteAsync(TEntity entity);
+        // Query operations
+        Task<IReadOnlyList<TEntity>> GetAllAsync(
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            params Expression<Func<TEntity, object>>[] includes);
 
-        // Xóa nhiều entity cùng lúc
-        Task DeleteRangeAsync(IEnumerable<TEntity> entities);
+        Task<PagedList<TEntity>> GetPagedAsync(
+            int pageNumber,
+            int pageSize,
+            Expression<Func<TEntity, bool>>? predicate = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+            params Expression<Func<TEntity, object>>[] includes);
+
+        Task<TEntity?> FirstOrDefaultAsync(
+            Expression<Func<TEntity, bool>> predicate,
+            params Expression<Func<TEntity, object>>[] includes);
+
+        Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
+        Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null);
+
+        // Soft delete support (nếu entity có IsDeleted property)
+        Task<bool> SoftDeleteAsync(TKey id, Guid? deletedBy = null);
+        Task<bool> RestoreAsync(TKey id, Guid? restoredBy = null);
     }
 }
