@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Repositories.WorkSeeds;
+using Repositories.WorkSeeds.Implements;
 
 namespace Repositories.Implementations
 {

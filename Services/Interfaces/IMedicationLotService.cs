@@ -24,5 +24,6 @@ namespace Services.Interfaces
         Task<ApiResult<int>> CleanupExpiredLotsAsync(int daysToExpire = 90);
         Task<ApiResult<MedicationLotStatisticsResponseDTO>> GetStatisticsAsync();
 
+
     }
 }

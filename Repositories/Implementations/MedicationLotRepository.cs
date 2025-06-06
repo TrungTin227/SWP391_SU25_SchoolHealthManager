@@ -1,5 +1,6 @@
 ﻿using DTOs.MedicationLotDTOs.Response;
 using Microsoft.EntityFrameworkCore;
+using Repositories.WorkSeeds.Implements;
 
 namespace Repositories.Implementations
 {

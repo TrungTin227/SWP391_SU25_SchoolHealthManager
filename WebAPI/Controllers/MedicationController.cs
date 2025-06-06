@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Yêu cầu xác thực cho tất cả endpoints
+    //[Authorize] // Yêu cầu xác thực cho tất cả endpoints
     public class MedicationController : ControllerBase
     {
         private readonly IMedicationService _medicationService;
