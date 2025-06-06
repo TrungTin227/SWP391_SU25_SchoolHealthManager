@@ -2,6 +2,9 @@
 
 namespace WebAPI.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
+
     public class ParentController : Controller
     {
         private readonly IParentService _parentService;
@@ -11,7 +14,7 @@ namespace WebAPI.Controllers
             _parentService = parentService; 
         }
 
-        [HttpPost("parent/registerUser")]
+        [HttpPost("register-User")]
         public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequestDTO request)
         {
             if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
@@ -21,13 +24,14 @@ namespace WebAPI.Controllers
 
             var result = await _parentService.RegisterUserAsync(request);
 
-            if (result == null) // Hoặc if (!result.Success) tùy vào kiểu trả về
+            if (!result.IsSuccess ) // Hoặc if (!result.Success) tùy vào kiểu trả về
             {
-                return BadRequest(new { Message = "User registration failed" });
+                return BadRequest(result);
             }
 
-            return Ok(new { Message = "User registered successfully" });
+            return Ok(result);
         }
+
 
     }
 }

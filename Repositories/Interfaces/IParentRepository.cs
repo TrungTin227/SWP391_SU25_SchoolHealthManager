@@ -8,8 +8,7 @@ namespace Repositories.Interfaces
 {
     public interface IParentRepository
     {
-        Task<User> FindByEmailAsync(string email);
+        Task<string> FindByEmailAsync(string email);
         Task AddAsync(User user);
-
     }
 }

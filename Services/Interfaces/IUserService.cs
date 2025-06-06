@@ -23,6 +23,8 @@
         Task<ApiResult<string>> InitiatePasswordResetAsync(ForgotPasswordRequestDTO request);
         Task<ApiResult<string>> ResetPasswordAsync(ResetPasswordRequestDTO request);
         Task<ApiResult<string>> Send2FACodeAsync();
+        Task SendWelcomeEmailsAsync(string email);
+
 
     }
 }
