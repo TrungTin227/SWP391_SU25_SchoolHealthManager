@@ -6,7 +6,7 @@ namespace Repositories.WorkSeeds.Implements
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly DbContext _context;
+        private readonly SchoolHealthManagerDbContext _context;
         private readonly IRepositoryFactory _repositoryFactory;
         private IDbContextTransaction? _transaction;
 
@@ -15,7 +15,7 @@ namespace Repositories.WorkSeeds.Implements
         private IMedicationRepository? _medicationRepository;
         private IMedicationLotRepository? _medicationLotRepository;
 
-        public UnitOfWork(DbContext context, IRepositoryFactory repositoryFactory)
+        public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
             _context = context;
             _repositoryFactory = repositoryFactory;

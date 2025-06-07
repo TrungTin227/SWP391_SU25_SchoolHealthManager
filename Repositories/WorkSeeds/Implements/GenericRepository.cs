@@ -6,10 +6,10 @@ namespace Repositories.WorkSeeds.Implements
     public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey>
         where TEntity : class
     {
-        protected readonly DbContext _context;
+        protected readonly SchoolHealthManagerDbContext _context;
         protected readonly DbSet<TEntity> _dbSet;
 
-        public GenericRepository(DbContext context)
+        public GenericRepository(SchoolHealthManagerDbContext context)
         {
             _context = context;
             _dbSet = _context.Set<TEntity>(); // Sửa lỗi syntax *dbSet = *context.Set<TEntity>()
