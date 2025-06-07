@@ -72,6 +72,27 @@ namespace WebAPI.Controllers
             }
         }
 
+        [HttpGet("{id:guid}/detail")]
+        public async Task<IActionResult> GetMedicationDetailById(Guid id)
+        {
+            try
+            {
+                if (id == Guid.Empty)
+                {
+                    return BadRequest("ID thuốc không hợp lệ");
+                }
+
+                var result = await _medicationService.GetMedicationDetailByIdAsync(id);
+
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in GetMedicationDetailById for ID: {MedicationId}", id);
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
         /// <summary>
         /// Tạo mới một thuốc
         /// </summary>
@@ -124,6 +145,7 @@ namespace WebAPI.Controllers
                 return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
             }
         }
+       
 
         /// <summary>
         /// Xóa thuốc (soft delete)

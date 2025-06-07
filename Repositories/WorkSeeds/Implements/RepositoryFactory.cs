@@ -5,11 +5,11 @@ namespace Repositories.WorkSeeds.Implements
 {
     public class RepositoryFactory : IRepositoryFactory
     {
-        private readonly DbContext _context;
+        private readonly SchoolHealthManagerDbContext _context;
         private readonly IServiceProvider _serviceProvider; // Thêm field này
         private readonly Dictionary<Type, object> _repositories = new();
 
-        public RepositoryFactory(DbContext context, IServiceProvider serviceProvider) // Thêm parameter
+        public RepositoryFactory(SchoolHealthManagerDbContext context, IServiceProvider serviceProvider) // Thêm parameter
         {
             _context = context;
             _serviceProvider = serviceProvider; // Gán giá trị

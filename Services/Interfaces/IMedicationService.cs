@@ -35,6 +35,29 @@ namespace Services.Interfaces
         Task<ApiResult<string>> DeleteMedicationAsync(Guid id);
 
         /// <summary>
+        /// Khôi phục thuốc đã bị soft delete.
+        /// </summary>
+        Task<ApiResult<MedicationResponse>> RestoreMedicationAsync(Guid id);
+
+        /// <summary>
+        /// Xóa vĩnh viễn thuốc và tất cả lots liên quan.
+        /// </summary>
+        Task<ApiResult<string>> PermanentDeleteMedicationAsync(Guid id);
+
+        /// <summary>
+        /// Lấy danh sách thuốc đã bị soft delete với phân trang.
+        /// </summary>
+        Task<ApiResult<PagedList<MedicationResponse>>> GetSoftDeletedMedicationsAsync(
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null);
+
+        /// <summary>
+        /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
+        /// </summary>
+        Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30);
+
+        /// <summary>
         /// Lấy danh sách thuốc theo một danh mục cố định.
         /// </summary>
         Task<ApiResult<List<MedicationResponse>>> GetMedicationsByCategoryAsync(MedicationCategory category);
@@ -43,13 +66,7 @@ namespace Services.Interfaces
         /// Lấy danh sách các thuốc đang ở trạng thái Active.
         /// </summary>
         Task<ApiResult<List<MedicationResponse>>> GetActiveMedicationsAsync();
-        Task<ApiResult<MedicationResponse>> RestoreMedicationAsync(Guid id);
-        Task<ApiResult<string>> PermanentDeleteMedicationAsync(Guid id);
-        Task<ApiResult<PagedList<MedicationResponse>>> GetSoftDeletedMedicationsAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm = null);
-        Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30);
-        
+        Task<ApiResult<MedicationDetailResponse>> GetMedicationDetailByIdAsync(Guid id);
+
     }
 }
