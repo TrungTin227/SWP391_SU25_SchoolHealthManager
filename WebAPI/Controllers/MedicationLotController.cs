@@ -1,4 +1,5 @@
-﻿using DTOs.MedicationLotDTOs.Request;
+﻿using DTOs.Common;
+using DTOs.MedicationLotDTOs.Request;
 using DTOs.MedicationLotDTOs.Response;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -20,6 +21,8 @@ namespace WebAPI.Controllers
             _medicationLotService = medicationLotService;
             _logger = logger;
         }
+
+        #region Basic CRUD Operations
 
         /// <summary>
         /// Lấy danh sách lô thuốc theo phân trang với khả năng tìm kiếm và lọc
@@ -90,7 +93,10 @@ namespace WebAPI.Controllers
 
                 var result = await _medicationLotService.CreateMedicationLotAsync(request);
 
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
+                return result.IsSuccess ? CreatedAtAction(
+                    nameof(GetMedicationLotById),
+                    new { id = result.Data?.Id },
+                    result) : BadRequest(result);
             }
             catch (Exception ex)
             {
@@ -151,6 +157,150 @@ namespace WebAPI.Controllers
                 return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
             }
         }
+
+        #endregion
+
+        #region Batch Operations
+
+        /// <summary>
+        /// Xóa nhiều lô thuốc cùng lúc (soft delete)
+        /// </summary>
+        [HttpPost("batch/delete")]
+        public async Task<IActionResult> DeleteMedicationLotsBatch([FromBody] BatchIdsRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                if (request.Ids == null || !request.Ids.Any())
+                {
+                    return BadRequest("Danh sách ID không được rỗng");
+                }
+
+                if (request.Ids.Count > 100)
+                {
+                    return BadRequest("Không thể xóa quá 100 lô thuốc cùng lúc");
+                }
+
+                var result = await _medicationLotService.DeleteMedicationLotsAsync(request.Ids);
+
+                // Return appropriate status based on batch operation result
+                if (result.Data is BatchOperationResultDTO batchResult)
+                {
+                    if (batchResult.IsCompleteSuccess)
+                        return Ok(result);
+                    else if (batchResult.IsPartialSuccess)
+                        return StatusCode(207, result); // Multi-Status for partial success
+                    else
+                        return BadRequest(result);
+                }
+
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in DeleteMedicationLotsBatch");
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Khôi phục nhiều lô thuốc cùng lúc
+        /// </summary>
+        [HttpPost("batch/restore")]
+        public async Task<IActionResult> RestoreMedicationLotsBatch([FromBody] BatchIdsRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                if (request.Ids == null || !request.Ids.Any())
+                {
+                    return BadRequest("Danh sách ID không được rỗng");
+                }
+
+                if (request.Ids.Count > 100)
+                {
+                    return BadRequest("Không thể khôi phục quá 100 lô thuốc cùng lúc");
+                }
+
+                var result = await _medicationLotService.RestoreMedicationLotsAsync(request.Ids);
+
+                // Return appropriate status based on batch operation result
+                if (result.Data is BatchOperationResultDTO batchResult)
+                {
+                    if (batchResult.IsCompleteSuccess)
+                        return Ok(result);
+                    else if (batchResult.IsPartialSuccess)
+                        return StatusCode(207, result); // Multi-Status for partial success
+                    else
+                        return BadRequest(result);
+                }
+
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in RestoreMedicationLotsBatch");
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        /// <summary>
+        /// Xóa vĩnh viễn nhiều lô thuốc cùng lúc (Chỉ Admin)
+        /// </summary>
+        [HttpPost("batch/permanent-delete")]
+        //[Authorize(Roles = "ADMIN")]
+        public async Task<IActionResult> PermanentDeleteMedicationLotsBatch([FromBody] BatchIdsRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                if (request.Ids == null || !request.Ids.Any())
+                {
+                    return BadRequest("Danh sách ID không được rỗng");
+                }
+
+                if (request.Ids.Count > 50)
+                {
+                    return BadRequest("Không thể xóa vĩnh viễn quá 50 lô thuốc cùng lúc");
+                }
+
+                var result = await _medicationLotService.PermanentDeleteMedicationLotsAsync(request.Ids);
+
+                // Return appropriate status based on batch operation result
+                if (result.Data is BatchOperationResultDTO batchResult)
+                {
+                    if (batchResult.IsCompleteSuccess)
+                        return Ok(result);
+                    else if (batchResult.IsPartialSuccess)
+                        return StatusCode(207, result); // Multi-Status for partial success
+                    else
+                        return BadRequest(result);
+                }
+
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in PermanentDeleteMedicationLotsBatch");
+                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
+            }
+        }
+
+        #endregion
+
+        #region Soft Delete Operations
 
         /// <summary>
         /// Khôi phục lô thuốc đã bị xóa mềm
@@ -242,6 +392,17 @@ namespace WebAPI.Controllers
             {
                 var result = await _medicationLotService.CleanupExpiredLotsAsync(daysToExpire);
 
+                // Handle batch operation result for cleanup
+                if (result.Data is BatchOperationResultDTO batchResult)
+                {
+                    if (batchResult.IsCompleteSuccess)
+                        return Ok(result);
+                    else if (batchResult.IsPartialSuccess)
+                        return StatusCode(207, result); // Multi-Status for partial success
+                    else if (batchResult.IsCompleteFailure)
+                        return BadRequest(result);
+                }
+
                 return result.IsSuccess ? Ok(result) : BadRequest(result);
             }
             catch (Exception ex)
@@ -250,6 +411,10 @@ namespace WebAPI.Controllers
                 return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
             }
         }
+
+        #endregion
+
+        #region Business Logic Operations
 
         /// <summary>
         /// Lấy danh sách lô thuốc sắp hết hạn
@@ -372,6 +537,10 @@ namespace WebAPI.Controllers
             }
         }
 
+        #endregion
+
+        #region Statistics
+
         /// <summary>
         /// Lấy thống kê lô thuốc
         /// </summary>
@@ -390,6 +559,7 @@ namespace WebAPI.Controllers
                 return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
             }
         }
+
         /// <summary>
         /// Lấy tóm tắt thống kê theo thời gian thực cho dashboard
         /// </summary>
@@ -429,6 +599,8 @@ namespace WebAPI.Controllers
             }
         }
 
+        #endregion
+
         #region Private Helper Methods
 
         /// <summary>
@@ -449,6 +621,6 @@ namespace WebAPI.Controllers
             }
         }
 
-        #endregion
+        #endregion    
     }
 }
