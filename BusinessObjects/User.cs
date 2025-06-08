@@ -13,6 +13,7 @@ namespace BusinessObjects
         public string LastName { get; set; }
 
         public Gender Gender { get; set; }
+        public bool IsFirstLogin { get; set; } = true; // Mặc định là true, sẽ được set thành false khi người dùng đăng nhập lần đầu tiên
 
         // Audit fields
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
