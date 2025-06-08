@@ -176,5 +176,33 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<bool>> SoftDeleteByParentIdAsync(Guid parentId)
+        {
+            try
+            {
+                if (parentId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Yêu cầu nhập Parent ID!!"));
+                }
+                var parent = await _parentRepository.GetParentByUserIdAsync(parentId);
+                if (parent == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy phụ huynh với ID này: " + parentId + " !!"));
+                }
+                parent.DeletedAt = DateTime.UtcNow;
+                parent.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
+                var result = await _parentRepository.SoftDeleteByParentId(parentId);
+                if (!result)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Xóa phụ huynh thất bại!!"));
+                }
+                return ApiResult<bool>.Success(true, "Xóa phụ huynh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa phụ huynh");
+                return ApiResult<bool>.Failure(ex);
+            }
+        }
     }
 }
