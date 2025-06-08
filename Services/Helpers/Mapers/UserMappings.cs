@@ -85,6 +85,7 @@ namespace Services.Helpers.Mapers
         {
             return new UserRegisterRespondDTO
             {
+                UserId = user.Id,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email ?? string.Empty,

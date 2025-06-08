@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using DTOs.ParentDTOs.Request;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
@@ -9,9 +10,9 @@ namespace WebAPI.Controllers
     {
         private readonly IParentService _parentService;
 
-        public ParentController(IParentService parentService) 
-        { 
-            _parentService = parentService; 
+        public ParentController(IParentService parentService)
+        {
+            _parentService = parentService;
         }
 
         [HttpPost("register-User")]
@@ -24,14 +25,53 @@ namespace WebAPI.Controllers
 
             var result = await _parentService.RegisterUserAsync(request);
 
-            if (!result.IsSuccess ) // Hoặc if (!result.Success) tùy vào kiểu trả về
+            if (!result.IsSuccess)
             {
-                return BadRequest(result);
+                return BadRequest(new { message = result.Message });
             }
 
             return Ok(result);
         }
 
+        [HttpPost("create-parent")]
+        public async Task<IActionResult> CreateParent([FromBody] AddParentRequestDTO request)
+        {
+            if (request == null)
+            {
+                return BadRequest(new { Message = "User ID are required" });
+            }
+            var result = await _parentService.CreateParentAsync(request);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+            return Ok(result);
+        }
 
+        [HttpGet("get-all-parents")]
+        public async Task<IActionResult> GetAllParents()
+        {
+            var result = await _parentService.GetAllParentsAsync();
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("update-relationship-by-parent-id")]
+        public async Task<IActionResult> UpdateRelationshipByParentId([FromBody] UpdateRelationshipByParentId request)
+        {
+            if (request == null || request.ParentId == Guid.Empty)
+            {
+                return BadRequest(new { Message = "Parent ID is required" });
+            }
+            var result = await _parentService.UpdateRelationshipByParentIdAsync(request);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+            return Ok(result);
+        }
     }
 }
