@@ -13,8 +13,6 @@ namespace Repositories.Implementations
     public class StudentRepository : GenericRepository<Student, Guid>, IStudentRepository
     {
         private readonly SchoolHealthManagerDbContext _context;
-        private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-
         public StudentRepository(SchoolHealthManagerDbContext context) : base(context)
         {
             _context = context;
@@ -68,5 +66,80 @@ namespace Repositories.Implementations
                    })
                    .ToListAsync();
         }
+
+        public async Task<GetAllStudentDTO?> GetStudentByIdAsync(Guid id)
+        {
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => s.Id == id && !s.IsDeleted)
+                .Select(s => new GetAllStudentDTO
+                {
+                    Id = s.Id,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Grade = s.Grade,
+                    Section = s.Section,
+                    Image = s.Image
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<GetAllStudentDTO?> GetStudentByStudentCode(string studentCode)
+        {
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => s.StudentCode == studentCode && !s.IsDeleted)
+                .Select(s => new GetAllStudentDTO
+                {
+                    Id = s.Id,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Grade = s.Grade,
+                    Section = s.Section,
+                    Image = s.Image
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateStudentAsync(Student updateStudentRequestDTO)
+        {
+            if (updateStudentRequestDTO == null || updateStudentRequestDTO.Id == Guid.Empty)
+                return false;
+
+            var student = await _context.Students.FindAsync(updateStudentRequestDTO.Id);
+            if (student == null || student.IsDeleted)
+                return false;
+
+            // Chỉ update khi có giá trị hợp lệ (không null hoặc không default)
+            if (!string.IsNullOrEmpty(updateStudentRequestDTO.FirstName))
+                student.FirstName = updateStudentRequestDTO.FirstName;
+
+            if (!string.IsNullOrEmpty(updateStudentRequestDTO.LastName))
+                student.LastName = updateStudentRequestDTO.LastName;
+
+            // DateTime? nên check nullable, giả sử DTO dùng DateTime?
+            // Nếu không nullable thì phải check giá trị khác default(DateTime)
+            if (updateStudentRequestDTO.DateOfBirth != default(DateTime))
+                student.DateOfBirth = updateStudentRequestDTO.DateOfBirth;
+
+            if (!string.IsNullOrEmpty(updateStudentRequestDTO.Grade))
+                student.Grade = updateStudentRequestDTO.Grade;
+
+            if (!string.IsNullOrEmpty(updateStudentRequestDTO.Section))
+                student.Section = updateStudentRequestDTO.Section;
+
+            if (!string.IsNullOrEmpty(updateStudentRequestDTO.Image))
+                student.Image = updateStudentRequestDTO.Image;
+
+            _context.Students.Update(student);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
     }
 }

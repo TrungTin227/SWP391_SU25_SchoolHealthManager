@@ -14,5 +14,10 @@ namespace Repositories.Interfaces
         Task<List<Student>> GetAllStudentsAsync();
         Task<List<GetAllStudentDTO>> GetAllStudentsDTOAsync();
 
+        Task<GetAllStudentDTO?> GetStudentByStudentCode(string studentCode);
+
+        Task<GetAllStudentDTO?> GetStudentByIdAsync(Guid id);
+        Task<bool> UpdateStudentAsync(Student student);
+
     }
 }

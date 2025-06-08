@@ -10,8 +10,4 @@
     <ProjectReference Include="..\BusinessObjects\BusinessObjects.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="ParentDTOs\Request\" />
-  </ItemGroup>
-
 </Project>

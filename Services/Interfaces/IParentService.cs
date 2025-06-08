@@ -13,6 +13,7 @@ namespace Services.Interfaces
         Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user);
         Task<ApiResult<AddParentRequestDTO>> CreateParentAsync(AddParentRequestDTO request);
         Task<ApiResult<List<GetAllParentDTO>>> GetAllParentsAsync();
+        Task<ApiResult<bool>> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request);
 
     }
 }

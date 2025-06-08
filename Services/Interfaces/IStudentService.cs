@@ -14,6 +14,9 @@ namespace Services.Interfaces
 
         Task<ApiResult<List<Student>>> GetAllStudentsAsync();
         Task<ApiResult<List<GetAllStudentDTO>>> GetAllStudentsDTOAsync();
+        Task<ApiResult<GetAllStudentDTO?>> GetStudentByStudentCodeAsync(string studentCode);
 
+        Task<ApiResult<GetAllStudentDTO?>> GetStudentByIdAsync(Guid id);
+        Task<ApiResult<UpdateStudentRequestDTO>> UpdateStudentById(UpdateStudentRequestDTO updateStudentRequestDTO);
     }
 }

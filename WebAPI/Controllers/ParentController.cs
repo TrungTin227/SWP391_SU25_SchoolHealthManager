@@ -27,7 +27,7 @@ namespace WebAPI.Controllers
 
             if (!result.IsSuccess)
             {
-                return BadRequest(result);
+                return BadRequest(new { message = result.Message });
             }
 
             return Ok(result);
@@ -43,7 +43,7 @@ namespace WebAPI.Controllers
             var result = await _parentService.CreateParentAsync(request);
             if (!result.IsSuccess)
             {
-                return BadRequest(result);
+                return BadRequest(new { message = result.Message });
             }
             return Ok(result);
         }
@@ -54,7 +54,22 @@ namespace WebAPI.Controllers
             var result = await _parentService.GetAllParentsAsync();
             if (!result.IsSuccess)
             {
-                return BadRequest(result);
+                return BadRequest(new { message = result.Message });
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("update-relationship-by-parent-id")]
+        public async Task<IActionResult> UpdateRelationshipByParentId([FromBody] UpdateRelationshipByParentId request)
+        {
+            if (request == null || request.ParentId == Guid.Empty)
+            {
+                return BadRequest(new { Message = "Parent ID is required" });
+            }
+            var result = await _parentService.UpdateRelationshipByParentIdAsync(request);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { message = result.Message });
             }
             return Ok(result);
         }

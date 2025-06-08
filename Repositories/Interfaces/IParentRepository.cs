@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DTOs.ParentDTOs.Request;
 using DTOs.ParentDTOs.Response;
 
 namespace Repositories.Interfaces
 {
     public interface IParentRepository
     {
-        Task<string> FindByEmailAsync(string email);
+        Task<bool> FindByEmailAsync(string email);
         Task AddAsync(User user);
 
         Task<Parent> CreateParentAsync(Parent parent);
@@ -18,8 +19,7 @@ namespace Repositories.Interfaces
 
         Task<List<Parent>> GetAllParentAsync();
         Task<List<GetAllParentDTO>> GetAllParentDtoAsync();
-
-
+        Task<bool>  UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request);
 
 
     }

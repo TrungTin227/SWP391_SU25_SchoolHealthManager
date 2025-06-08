@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DTOs.ParentDTOs.Request;
 using DTOs.ParentDTOs.Response;
 using DTOs.StudentDTOs.Response;
 using Microsoft.AspNetCore.Identity;
@@ -34,12 +35,12 @@ namespace Repositories.Implementations
         }
 
 
-        public async Task<string> FindByEmailAsync(string email)
+        public async Task<bool> FindByEmailAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
-                return null;
-            return user.Email;
+                return false;
+            return true;
         }
 
         public Task<List<Parent>> GetAllParentAsync()
@@ -66,6 +67,19 @@ namespace Repositories.Implementations
 
         public Task<Parent?> GetParentByUserIdAsync(Guid userId)
         =>  _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == userId);
-        
+
+        public async Task<bool> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request)
+        {
+            var parent = await _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == request.ParentId);
+            if (parent == null)
+            {
+                return false;
+            }
+
+            parent.Relationship = request.Relationship;
+            await _dbcontext.SaveChangesAsync();
+            return true;
+        }
+
     }
 }

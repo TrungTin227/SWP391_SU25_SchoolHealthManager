@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DTOs.ParentDTOs.Request;
 using DTOs.ParentDTOs.Response;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
 
 namespace Services.Implementations
@@ -17,13 +18,15 @@ namespace Services.Implementations
         private readonly ICurrentUserService _currentUserService;
         private readonly IUserService _userService;
         private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        private readonly ILogger<ParentService> _logger;
 
-        public ParentService(IParentRepository parentRepository, UserManager<User> userManager, ICurrentUserService currentUserService, IUserService userService)
+        public ParentService(IParentRepository parentRepository, UserManager<User> userManager, ICurrentUserService currentUserService, IUserService userService,ILogger<ParentService> logger)
         {
             _parentRepository = parentRepository;
             _userManager = userManager;
             _currentUserService = currentUserService;
             _userService = userService;
+            _logger = logger;
         }
 
         public async Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user)
@@ -31,7 +34,7 @@ namespace Services.Implementations
             try
             {
                 var existing = await _parentRepository.FindByEmailAsync(user.Email);
-                if (existing != null)
+                if (existing==true)
                 {
                     return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
                 }
@@ -136,5 +139,42 @@ namespace Services.Implementations
                 return ApiResult<List<GetAllParentDTO>>.Failure(ex);
             }
         }
+
+        public async Task<ApiResult<bool>> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request)
+        {
+            try
+            {
+                if (request == null || request.ParentId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Yêu cầu nhập Parent ID!!"));
+                }
+
+                // Nếu Relationship là enum, validate luôn
+                if (!Enum.IsDefined(typeof(Relationship), request.Relationship))
+                {
+                    return ApiResult<bool>.Failure(new Exception("Giá trị mối quan hệ không hợp lệ!"));
+                }
+
+                if (await _parentRepository.GetParentByUserIdAsync(request.ParentId) == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy phụ huynh với ID này: " + request.ParentId + " !!"));
+                }
+
+                var result = await _parentRepository.UpdateRelationshipByParentIdAsync(request);
+
+                if (!result)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Cập nhật mối quan hệ thất bại!!"));
+                }
+
+                return ApiResult<bool>.Success(true, "Cập nhật mối quan hệ thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật mối quan hệ phụ huynh");
+                return ApiResult<bool>.Failure(ex);
+            }
+        }
+
     }
 }
