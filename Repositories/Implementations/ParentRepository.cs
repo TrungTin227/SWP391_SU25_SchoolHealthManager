@@ -68,6 +68,18 @@ namespace Repositories.Implementations
         public Task<Parent?> GetParentByUserIdAsync(Guid userId)
         =>  _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == userId);
 
+        public async Task<bool> SoftDeleteByParentId(Guid parentId)
+        {
+            var parent = await _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == parentId);
+            if (parent == null)
+            {
+                return false;
+            }
+            parent.IsDeleted = true;
+            await _dbcontext.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<bool> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request)
         {
             var parent = await _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == request.ParentId);

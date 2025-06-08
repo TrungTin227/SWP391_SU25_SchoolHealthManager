@@ -20,7 +20,7 @@ namespace Repositories.Interfaces
         Task<List<Parent>> GetAllParentAsync();
         Task<List<GetAllParentDTO>> GetAllParentDtoAsync();
         Task<bool>  UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request);
-
+        Task<bool> SoftDeleteByParentId(Guid parentId);
 
     }
 }

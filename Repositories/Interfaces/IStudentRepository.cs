@@ -18,6 +18,7 @@ namespace Repositories.Interfaces
 
         Task<GetAllStudentDTO?> GetStudentByIdAsync(Guid id);
         Task<bool> UpdateStudentAsync(Student student);
+        public Task<bool> SoftDeleteStudentAsync(Student student);
 
     }
 }

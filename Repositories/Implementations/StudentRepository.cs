@@ -105,6 +105,17 @@ namespace Repositories.Implementations
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<bool> SoftDeleteStudentAsync(Student student)
+        {
+            if (student == null)
+                return false;
+            student.IsDeleted = true;
+            _context.Students.Update(student);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
         public async Task<bool> UpdateStudentAsync(Student updateStudentRequestDTO)
         {
             if (updateStudentRequestDTO == null || updateStudentRequestDTO.Id == Guid.Empty)
