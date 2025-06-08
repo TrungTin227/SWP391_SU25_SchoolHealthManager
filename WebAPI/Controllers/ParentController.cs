@@ -25,7 +25,7 @@ namespace WebAPI.Controllers
 
             var result = await _parentService.RegisterUserAsync(request);
 
-            if (!result.IsSuccess) // Hoặc if (!result.Success) tùy vào kiểu trả về
+            if (!result.IsSuccess)
             {
                 return BadRequest(result);
             }
@@ -41,13 +41,22 @@ namespace WebAPI.Controllers
                 return BadRequest(new { Message = "User ID are required" });
             }
             var result = await _parentService.CreateParentAsync(request);
-            if (!result.IsSuccess) // Hoặc if (!result.Success) tùy vào kiểu trả về
+            if (!result.IsSuccess)
             {
                 return BadRequest(result);
             }
             return Ok(result);
+        }
 
-
+        [HttpGet("get-all-parents")]
+        public async Task<IActionResult> GetAllParents()
+        {
+            var result = await _parentService.GetAllParentsAsync();
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
         }
     }
 }

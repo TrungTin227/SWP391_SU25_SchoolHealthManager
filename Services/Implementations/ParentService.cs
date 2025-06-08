@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DTOs.ParentDTOs.Request;
+using DTOs.ParentDTOs.Response;
 using Microsoft.AspNetCore.Identity;
 using Repositories.Interfaces;
 
@@ -116,6 +117,23 @@ namespace Services.Implementations
             catch (Exception ex)
             {
                 return ApiResult<AddParentRequestDTO>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<List<GetAllParentDTO>>> GetAllParentsAsync()
+        {
+            try
+            {
+                var parents = await _parentRepository.GetAllParentDtoAsync();
+                if (parents == null || !parents.Any())
+                {
+                    return ApiResult<List<GetAllParentDTO>>.Failure(new Exception("Không tìm thấy phụ huynh nào!!"));
+                }
+                return ApiResult<List<GetAllParentDTO>>.Success(parents, "Lấy danh sách phụ huynh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<GetAllParentDTO>>.Failure(ex);
             }
         }
     }

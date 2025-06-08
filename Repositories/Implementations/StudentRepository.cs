@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DTOs.StudentDTOs.Request;
+using DTOs.StudentDTOs.Response;
 using Microsoft.EntityFrameworkCore;
 using Repositories.WorkSeeds.Implements;
 
@@ -40,5 +41,32 @@ namespace Repositories.Implementations
                 .AnyAsync(u => u.StudentCode == code);
         }
 
+        public Task<List<Student>> GetAllStudentsAsync()
+        {
+            return _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted)
+                .OrderBy(s => s.Grade)
+                .ToListAsync();
+        }
+
+        public async Task<List<GetAllStudentDTO>> GetAllStudentsDTOAsync()
+        {
+            return await _context.Students
+                   .Where(s => !s.IsDeleted)
+                   .OrderBy(s => s.Grade)
+                   .Select(s => new GetAllStudentDTO
+                   {
+                       Id = s.Id,
+                       StudentCode = s.StudentCode,
+                       FirstName = s.FirstName,
+                       LastName = s.LastName,
+                       DateOfBirth = s.DateOfBirth,
+                       Grade = s.Grade,
+                       Section = s.Section,
+                       Image = s.Image
+                   })
+                   .ToListAsync();
+        }
     }
 }

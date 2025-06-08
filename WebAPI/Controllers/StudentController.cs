@@ -8,24 +8,36 @@ namespace WebAPI.Controllers
     public class StudentController : Controller
     {
         private readonly IStudentService _studentService;
-        public StudentController(IStudentService studentService) 
-        { 
+        public StudentController(IStudentService studentService)
+        {
             _studentService = studentService;
         }
 
         [HttpPost("register-Student")]
-        public async Task<IActionResult> RegisterStudent([FromBody] AddStudentRequestDTO request) { 
+        public async Task<IActionResult> RegisterStudent([FromBody] AddStudentRequestDTO request)
+        {
             if (request == null || string.IsNullOrEmpty(request.StudentCode) || string.IsNullOrEmpty(request.FirstName))
             {
                 return BadRequest(new { Message = "StudentCode and FullName are required" });
             }
             var result = await _studentService.AddStudentAsync(request);
-            if (!result.IsSuccess) // Hoặc if (!result.Success) tùy vào kiểu trả về
+            if (!result.IsSuccess) 
             {
                 return BadRequest(result);
             }
             return Ok(result);
         }
 
+        [HttpGet("get-all-students")]
+        public async Task<IActionResult> GetAllStudents()
+        {
+            var result = await _studentService.GetAllStudentsDTOAsync();
+            if (!result.IsSuccess) 
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+
+        }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DTOs.ParentDTOs.Response;
 
 namespace Repositories.Interfaces
 {
@@ -14,6 +15,12 @@ namespace Repositories.Interfaces
         Task<Parent> CreateParentAsync(Parent parent);
 
         Task<Parent?> GetParentByUserIdAsync(Guid userId);
+
+        Task<List<Parent>> GetAllParentAsync();
+        Task<List<GetAllParentDTO>> GetAllParentDtoAsync();
+
+
+
 
     }
 }

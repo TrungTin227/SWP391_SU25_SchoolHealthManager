@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DTOs.ParentDTOs.Response;
+using DTOs.StudentDTOs.Response;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Repositories.WorkSeeds.Implements;
@@ -39,6 +41,28 @@ namespace Repositories.Implementations
                 return null;
             return user.Email;
         }
+
+        public Task<List<Parent>> GetAllParentAsync()
+        {
+            return _dbcontext.Parents
+                .Where(s => !s.IsDeleted)
+                .ToListAsync();
+        }
+
+        public async Task<List<GetAllParentDTO>> GetAllParentDtoAsync()
+        {
+            return await _dbcontext.Parents
+                .Include(p => p.User) // nếu cần username
+                .Where(p => !p.IsDeleted)
+                .Select(p => new GetAllParentDTO
+                {
+                    UserId = p.UserId,
+                    Username = p.User != null ? p.User.UserName : null,
+                    Relationship = p.Relationship.ToString()
+                })
+                .ToListAsync();
+        }
+
 
         public Task<Parent?> GetParentByUserIdAsync(Guid userId)
         =>  _dbcontext.Parents.FirstOrDefaultAsync(p => p.UserId == userId);

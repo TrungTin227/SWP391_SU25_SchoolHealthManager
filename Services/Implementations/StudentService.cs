@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DTOs.MedicationLotDTOs.Response;
 using DTOs.StudentDTOs.Request;
+using DTOs.StudentDTOs.Response;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
@@ -53,5 +54,32 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<List<Student>>> GetAllStudentsAsync()
+        {
+            try
+            {
+                var students =await _unitOfWork.StudentRepository.GetAllStudentsAsync();
+                return ApiResult<List<Student>>.Success(students, "Lấy danh sách học sinh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách học sinh");
+                return ApiResult<List<Student>>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<List<GetAllStudentDTO>>> GetAllStudentsDTOAsync()
+        {
+            try
+            {
+                var students = await _unitOfWork.StudentRepository.GetAllStudentsDTOAsync();
+                return ApiResult<List<GetAllStudentDTO>>.Success(students, "Lấy danh sách học sinh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách học sinh");
+                return ApiResult<List<GetAllStudentDTO>>.Failure(ex);
+            }
+        }
     }
 }
