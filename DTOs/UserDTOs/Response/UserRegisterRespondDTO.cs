@@ -9,6 +9,7 @@ namespace DTOs.UserDTOs.Response
 {
     public class UserRegisterRespondDTO
     {
+        public Guid UserId { get; set; }
         public string Email { get; set; }
         [Required]
         public string Password { get; set; } = string.Empty;

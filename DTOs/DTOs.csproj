@@ -13,7 +13,6 @@
   <ItemGroup>
     <Folder Include="ParentDTOs\Request\" />
     <Folder Include="ParentDTOs\Response\" />
-    <Folder Include="StudentDTOs\Response\" />
   </ItemGroup>
 
 </Project>

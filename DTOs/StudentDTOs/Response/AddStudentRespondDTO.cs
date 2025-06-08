@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DTOs.StudentDTOs.Request
+namespace DTOs.StudentDTOs.Response
 {
-    public class AddStudentRequestDTO
+    public class AddStudentRespondDTO
     {
-        [Required(ErrorMessage = "Mã định danh là bắt buộc"), MaxLength(20)]
+        [Required, MaxLength(20)]
         public string StudentCode { get; set; }      // Mã định danh học sinh (ví dụ: HS2025001)
 
         [Required, MaxLength(50)]
@@ -28,8 +28,6 @@ namespace DTOs.StudentDTOs.Request
         public string? Section { get; set; }          // Lớp (ví dụ: "5A")
 
         [MaxLength(150)]
-        public string? Image { get; set; }
-
-        public Guid ParentID { get; set; }        // ID của phụ huynh (nếu có)
+        public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
     }
 }
