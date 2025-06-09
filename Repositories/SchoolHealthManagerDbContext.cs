@@ -333,26 +333,27 @@ namespace Repositories
         #region Medical Supply Management Configuration
         private static void ConfigureMedicalSupplyManagement(ModelBuilder builder)
         {
-            // MedicalSupply ↔ SupplyUsage (One-to-Many)
-            builder.Entity<MedicalSupply>(entity =>
-            {
-                entity.HasMany(ms => ms.SupplyUsages)
-                      .WithOne(su => su.MedicalSupply)
-                      .HasForeignKey(su => su.MedicalSupplyId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
+            // MedicalSupply ↔ MedicalSupplyLot (One-to-Many)
+            builder.Entity<MedicalSupply>()
+                   .HasMany(ms => ms.Lots)
+                   .WithOne(msl => msl.MedicalSupply)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            // MedicalSupplyLot ↔ SupplyUsage (One-to-Many)
+            builder.Entity<MedicalSupplyLot>()
+                   .HasMany(msl => msl.SupplyUsages)
+                   .WithOne(su => su.MedicalSupplyLot)
+                   .OnDelete(DeleteBehavior.Restrict);
 
             // SupplyUsage relationships
             builder.Entity<SupplyUsage>(entity =>
             {
                 entity.HasOne(su => su.HealthEvent)
                       .WithMany(he => he.SupplyUsages)
-                      .HasForeignKey(su => su.HealthEventId)
                       .OnDelete(DeleteBehavior.NoAction);
 
                 entity.HasOne(su => su.UsedByNurse)
                       .WithMany()
-                      .HasForeignKey(su => su.NurseProfileId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
         }
