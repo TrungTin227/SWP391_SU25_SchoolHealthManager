@@ -77,6 +77,10 @@ namespace Services.Implementations
             try
             {
                 var students = await _unitOfWork.StudentRepository.GetAllStudentsDTOAsync();
+                if (students == null || !students.Any())
+                {
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("Không có học sinh nào được tìm thấy."));
+                }
                 return ApiResult<List<GetAllStudentDTO>>.Success(students, "Lấy danh sách học sinh thành công!!");
             }
             catch (Exception ex)
