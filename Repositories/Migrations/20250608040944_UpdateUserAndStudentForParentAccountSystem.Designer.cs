@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories;
 
@@ -11,9 +12,11 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    partial class SchoolHealthManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250608040944_UpdateUserAndStudentForParentAccountSystem")]
+    partial class UpdateUserAndStudentForParentAccountSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -638,57 +641,6 @@ namespace Repositories.Migrations
                     b.ToTable("MedicalSupplies");
                 });
 
-            modelBuilder.Entity("BusinessObjects.MedicalSupplyLot", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ExpirationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LotNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("ManufactureDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("MedicalSupplyId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MedicalSupplyId");
-
-                    b.ToTable("MedicalSupplyLot");
-                });
-
             modelBuilder.Entity("BusinessObjects.Medication", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1259,7 +1211,7 @@ namespace Repositories.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("MedicalSupplyLotId")
+                    b.Property<Guid>("MedicalSupplyId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Notes")
@@ -1283,7 +1235,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("HealthEventId");
 
-                    b.HasIndex("MedicalSupplyLotId");
+                    b.HasIndex("MedicalSupplyId");
 
                     b.HasIndex("NurseProfileId");
 
@@ -1917,17 +1869,6 @@ namespace Repositories.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("BusinessObjects.MedicalSupplyLot", b =>
-                {
-                    b.HasOne("BusinessObjects.MedicalSupply", "MedicalSupply")
-                        .WithMany("Lots")
-                        .HasForeignKey("MedicalSupplyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MedicalSupply");
-                });
-
             modelBuilder.Entity("BusinessObjects.MedicationLot", b =>
                 {
                     b.HasOne("BusinessObjects.Medication", "Medication")
@@ -2068,10 +2009,10 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.MedicalSupplyLot", "MedicalSupplyLot")
+                    b.HasOne("BusinessObjects.MedicalSupply", "MedicalSupply")
                         .WithMany("SupplyUsages")
-                        .HasForeignKey("MedicalSupplyLotId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("MedicalSupplyId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.NurseProfile", "UsedByNurse")
@@ -2082,7 +2023,7 @@ namespace Repositories.Migrations
 
                     b.Navigation("HealthEvent");
 
-                    b.Navigation("MedicalSupplyLot");
+                    b.Navigation("MedicalSupply");
 
                     b.Navigation("UsedByNurse");
                 });
@@ -2235,11 +2176,6 @@ namespace Repositories.Migrations
                 });
 
             modelBuilder.Entity("BusinessObjects.MedicalSupply", b =>
-                {
-                    b.Navigation("Lots");
-                });
-
-            modelBuilder.Entity("BusinessObjects.MedicalSupplyLot", b =>
                 {
                     b.Navigation("SupplyUsages");
                 });

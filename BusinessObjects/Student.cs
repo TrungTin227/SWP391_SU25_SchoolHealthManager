@@ -30,11 +30,11 @@ namespace BusinessObjects
         public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
 
         // Foreign Key đến Parent
-        [Required]
+     
         public Guid ParentUserId { get; set; }
 
         [ForeignKey(nameof(ParentUserId))]
-        public Parent Parent { get; set; } = null!;  // Quan hệ tới Parent (Many-to-One)
+        public Parent Parent { get; set; }  // Quan hệ tới Parent (Many-to-One)
 
         public ICollection<HealthProfile> HealthProfiles { get; set; } = new List<HealthProfile>();
         public ICollection<HealthEvent> HealthEvents { get; set; } = new List<HealthEvent>();

@@ -12,14 +12,13 @@ namespace BusinessObjects
 
         [Required, MaxLength(50)]
         public string Unit { get; set; } = ""; // e.g., "pcs", "box", "bottle"
-
-        public int CurrentStock { get; set; }
-
+        public int CurrentStock { get; set; } 
         public int MinimumStock { get; set; }
 
         public bool IsActive { get; set; }
 
         // Navigation
-        public virtual ICollection<SupplyUsage> SupplyUsages { get; set; } = new List<SupplyUsage>();
+        public virtual ICollection<MedicalSupplyLot> Lots { get; set; } = new List<MedicalSupplyLot>();
+   
     }
 }
