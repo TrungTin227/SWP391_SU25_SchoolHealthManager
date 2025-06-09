@@ -224,5 +224,28 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(ex);
             }
         }
+
+        public async Task<ApiResult<List<GetAllStudentDTO>>> GetStudentsByParentIdAsync(Guid parentId)
+        {
+            try
+            {
+                if (parentId == Guid.Empty)
+                {
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new ArgumentNullException(nameof(parentId), "ID phụ huynh không được để trống."));
+                }
+                var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId);
+                if (students == null || !students.Any())
+                {
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("Không tìm thấy học sinh nào cho phụ huynh với ID: " + parentId + " !!"));
+                }
+                return ApiResult<List<GetAllStudentDTO>>.Success(students, "Lấy danh sách học sinh theo phụ huynh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách học sinh theo ID phụ huynh");
+                return ApiResult<List<GetAllStudentDTO>>.Failure(ex);
+            }
+
+        }
     }
 }

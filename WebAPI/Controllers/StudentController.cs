@@ -1,4 +1,4 @@
-﻿using DTOs.StudentDTOs.Request;
+﻿    using DTOs.StudentDTOs.Request;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
@@ -83,6 +83,21 @@ namespace WebAPI.Controllers
             }
             var result = await _studentService.SoftDeleteStudentByCodeAsync(studentCode);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("get-students-by-parent-id")]
+        public async Task<IActionResult> GetStudentsByParentId([FromQuery] Guid parentId)
+        {
+            if (parentId == Guid.Empty)
+            {
+                return BadRequest(new { Message = "ParentId is required" });
+            }
+            var result = await _studentService.GetStudentsByParentIdAsync(parentId);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
         }
     }
 }

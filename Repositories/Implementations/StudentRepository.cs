@@ -105,6 +105,26 @@ namespace Repositories.Implementations
                 .FirstOrDefaultAsync();
         }
 
+        public Task<List<GetAllStudentDTO>> GetStudentsByParentIdAsync(Guid id)
+        {
+            return _context.Students
+                .AsNoTracking()
+                .Where(s => s.ParentUserId == id && !s.IsDeleted)
+                .OrderBy(s => s.Grade)
+                .Select(s => new GetAllStudentDTO
+                {
+                    Id = s.Id,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Grade = s.Grade,
+                    Section = s.Section,
+                    Image = s.Image
+                })
+                .ToListAsync();
+        }
+
         public async Task<bool> SoftDeleteStudentAsync(Student student)
         {
             if (student == null)

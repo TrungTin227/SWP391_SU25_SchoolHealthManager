@@ -20,5 +20,6 @@ namespace Services.Interfaces
         Task<ApiResult<UpdateStudentRequestDTO>> UpdateStudentById(UpdateStudentRequestDTO updateStudentRequestDTO);
         Task<ApiResult<bool>> SoftDeleteStudentByIdAsync(Guid id);
         Task<ApiResult<bool>> SoftDeleteStudentByCodeAsync(string studentCode);
+        Task<ApiResult<List<GetAllStudentDTO>>> GetStudentsByParentIdAsync(Guid parentId);
     }
 }
