@@ -15,7 +15,7 @@ namespace Services.Interfaces
         Task<ApiResult<List<GetAllParentDTO>>> GetAllParentsAsync();
         Task<ApiResult<bool>> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request);
         Task<ApiResult<bool>> SoftDeleteByParentIdAsync(Guid parentId);
-
+        Task<ApiResult<UserRegisterRespondDTO>> RegisterParentUserAsync(UserRegisterRequestDTO user);
 
     }
 }
