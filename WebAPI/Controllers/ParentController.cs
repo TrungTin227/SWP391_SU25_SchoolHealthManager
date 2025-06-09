@@ -1,4 +1,5 @@
 ﻿using DTOs.ParentDTOs.Request;
+using DTOs.ParentMedicationDeliveryDTOs.Request;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
@@ -9,10 +10,12 @@ namespace WebAPI.Controllers
     public class ParentController : Controller
     {
         private readonly IParentService _parentService;
+        private readonly IParentMedicationDeliveryService _ParentMedicationDeliveryService;
 
-        public ParentController(IParentService parentService)
+        public ParentController(IParentService parentService, IParentMedicationDeliveryService parentMedicationDeliveryService  )
         {
             _parentService = parentService;
+            _ParentMedicationDeliveryService = parentMedicationDeliveryService;
         }
 
         [HttpPost("register-User")]
@@ -82,6 +85,19 @@ namespace WebAPI.Controllers
                 return BadRequest(new { Message = "Parent ID is required" });
             }
             var result = await _parentService.SoftDeleteByParentIdAsync(parentId);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("create-parent-medication-delivery")]
+        public async Task<IActionResult> CreateParentMedicationDelivery([FromBody] CreateParentMedicationDeliveryRequestDTO request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            var result = await _ParentMedicationDeliveryService.CreateAsync(request);
             if (!result.IsSuccess)
             {
                 return BadRequest(result);

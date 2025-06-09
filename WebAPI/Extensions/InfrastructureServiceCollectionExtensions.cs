@@ -92,6 +92,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<IParentRepository, ParentRepository>();
+            services.AddScoped<IParentMedicationDeliveryRepository, ParentMedicationDeliveryRepository>();
             services.AddScoped<IMedicationRepository, MedicationRepository>(); 
             services.AddScoped<IMedicationLotRepository, MedicationLotRepository>();
             services.AddScoped<IRepositoryFactory, RepositoryFactory>();
@@ -102,6 +103,7 @@ namespace WebAPI.Extensions
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IParentService, ParentService>();
+            services.AddScoped<IParentMedicationDeliveryService, ParentMedicationDeliveryService>();
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<IUserEmailService, UserEmailService>();
             services.AddScoped<IMedicationService, MedicationService>();
