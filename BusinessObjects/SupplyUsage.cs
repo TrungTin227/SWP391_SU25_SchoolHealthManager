@@ -15,10 +15,10 @@ namespace BusinessObjects
         public virtual HealthEvent HealthEvent { get; set; }
 
         [Required]
-        public Guid MedicalSupplyId { get; set; }
+        public Guid MedicalSupplyLotId { get; set; }
 
-        [ForeignKey(nameof(MedicalSupplyId))]
-        public virtual MedicalSupply? MedicalSupply { get; set; }
+        [ForeignKey(nameof(MedicalSupplyLotId))]
+        public virtual MedicalSupplyLot MedicalSupplyLot { get; set; }
 
         [Required]
         public int QuantityUsed { get; set; }
