@@ -18,49 +18,61 @@ namespace WebAPI.Controllers
             _ParentMedicationDeliveryService = parentMedicationDeliveryService;
         }
 
-        [HttpPost("register-User")]
-        public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequestDTO request)
+        [HttpPost("register-parent")]
+        public async Task<IActionResult> RegisterParent([FromBody] UserRegisterRequestDTO request)
         {
-            if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
-            {
-                return BadRequest(new { Message = "Email and Password are required" });
-            }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            var result = await _parentService.RegisterUserAsync(request);
-
-            if (!result.IsSuccess)
-            {
+            var result = await _parentService.RegisterParentUserAsync(request);
+            if (result.IsSuccess)
+                return Ok(result);
+            else
                 return BadRequest(result);
-            }
-
-            return Ok(result);
         }
+        //[HttpPost("register-User")]
+        //public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequestDTO request)
+        //{
+        //    if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+        //    {
+        //        return BadRequest(new { Message = "Email and Password are required" });
+        //    }
 
-        [HttpPost("create-parent")]
-        public async Task<IActionResult> CreateParent([FromBody] AddParentRequestDTO request)
-        {
-            if (request == null)
-            {
-                return BadRequest(new { Message = "User ID are required" });
-            }
-            var result = await _parentService.CreateParentAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
-        }
+        //    var result = await _parentService.RegisterUserAsync(request);
 
-        [HttpGet("get-all-parents")]
-        public async Task<IActionResult> GetAllParents()
-        {
-            var result = await _parentService.GetAllParentsAsync();
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
-        }
+        //    if (!result.IsSuccess)
+        //    {
+        //        return BadRequest(result);
+        //    }
+
+        //    return Ok(result);
+        //}
+
+        //[HttpPost("create-parent")]
+        //public async Task<IActionResult> CreateParent([FromBody] AddParentRequestDTO request)
+        //{
+        //    if (request == null)
+        //    {
+        //        return BadRequest(new { Message = "User ID are required" });
+        //    }
+        //    var result = await _parentService.CreateParentAsync(request);
+        //    if (!result.IsSuccess)
+        //    {
+        //        return BadRequest(result);
+        //    }
+        //    return Ok(result);
+        //}
+
+        //[HttpGet("get-all-parents")]
+        //public async Task<IActionResult> GetAllParents()
+        //{
+        //    var result = await _parentService.GetAllParentsAsync();
+        //    if (!result.IsSuccess)
+        //    {
+        //        return BadRequest(result);
+        //    }
+        //    return Ok(result);
+        //}
 
         [HttpPost("update-relationship-by-parent-id")]
         public async Task<IActionResult> UpdateRelationshipByParentId([FromBody] UpdateRelationshipByParentId request)

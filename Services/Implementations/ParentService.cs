@@ -20,7 +20,7 @@ namespace Services.Implementations
         private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         private readonly ILogger<ParentService> _logger;
 
-        public ParentService(IParentRepository parentRepository, UserManager<User> userManager, ICurrentUserService currentUserService, IUserService userService,ILogger<ParentService> logger)
+        public ParentService(IParentRepository parentRepository, UserManager<User> userManager, ICurrentUserService currentUserService, IUserService userService, ILogger<ParentService> logger)
         {
             _parentRepository = parentRepository;
             _userManager = userManager;
@@ -34,7 +34,7 @@ namespace Services.Implementations
             try
             {
                 var existing = await _parentRepository.FindByEmailAsync(user.Email);
-                if (existing==true)
+                if (existing == true)
                 {
                     return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
                 }
@@ -204,5 +204,70 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(ex);
             }
         }
+        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterParentUserAsync(UserRegisterRequestDTO user)
+        {
+            try
+            {
+                // Check nếu email đã tồn tại
+                var existing = await _parentRepository.FindByEmailAsync(user.Email);
+                if (existing)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
+                }
+
+                var currentUserId = _currentUserService.GetUserId() ?? SystemGuid;
+
+                // Tạo User mới
+                var newUser = new User
+                {
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    UserName = user.Email,
+                    Gender = user.Gender,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = currentUserId,
+                    IsDeleted = false,
+                    EmailConfirmed = false
+                };
+
+                var result = await _userManager.CreateAsync(newUser, user.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception($"Đăng kí thất bại!!! Lỗi: {errors}"));
+                }
+
+                // Gán role "Parent" và gửi mail
+                await _userManager.AddToRoleAsync(newUser, "Parent");
+                await _userService.SendWelcomeEmailsAsync(newUser.Email);
+
+                // Tạo record Parent luôn
+                var parent = new Parent
+                {
+                    UserId = newUser.Id,
+                    Relationship = Relationship.Other,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedBy = currentUserId
+                };
+
+                var parentResult = await _parentRepository.CreateParentAsync(parent);
+                if (parentResult == null)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Tạo user thành công nhưng tạo phụ huynh thất bại!!"));
+                }
+
+                return ApiResult<UserRegisterRespondDTO>.Success(UserMappings.ToUserRegisterResponse(newUser), "Đăng kí phụ huynh thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<UserRegisterRespondDTO>.Failure(ex);
+            }
+        }
+
     }
 }
