@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObjects.Common;
 
 namespace DTOs.StudentDTOs.Response
 {
@@ -17,5 +18,12 @@ namespace DTOs.StudentDTOs.Response
         public string? Grade { get; set; }            // Khối lớp (ví dụ: "5")
         public string? Section { get; set; }          // Lớp (ví dụ: "5A")
         public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
+        public string? Allgies { get; set; }
+        public string? ChronicConditions { get; set;}
+
+        public string? TreatementHisttory { get; set; } // Tiền sử điều trị bệnh
+        public VisionLevel? VisionLevel { get; set; }
+        public HearingLevel? HearingLevel { get; set; }
+
     }
 }
