@@ -32,9 +32,9 @@ namespace WebAPI.Controllers
             var result = await _userService.ConfirmEmailAsync(userId, token);
 
             if (result.IsSuccess)
-                return Ok(new { success = true, message = result.Message });
+                return Ok(result);
             else
-                return BadRequest(new { success = false, message = result.Message });
+                return BadRequest(result);
         }
 
         [HttpPost("resend-confirmation")]
