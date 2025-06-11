@@ -1,6 +1,6 @@
 ﻿using Repositories.Interfaces;
 
-namespace Services
+namespace Services.Commons
 {
     public abstract class BaseService<TEntity, TKey>
     where TEntity : class
@@ -103,7 +103,7 @@ namespace Services
         // Helper methods
         private bool IsInheritedFromBaseEntity(Type type)
         {
-            return typeof(BusinessObjects.BaseEntity).IsAssignableFrom(type);
+            return typeof(BaseEntity).IsAssignableFrom(type);
         }
 
         private void SetProperty(object obj, string propertyName, object value)
@@ -115,7 +115,7 @@ namespace Services
         private T GetProperty<T>(object obj, string propertyName)
         {
             var property = obj.GetType().GetProperty(propertyName);
-            return property != null ? (T)property.GetValue(obj) : default(T);
+            return property != null ? (T)property.GetValue(obj) : default;
         }
     }
 }

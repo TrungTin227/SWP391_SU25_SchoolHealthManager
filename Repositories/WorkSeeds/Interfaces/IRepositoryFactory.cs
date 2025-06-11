@@ -1,6 +1,6 @@
 ﻿namespace Repositories.WorkSeeds.Interfaces
 {
-    public interface IRepositoryFactory // Phải là interface, không phải class
+    public interface IRepositoryFactory
     {
         IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class;

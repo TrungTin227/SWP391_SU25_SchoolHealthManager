@@ -6,5 +6,7 @@
         IUserRepository UserRepository { get; }
         IMedicationRepository MedicationRepository { get; }
         IMedicationLotRepository MedicationLotRepository { get; }
+        IMedicalSupplyRepository MedicalSupplyRepository { get; }
+        IMedicalSupplyLotRepository MedicalSupplyLotRepository { get; }
     }
 }

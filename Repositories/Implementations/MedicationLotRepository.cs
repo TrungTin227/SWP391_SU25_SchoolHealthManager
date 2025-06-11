@@ -13,9 +13,58 @@ namespace Repositories.Implementations
             _dbContext = context;
         }
 
-        #region Batch Operations
+        #region Basic CRUD Methods
+
+        public async Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
+            int pageNumber, int pageSize, string? searchTerm = null,
+            Guid? medicationId = null, bool? isExpired = null)
+        {
+            var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired);
+
+            return await GetPagedAsync(
+                pageNumber,
+                pageSize,
+                predicate,
+                orderBy: q => q.OrderBy(ml => ml.ExpiryDate).ThenBy(ml => ml.LotNumber),
+                includes: ml => ml.Medication
+            );
+        }
+
+        public async Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId)
+        {
+            return await FirstOrDefaultAsync(
+                ml => ml.Id == lotId && !ml.IsDeleted,
+                ml => ml.Medication
+            );
+        }
+
+        public new async Task<MedicationLot?> GetByIdAsync(Guid id, bool includeDeleted = false)
+        {
+            if (includeDeleted)
+            {
+                return await _dbContext.MedicationLots
+                    .IgnoreQueryFilters()
+                    .Include(ml => ml.Medication)
+                    .FirstOrDefaultAsync(ml => ml.Id == id);
+            }
+
+            return await _dbContext.MedicationLots
+                .Include(ml => ml.Medication)
+                .FirstOrDefaultAsync(ml => ml.Id == id && !ml.IsDeleted);
+        }
+
+        #endregion
+
+        #region Batch Operations (Unified - Support Single and Multiple)
+
+        /// <summary>
+        /// Lấy danh sách lô thuốc theo IDs - hỗ trợ cả single và multiple
+        /// </summary>
         public async Task<List<MedicationLot>> GetMedicationLotsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
         {
+            if (ids == null || !ids.Any())
+                return new List<MedicationLot>();
+
             var query = _dbContext.MedicationLots
                 .Include(ml => ml.Medication)
                 .Where(ml => ids.Contains(ml.Id));
@@ -32,8 +81,14 @@ namespace Repositories.Implementations
             return await query.ToListAsync();
         }
 
+        /// <summary>
+        /// Soft delete một hoặc nhiều lô thuốc - hỗ trợ cả single và multiple
+        /// </summary>
         public async Task<int> SoftDeleteLotsAsync(List<Guid> ids, Guid deletedBy)
         {
+            if (ids == null || !ids.Any())
+                return 0;
+
             var lots = await _dbContext.MedicationLots
                 .Where(ml => ids.Contains(ml.Id) && !ml.IsDeleted)
                 .ToListAsync();
@@ -55,8 +110,14 @@ namespace Repositories.Implementations
             return lots.Count;
         }
 
+        /// <summary>
+        /// Khôi phục một hoặc nhiều lô thuốc - hỗ trợ cả single và multiple
+        /// </summary>
         public async Task<int> RestoreLotsAsync(List<Guid> ids, Guid restoredBy)
         {
+            if (ids == null || !ids.Any())
+                return 0;
+
             var lots = await _dbContext.MedicationLots
                 .IgnoreQueryFilters()
                 .Where(ml => ids.Contains(ml.Id) && ml.IsDeleted)
@@ -79,8 +140,14 @@ namespace Repositories.Implementations
             return lots.Count;
         }
 
+        /// <summary>
+        /// Xóa vĩnh viễn một hoặc nhiều lô thuốc - hỗ trợ cả single và multiple
+        /// </summary>
         public async Task<int> PermanentDeleteLotsAsync(List<Guid> ids)
         {
+            if (ids == null || !ids.Any())
+                return 0;
+
             var lots = await _dbContext.MedicationLots
                 .IgnoreQueryFilters()
                 .Where(ml => ids.Contains(ml.Id))
@@ -95,118 +162,7 @@ namespace Repositories.Implementations
 
         #endregion
 
-        #region Business Logic Methods
-
-        public async Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicationId = null, bool? isExpired = null)
-        {
-            var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired);
-
-            return await GetPagedAsync(
-                pageNumber,
-                pageSize,
-                predicate,
-                orderBy: q => q.OrderBy(ml => ml.ExpiryDate).ThenBy(ml => ml.LotNumber),
-                includes: ml => ml.Medication
-            );
-        }
-
-        public async Task<List<MedicationLot>> GetExpiringLotsAsync(int daysBeforeExpiry = 30)
-        {
-            var predicate = BuildExpiringLotsPredicate(daysBeforeExpiry);
-
-            var lots = await GetAllAsync(
-                predicate: predicate,
-                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
-                includes: ml => ml.Medication
-            );
-
-            return lots.ToList();
-        }
-
-        public async Task<List<MedicationLot>> GetLotsByMedicationIdAsync(Guid medicationId)
-        {
-            var predicate = BuildLotsByMedicationIdPredicate(medicationId);
-
-            var lots = await GetAllAsync(
-                predicate: predicate,
-                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
-                includes: ml => ml.Medication
-            );
-
-            return lots.ToList();
-        }
-
-        public async Task<bool> LotNumberExistsAsync(string lotNumber, Guid? excludeId = null)
-        {
-            var predicate = BuildLotNumberExistsPredicate(lotNumber, excludeId);
-            return await AnyAsync(predicate);
-        }
-
-        public async Task<int> GetAvailableQuantityAsync(Guid medicationId)
-        {
-            var today = DateTime.UtcNow.Date;
-
-            return await _dbContext.MedicationLots
-                .AsNoTracking()
-                .Where(ml => ml.MedicationId == medicationId &&
-                            !ml.IsDeleted &&
-                            ml.ExpiryDate.Date > today)
-                .SumAsync(ml => ml.Quantity);
-        }
-
-        public async Task<List<MedicationLot>> GetExpiredLotsAsync()
-        {
-            var predicate = BuildExpiredLotsPredicate();
-
-            var lots = await GetAllAsync(
-                predicate: predicate,
-                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
-                includes: ml => ml.Medication
-            );
-
-            return lots.ToList();
-        }
-
-        public async Task<bool> UpdateQuantityAsync(Guid lotId, int newQuantity)
-        {
-            var lot = await GetByIdAsync(lotId);
-            if (lot == null || lot.IsDeleted)
-            {
-                return false;
-            }
-
-            lot.Quantity = newQuantity;
-            lot.UpdatedAt = DateTime.UtcNow;
-
-            await UpdateAsync(lot);
-            return true;
-        }
-
-        public async Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId)
-        {
-            return await FirstOrDefaultAsync(
-                ml => ml.Id == lotId && !ml.IsDeleted,
-                ml => ml.Medication
-            );
-        }
-
-        #endregion
-
-        #region Extended Soft Delete Methods
-
-        public new async Task<MedicationLot?> GetByIdAsync(Guid id, bool includeDeleted = false)
-        {
-            if (includeDeleted)
-            {
-                return await _dbContext.MedicationLots
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(ml => ml.Id == id);
-            }
-
-            return await base.GetByIdAsync(id);
-        }
+        #region Soft Delete Operations
 
         public async Task<PagedList<MedicationLot>> GetSoftDeletedLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null)
@@ -226,16 +182,6 @@ namespace Repositories.Implementations
                 .ToListAsync();
 
             return new PagedList<MedicationLot>(items, totalCount, pageNumber, pageSize);
-        }
-
-        public async Task<bool> SoftDeleteLotAsync(Guid id, Guid deletedBy)
-        {
-            return await SoftDeleteAsync(id, deletedBy);
-        }
-
-        public async Task<bool> RestoreLotAsync(Guid id, Guid restoredBy)
-        {
-            return await RestoreAsync(id, restoredBy);
         }
 
         public async Task<int> PermanentDeleteExpiredLotsAsync(int daysToExpire = 30)
@@ -259,31 +205,83 @@ namespace Repositories.Implementations
 
         #endregion
 
+        #region Business Logic Methods
+
+        public async Task<List<MedicationLot>> GetExpiringLotsAsync(int daysBeforeExpiry = 30)
+        {
+            var predicate = BuildExpiringLotsPredicate(daysBeforeExpiry);
+
+            var lots = await GetAllAsync(
+                predicate: predicate,
+                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
+                includes: ml => ml.Medication
+            );
+
+            return lots.ToList();
+        }
+
+        public async Task<List<MedicationLot>> GetExpiredLotsAsync()
+        {
+            var predicate = BuildExpiredLotsPredicate();
+
+            var lots = await GetAllAsync(
+                predicate: predicate,
+                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
+                includes: ml => ml.Medication
+            );
+
+            return lots.ToList();
+        }
+
+        public async Task<List<MedicationLot>> GetLotsByMedicationIdAsync(Guid medicationId)
+        {
+            var predicate = BuildLotsByMedicationIdPredicate(medicationId);
+
+            var lots = await GetAllAsync(
+                predicate: predicate,
+                orderBy: q => q.OrderBy(ml => ml.ExpiryDate),
+                includes: ml => ml.Medication
+            );
+
+            return lots.ToList();
+        }
+
+        public async Task<int> GetAvailableQuantityAsync(Guid medicationId)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            return await _dbContext.MedicationLots
+                .AsNoTracking()
+                .Where(ml => ml.MedicationId == medicationId &&
+                            !ml.IsDeleted &&
+                            ml.ExpiryDate.Date > today)
+                .SumAsync(ml => ml.Quantity);
+        }
+
+        public async Task<bool> UpdateQuantityAsync(Guid lotId, int newQuantity)
+        {
+            var lot = await GetByIdAsync(lotId);
+            if (lot == null || lot.IsDeleted)
+            {
+                return false;
+            }
+
+            lot.Quantity = newQuantity;
+            lot.UpdatedAt = DateTime.UtcNow;
+
+            await UpdateAsync(lot);
+            return true;
+        }
+
+        public async Task<bool> LotNumberExistsAsync(string lotNumber, Guid? excludeId = null)
+        {
+            var predicate = BuildLotNumberExistsPredicate(lotNumber, excludeId);
+            return await AnyAsync(predicate);
+        }
+
+        #endregion
+
         #region Statistics Methods
-
-        public async Task<int> GetActiveLotCountAsync()
-        {
-            var predicate = BuildActiveLotCountPredicate();
-            return await CountAsync(predicate);
-        }
-
-        public async Task<int> GetExpiredLotCountAsync()
-        {
-            var predicate = BuildExpiredLotCountPredicate();
-            return await CountAsync(predicate);
-        }
-
-        public async Task<int> GetExpiringLotCountAsync(int daysBeforeExpiry)
-        {
-            var predicate = BuildExpiringLotCountPredicate(daysBeforeExpiry);
-            return await CountAsync(predicate);
-        }
-
-        public async Task<int> GetTotalLotCountAsync()
-        {
-            var predicate = BuildTotalLotCountPredicate();
-            return await CountAsync(predicate);
-        }
 
         public async Task<MedicationLotStatisticsResponseDTO> GetAllStatisticsAsync(DateTime currentDate, DateTime expiryThreshold)
         {
@@ -300,11 +298,22 @@ namespace Repositories.Implementations
                                          ml.ExpiryDate.Date <= expiryThreshold),
                     GeneratedAt = DateTime.UtcNow
                 })
-                .FirstOrDefaultAsync() ?? new MedicationLotStatisticsResponseDTO
+                .FirstOrDefaultAsync();
+
+            // Nếu không có data, tạo object mới với giá trị mặc định
+            if (stats == null)
+            {
+                return new MedicationLotStatisticsResponseDTO
                 {
+                    TotalLots = 0,
+                    ActiveLots = 0,
+                    ExpiredLots = 0,
+                    ExpiringInNext30Days = 0,
                     GeneratedAt = DateTime.UtcNow
                 };
+            }
 
+            // Percentages sẽ được tính tự động trong DTO
             return stats;
         }
 
@@ -371,33 +380,6 @@ namespace Repositories.Implementations
             return ml => ml.IsDeleted &&
                         ml.DeletedAt.HasValue &&
                         ml.DeletedAt <= expiredDate;
-        }
-
-        private Expression<Func<MedicationLot, bool>> BuildActiveLotCountPredicate()
-        {
-            var currentDate = DateTime.UtcNow.Date;
-            return lot => !lot.IsDeleted && lot.ExpiryDate.Date > currentDate;
-        }
-
-        private Expression<Func<MedicationLot, bool>> BuildExpiredLotCountPredicate()
-        {
-            var currentDate = DateTime.UtcNow.Date;
-            return lot => !lot.IsDeleted && lot.ExpiryDate.Date <= currentDate;
-        }
-
-        private Expression<Func<MedicationLot, bool>> BuildExpiringLotCountPredicate(int daysBeforeExpiry)
-        {
-            var currentDate = DateTime.UtcNow.Date;
-            var expiryThreshold = currentDate.AddDays(daysBeforeExpiry);
-
-            return lot => !lot.IsDeleted &&
-                         lot.ExpiryDate.Date > currentDate &&
-                         lot.ExpiryDate.Date <= expiryThreshold;
-        }
-
-        private Expression<Func<MedicationLot, bool>> BuildTotalLotCountPredicate()
-        {
-            return lot => !lot.IsDeleted;
         }
 
         #endregion

@@ -1,5 +1,4 @@
-﻿using DTOs.Common;
-using DTOs.MedicationLotDTOs.Request;
+﻿using DTOs.MedicationLotDTOs.Request;
 using DTOs.MedicationLotDTOs.Response;
 
 namespace Services.Interfaces
@@ -13,12 +12,14 @@ namespace Services.Interfaces
         Task<ApiResult<MedicationLotResponseDTO>> GetMedicationLotByIdAsync(Guid id);
         Task<ApiResult<MedicationLotResponseDTO>> CreateMedicationLotAsync(CreateMedicationLotRequest request);
         Task<ApiResult<MedicationLotResponseDTO>> UpdateMedicationLotAsync(Guid id, UpdateMedicationLotRequest request);
-        Task<ApiResult<bool>> DeleteMedicationLotAsync(Guid id);
+        #endregion
+
+        #region Batch Operations (Unified - Support Single and Multiple)
+        Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids, bool isPermanent = false);
+        Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationLotsAsync(List<Guid> ids);
         #endregion
 
         #region Soft Delete Operations
-        Task<ApiResult<MedicationLotResponseDTO>> RestoreMedicationLotAsync(Guid id);
-        Task<ApiResult<bool>> PermanentDeleteMedicationLotAsync(Guid id);
         Task<ApiResult<PagedList<MedicationLotResponseDTO>>> GetSoftDeletedLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null);
         Task<ApiResult<BatchOperationResultDTO>> CleanupExpiredLotsAsync(int daysToExpire = 90);
@@ -34,12 +35,6 @@ namespace Services.Interfaces
 
         #region Statistics
         Task<ApiResult<MedicationLotStatisticsResponseDTO>> GetStatisticsAsync();
-        #endregion
-
-        #region Batch Delete Operations
-        Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids);
-        Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationLotsAsync(List<Guid> ids);
-        Task<ApiResult<BatchOperationResultDTO>> PermanentDeleteMedicationLotsAsync(List<Guid> ids);
         #endregion
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using WebAPI.Middlewares;
 
 namespace WebAPI.Extensions
 {
@@ -6,6 +7,7 @@ namespace WebAPI.Extensions
     {
         public static async Task<IApplicationBuilder> UseApplicationPipeline(this IApplicationBuilder app)
         {
+            app.UseGlobalExceptionHandling();
             // 1. Chuẩn bị scope để migrate DB & Swagger
             var scopeFactory = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>();
             using (var scope = scopeFactory.CreateScope())

@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
 
-namespace Services.Extensions
+namespace Repositories.WorkSeeds.Extensions
 {
     public static class TransactionExtensions
     {
