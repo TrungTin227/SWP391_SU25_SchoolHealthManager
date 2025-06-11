@@ -45,6 +45,7 @@ namespace Repositories
         #region Medical Supply Management
         public DbSet<MedicalSupply> MedicalSupplies { get; set; }
         public DbSet<SupplyUsage> SupplyUsages { get; set; }
+        public DbSet<MedicalSupplyLot> MedicalSupplyLots { get; set; }
         #endregion
 
         #region Support Services

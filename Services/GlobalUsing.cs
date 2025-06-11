@@ -11,3 +11,6 @@ global using Services.Commons.Gmail;
 global using Services.Helpers;
 global using Services.Helpers.Mapers;
 global using DTOs.Common;
+global using DTOs.MedicalSupplyDTOs.Request;
+global using DTOs.MedicalSupplyDTOs.Response;
+global using Repositories.WorkSeeds.Extensions;

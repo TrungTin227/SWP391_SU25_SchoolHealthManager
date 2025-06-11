@@ -1,23 +1,22 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using WebAPI.Middlewares;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize] // Yêu cầu xác thực cho tất cả endpoints
+    [ServiceFilter(typeof(ValidateModelAttribute))]
     public class MedicationController : ControllerBase
     {
         private readonly IMedicationService _medicationService;
-        private readonly ILogger<MedicationController> _logger;
 
-        public MedicationController(
-            IMedicationService medicationService,
-            ILogger<MedicationController> logger)
+        public MedicationController(IMedicationService medicationService)
         {
             _medicationService = medicationService;
-            _logger = logger;
         }
+
+        #region Basic CRUD Operations
 
         /// <summary>
         /// Lấy danh sách thuốc theo phân trang với khả năng tìm kiếm và lọc
@@ -27,25 +26,16 @@ namespace WebAPI.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery][Range(1, 100)] int pageSize = 10,
             [FromQuery] string? searchTerm = null,
-            [FromQuery] MedicationCategory? category = null)
+            [FromQuery] MedicationCategory? category = null,
+            [FromQuery] bool includeDeleted = false)
         {
-            try
-            {
-                if (pageNumber < 1)
-                {
-                    return BadRequest("Số trang phải lớn hơn 0");
-                }
+            if (pageNumber < 1)
+                throw new ArgumentException("Số trang phải lớn hơn 0");
 
-                var result = await _medicationService.GetMedicationsAsync(
-                    pageNumber, pageSize, searchTerm, category);
+            var result = await _medicationService.GetMedicationsAsync(
+                pageNumber, pageSize, searchTerm, category, includeDeleted);
 
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedications");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
@@ -54,43 +44,24 @@ namespace WebAPI.Controllers
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetMedicationById(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
+            if (id == Guid.Empty)
+                throw new ArgumentException("ID thuốc không hợp lệ");
 
-                var result = await _medicationService.GetMedicationByIdAsync(id);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedicationById for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.GetMedicationByIdAsync(id);
+            return result.IsSuccess ? Ok(result) : NotFound(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết thuốc kèm thông tin lô
+        /// </summary>
         [HttpGet("{id:guid}/detail")]
         public async Task<IActionResult> GetMedicationDetailById(Guid id)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
+            if (id == Guid.Empty)
+                throw new ArgumentException("ID thuốc không hợp lệ");
 
-                var result = await _medicationService.GetMedicationDetailByIdAsync(id);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedicationDetailById for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.GetMedicationDetailByIdAsync(id);
+            return result.IsSuccess ? Ok(result) : NotFound(result);
         }
 
         /// <summary>
@@ -99,22 +70,12 @@ namespace WebAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateMedication([FromBody] CreateMedicationRequest request)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
+            var result = await _medicationService.CreateMedicationAsync(request);
 
-                var result = await _medicationService.CreateMedicationAsync(request);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in CreateMedication");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            return result.IsSuccess ? CreatedAtAction(
+                nameof(GetMedicationById),
+                new { id = result.Data?.Id },
+                result) : BadRequest(result);
         }
 
         /// <summary>
@@ -123,128 +84,35 @@ namespace WebAPI.Controllers
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> UpdateMedication(Guid id, [FromBody] UpdateMedicationRequest request)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
+            if (id == Guid.Empty)
+                throw new ArgumentException("ID thuốc không hợp lệ");
 
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                var result = await _medicationService.UpdateMedicationAsync(id, request);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in UpdateMedication for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.UpdateMedicationAsync(id, request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-       
+
+        #endregion
+
+        #region Batch Delete Operations
 
         /// <summary>
-        /// Xóa thuốc (soft delete)
+        /// Xóa thuốc (hỗ trợ xóa 1 hoặc nhiều, soft delete hoặc permanent)
         /// </summary>
-        [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> DeleteMedication(Guid id)
+        [HttpDelete]
+        public async Task<IActionResult> DeleteMedications([FromBody] DeleteMedicationsRequest request)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
-
-                var result = await _medicationService.DeleteMedicationAsync(id);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in DeleteMedication for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.DeleteMedicationsAsync(request.Ids, request.IsPermanent);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
-        /// Khôi phục thuốc đã bị xóa mềm
+        /// Khôi phục thuốc đã bị xóa mềm (hỗ trợ 1 hoặc nhiều)
         /// </summary>
-        [HttpPost("{id:guid}/restore")]
-        public async Task<IActionResult> RestoreMedication(Guid id)
+        [HttpPost("restore")]
+        public async Task<IActionResult> RestoreMedications([FromBody] RestoreMedicationsRequest request)
         {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
-
-                var result = await _medicationService.RestoreMedicationAsync(id);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in RestoreMedication for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
-        }
-
-        /// <summary>
-        /// Xóa vĩnh viễn thuốc
-        /// </summary>
-        [HttpDelete("{id:guid}/permanent")]
-        public async Task<IActionResult> PermanentDeleteMedication(Guid id)
-        {
-            try
-            {
-                if (id == Guid.Empty)
-                {
-                    return BadRequest("ID thuốc không hợp lệ");
-                }
-
-                var result = await _medicationService.PermanentDeleteMedicationAsync(id);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in PermanentDeleteMedication for ID: {MedicationId}", id);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
-        }
-
-        /// <summary>
-        /// Lấy danh sách thuốc đã bị xóa mềm
-        /// </summary>
-        [HttpGet("deleted")]
-        public async Task<IActionResult> GetSoftDeletedMedications(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery][Range(1, 100)] int pageSize = 10,
-            [FromQuery] string? searchTerm = null)
-        {
-            try
-            {
-                if (pageNumber < 1)
-                {
-                    return BadRequest("Số trang phải lớn hơn 0");
-                }
-
-                var result = await _medicationService.GetSoftDeletedMedicationsAsync(
-                    pageNumber, pageSize, searchTerm);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetSoftDeletedMedications");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.RestoreMedicationsAsync(request.Ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
@@ -254,42 +122,13 @@ namespace WebAPI.Controllers
         public async Task<IActionResult> CleanupExpiredMedications(
             [FromQuery][Range(1, 365)] int daysToExpire = 30)
         {
-            try
-            {
-                var result = await _medicationService.CleanupExpiredMedicationsAsync(daysToExpire);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in CleanupExpiredMedications");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.CleanupExpiredMedicationsAsync(daysToExpire);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        /// <summary>
-        /// Lấy danh sách thuốc theo danh mục
-        /// </summary>
-        [HttpGet("category/{category}")]
-        public async Task<IActionResult> GetMedicationsByCategory(MedicationCategory category)
-        {
-            try
-            {
-                if (!Enum.IsDefined(typeof(MedicationCategory), category))
-                {
-                    return BadRequest("Danh mục thuốc không hợp lệ");
-                }
+        #endregion
 
-                var result = await _medicationService.GetMedicationsByCategoryAsync(category);
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedicationsByCategory for category: {Category}", category);
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
-        }
+        #region Query Operations
 
         /// <summary>
         /// Lấy danh sách thuốc đang hoạt động
@@ -297,18 +136,13 @@ namespace WebAPI.Controllers
         [HttpGet("active")]
         public async Task<IActionResult> GetActiveMedications()
         {
-            try
-            {
-                var result = await _medicationService.GetActiveMedicationsAsync();
-
-                return result.IsSuccess ? Ok(result) : BadRequest(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetActiveMedications");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            var result = await _medicationService.GetActiveMedicationsAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        #endregion
+
+        #region Metadata Operations
 
         /// <summary>
         /// Lấy danh sách các danh mục thuốc có sẵn
@@ -316,21 +150,10 @@ namespace WebAPI.Controllers
         [HttpGet("categories")]
         public IActionResult GetMedicationCategories()
         {
-            try
-            {
-                var categories = Enum.GetValues<MedicationCategory>()
-                    .Select(c => new { Value = (int)c, Name = c.ToString() })
-                    .ToList();
+            var categories = GetEnumMetadata<MedicationCategory>();
+            var result = CreateSuccessResponse(categories, "Lấy danh sách danh mục thành công");
 
-                var result = new { IsSuccess = true, Data = categories, Message = "Lấy danh sách danh mục thành công" };
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedicationCategories");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            return Ok(result);
         }
 
         /// <summary>
@@ -339,21 +162,37 @@ namespace WebAPI.Controllers
         [HttpGet("statuses")]
         public IActionResult GetMedicationStatuses()
         {
-            try
-            {
-                var statuses = Enum.GetValues<MedicationStatus>()
-                    .Select(s => new { Value = (int)s, Name = s.ToString() })
-                    .ToList();
+            var statuses = GetEnumMetadata<MedicationStatus>();
+            var result = CreateSuccessResponse(statuses, "Lấy danh sách trạng thái thành công");
 
-                var result = new { IsSuccess = true, Data = statuses, Message = "Lấy danh sách trạng thái thành công" };
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error in GetMedicationStatuses");
-                return StatusCode(500, "Đã xảy ra lỗi không mong muốn");
-            }
+            return Ok(result);
         }
+
+        #endregion
+
+        #region Private Helper Methods
+
+        private static List<object> GetEnumMetadata<TEnum>() where TEnum : struct, Enum
+        {
+            return Enum.GetValues<TEnum>()
+                .Select(enumValue => new
+                {
+                    Value = Convert.ToInt32(enumValue),
+                    Name = enumValue.ToString()
+                })
+                .ToList<object>();
+        }
+
+        private static object CreateSuccessResponse(object data, string message)
+        {
+            return new
+            {
+                IsSuccess = true,
+                Data = data,
+                Message = message
+            };
+        }
+
+        #endregion
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Repositories.WorkSeeds.Implements;
+using System.Linq.Expressions;
 
 namespace Repositories.Implementations
 {
@@ -26,6 +27,28 @@ namespace Repositories.Implementations
                 orderBy: q => q.OrderBy(m => m.Name),
                 includes: m => m.Lots.Where(lot => !lot.IsDeleted)
             );
+        }
+
+        /// <summary>
+        /// Lấy danh sách medications bao gồm cả những cái đã bị soft delete (for MedicationService.GetMedicationsAsync)
+        /// </summary>
+        public async Task<PagedList<Medication>> GetAllMedicationsIncludingDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null)
+        {
+            var predicate = BuildMedicationPredicateIncludingDeleted(searchTerm, category);
+
+            // Sử dụng IgnoreQueryFilters để lấy cả soft deleted items
+            IQueryable<Medication> query = _dbContext.Medications.IgnoreQueryFilters();
+
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            query = query.Include(m => m.Lots);
+            query = query.OrderBy(m => m.Name);
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new PagedList<Medication>(items, totalCount, pageNumber, pageSize);
         }
 
         public async Task<bool> MedicationNameExistsAsync(string name, Guid? excludeId = null)
@@ -60,6 +83,16 @@ namespace Repositories.Implementations
                 .SumAsync(lot => lot.Quantity);
         }
 
+        /// <summary>
+        /// Override GetByIdAsync to support includes parameter (for MedicationService.GetMedicationByIdAsync)
+        /// </summary>
+        public async Task<Medication?> GetByIdAsync<TProperty>(Guid id, Expression<Func<Medication, TProperty>> include)
+        {
+            return await _dbContext.Medications
+                .Include(include)
+                .FirstOrDefaultAsync(m => m.Id == id && !m.IsDeleted);
+        }
+
         #endregion
 
         #region Extended Soft Delete Methods
@@ -70,7 +103,7 @@ namespace Repositories.Implementations
         public async Task<bool> SoftDeleteWithLotsAsync(Guid id, Guid deletedBy)
         {
             var medication = await GetByIdAsync(id);
-            if (medication == null || medication.IsDeleted)
+            if (medication == null)
                 return false;
 
             // Sử dụng soft delete từ base repository
@@ -100,8 +133,34 @@ namespace Repositories.Implementations
         /// </summary>
         public async Task<bool> RestoreWithLotsAsync(Guid id, Guid restoredBy)
         {
-            // Sử dụng restore từ base repository
-            return await RestoreAsync(id, restoredBy);
+            var medication = await _dbContext.Medications
+                .IgnoreQueryFilters() // To get soft deleted items
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (medication == null || !medication.IsDeleted)
+                return false;
+
+            // Restore medication using base repository method
+            var result = await RestoreAsync(id, restoredBy);
+            if (!result) return false;
+
+            // Restore related lots that were deleted at the same time
+            var lots = await _dbContext.MedicationLots
+                .IgnoreQueryFilters()
+                .Where(l => l.MedicationId == id && l.IsDeleted)
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            foreach (var lot in lots)
+            {
+                lot.IsDeleted = false;
+                lot.DeletedAt = null;
+                lot.DeletedBy = null;
+                lot.UpdatedAt = now;
+                lot.UpdatedBy = restoredBy;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -110,6 +169,7 @@ namespace Repositories.Implementations
         public async Task<bool> PermanentDeleteWithLotsAsync(Guid id)
         {
             var medication = await _dbContext.Medications
+                .IgnoreQueryFilters() // To get soft deleted items
                 .Include(m => m.Lots)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -119,8 +179,10 @@ namespace Repositories.Implementations
             // Remove all related lots first
             _dbContext.MedicationLots.RemoveRange(medication.Lots);
 
-            // Sử dụng delete từ base repository
-            return await DeleteAsync(id);
+            // Remove medication
+            _dbContext.Medications.Remove(medication);
+
+            return true;
         }
 
         /// <summary>
@@ -130,13 +192,17 @@ namespace Repositories.Implementations
         {
             var predicate = BuildSoftDeletedPredicate(searchTerm);
 
-            return await GetPagedAsync(
-                pageNumber,
-                pageSize,
-                predicate,
-                orderBy: q => q.OrderByDescending(m => m.DeletedAt),
-                includes: m => m.Lots
-            );
+            // Sử dụng manual query vì cần IgnoreQueryFilters
+            IQueryable<Medication> query = _dbContext.Medications.IgnoreQueryFilters();
+
+            query = query.Where(predicate);
+            query = query.Include(m => m.Lots);
+            query = query.OrderByDescending(m => m.DeletedAt);
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new PagedList<Medication>(items, totalCount, pageNumber, pageSize);
         }
 
         /// <summary>
@@ -145,12 +211,14 @@ namespace Repositories.Implementations
         public async Task<int> PermanentDeleteExpiredAsync(int daysToExpire = 30)
         {
             var expiredDate = DateTime.UtcNow.AddDays(-daysToExpire);
-            var predicate = BuildExpiredPredicate(expiredDate);
 
-            var expiredMedications = await GetAllAsync(
-                predicate: predicate,
-                includes: m => m.Lots
-            );
+            var expiredMedications = await _dbContext.Medications
+                .IgnoreQueryFilters()
+                .Include(m => m.Lots)
+                .Where(m => m.IsDeleted &&
+                           m.DeletedAt.HasValue &&
+                           m.DeletedAt <= expiredDate)
+                .ToListAsync();
 
             if (!expiredMedications.Any())
                 return 0;
@@ -159,8 +227,10 @@ namespace Repositories.Implementations
 
             foreach (var medication in expiredMedications)
             {
+                // Remove all related lots first
                 _dbContext.MedicationLots.RemoveRange(medication.Lots);
-                await DeleteAsync(medication.Id);
+                // Remove medication
+                _dbContext.Medications.Remove(medication);
             }
 
             return count;
@@ -170,35 +240,36 @@ namespace Repositories.Implementations
 
         #region Private Helper Methods
 
-        private System.Linq.Expressions.Expression<Func<Medication, bool>> BuildMedicationPredicate(string? searchTerm, MedicationCategory? category)
+        private Expression<Func<Medication, bool>> BuildMedicationPredicate(string? searchTerm, MedicationCategory? category)
         {
             return m => !m.IsDeleted &&
                        (string.IsNullOrWhiteSpace(searchTerm) ||
-                        m.Name.Contains(searchTerm) ||
-                        m.DosageForm.Contains(searchTerm)) &&
+                        m.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                        (m.DosageForm != null && m.DosageForm.ToLower().Contains(searchTerm.ToLower()))) &&
                        (!category.HasValue || m.Category == category.Value);
         }
 
-        private System.Linq.Expressions.Expression<Func<Medication, bool>> BuildNameExistsPredicate(string name, Guid? excludeId)
+        private Expression<Func<Medication, bool>> BuildMedicationPredicateIncludingDeleted(string? searchTerm, MedicationCategory? category)
+        {
+            return m => (string.IsNullOrWhiteSpace(searchTerm) ||
+                        m.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                        (m.DosageForm != null && m.DosageForm.ToLower().Contains(searchTerm.ToLower()))) &&
+                       (!category.HasValue || m.Category == category.Value);
+        }
+
+        private Expression<Func<Medication, bool>> BuildNameExistsPredicate(string name, Guid? excludeId)
         {
             return m => m.Name.ToLower() == name.ToLower() &&
                        !m.IsDeleted &&
                        (!excludeId.HasValue || m.Id != excludeId.Value);
         }
 
-        private System.Linq.Expressions.Expression<Func<Medication, bool>> BuildSoftDeletedPredicate(string? searchTerm)
+        private Expression<Func<Medication, bool>> BuildSoftDeletedPredicate(string? searchTerm)
         {
             return m => m.IsDeleted &&
                        (string.IsNullOrWhiteSpace(searchTerm) ||
-                        m.Name.Contains(searchTerm) ||
-                        m.DosageForm.Contains(searchTerm));
-        }
-
-        private System.Linq.Expressions.Expression<Func<Medication, bool>> BuildExpiredPredicate(DateTime expiredDate)
-        {
-            return m => m.IsDeleted &&
-                       m.DeletedAt.HasValue &&
-                       m.DeletedAt <= expiredDate;
+                        m.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                        (m.DosageForm != null && m.DosageForm.ToLower().Contains(searchTerm.ToLower())));
         }
 
         #endregion

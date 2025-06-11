@@ -1,8 +1,9 @@
-﻿using DTOs.Common;
-using DTOs.MedicationLotDTOs.Request;
+﻿using DTOs.MedicationLotDTOs.Request;
 using DTOs.MedicationLotDTOs.Response;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
+using Services.Commons;
+using System.Data;
 
 namespace Services.Implementations
 {
@@ -22,206 +23,6 @@ namespace Services.Implementations
             _medicationRepository = unitOfWork.MedicationRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        #region Batch Delete Operations
-
-        public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids)
-        {
-            try
-            {
-                if (ids == null || !ids.Any())
-                {
-                    return ApiResult<BatchOperationResultDTO>.Failure(
-                        new ArgumentException("Danh sách ID không được rỗng"));
-                }
-
-                _logger.LogInformation("Starting batch soft delete for {Count} medication lots", ids.Count);
-
-                var result = new BatchOperationResultDTO
-                {
-                    TotalRequested = ids.Count
-                };
-
-                // Lấy danh sách các lots tồn tại và chưa bị xóa
-                var existingLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
-                var existingIds = existingLots.Select(l => l.Id).ToList();
-                var notFoundIds = ids.Except(existingIds).ToList();
-
-                // Thêm lỗi cho các ID không tìm thấy
-                foreach (var notFoundId in notFoundIds)
-                {
-                    result.Errors.Add(new BatchOperationErrorDTO
-                    {
-                        Id = notFoundId.ToString(),
-                        Error = "Không tìm thấy lô thuốc hoặc đã bị xóa",
-                        Details = $"Medication lot với ID {notFoundId} không tồn tại hoặc đã bị xóa"
-                    });
-                }
-
-                // Thực hiện soft delete cho các lots tồn tại
-                if (existingIds.Any())
-                {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var deletedCount = await _medicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
-
-                    if (deletedCount > 0)
-                    {
-                        await _unitOfWork.SaveChangesAsync();
-
-                        result.SuccessCount = deletedCount;
-                        result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                    }
-                }
-
-                result.FailureCount = result.Errors.Count;
-                result.Message = GenerateBatchOperationMessage("xóa", result);
-
-                _logger.LogInformation(
-                    "Batch soft delete completed: {SuccessCount} success, {FailureCount} failures",
-                    result.SuccessCount, result.FailureCount);
-
-                return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during batch soft delete of medication lots");
-                return ApiResult<BatchOperationResultDTO>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationLotsAsync(List<Guid> ids)
-        {
-            try
-            {
-                if (ids == null || !ids.Any())
-                {
-                    return ApiResult<BatchOperationResultDTO>.Failure(
-                        new ArgumentException("Danh sách ID không được rỗng"));
-                }
-
-                _logger.LogInformation("Starting batch restore for {Count} medication lots", ids.Count);
-
-                var result = new BatchOperationResultDTO
-                {
-                    TotalRequested = ids.Count
-                };
-
-                // Lấy danh sách các lots đã bị soft delete
-                var deletedLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
-                var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
-                var notDeletedIds = ids.Except(deletedLotIds).ToList();
-
-                // Thêm lỗi cho các ID không phải là soft deleted
-                foreach (var notDeletedId in notDeletedIds)
-                {
-                    var lot = deletedLots.FirstOrDefault(l => l.Id == notDeletedId);
-                    string errorMessage = lot == null
-                        ? "Không tìm thấy lô thuốc"
-                        : "Lô thuốc chưa bị xóa";
-
-                    result.Errors.Add(new BatchOperationErrorDTO
-                    {
-                        Id = notDeletedId.ToString(),
-                        Error = errorMessage,
-                        Details = $"Medication lot với ID {notDeletedId} {errorMessage.ToLower()}"
-                    });
-                }
-
-                // Thực hiện restore cho các lots đã bị soft delete
-                if (deletedLotIds.Any())
-                {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var restoredCount = await _medicationLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
-
-                    if (restoredCount > 0)
-                    {
-                        await _unitOfWork.SaveChangesAsync();
-
-                        result.SuccessCount = restoredCount;
-                        result.SuccessIds = deletedLotIds.Select(id => id.ToString()).ToList();
-                    }
-                }
-
-                result.FailureCount = result.Errors.Count;
-                result.Message = GenerateBatchOperationMessage("khôi phục", result);
-
-                _logger.LogInformation(
-                    "Batch restore completed: {SuccessCount} success, {FailureCount} failures",
-                    result.SuccessCount, result.FailureCount);
-
-                return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during batch restore of medication lots");
-                return ApiResult<BatchOperationResultDTO>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<BatchOperationResultDTO>> PermanentDeleteMedicationLotsAsync(List<Guid> ids)
-        {
-            try
-            {
-                if (ids == null || !ids.Any())
-                {
-                    return ApiResult<BatchOperationResultDTO>.Failure(
-                        new ArgumentException("Danh sách ID không được rỗng"));
-                }
-
-                _logger.LogInformation("Starting batch permanent delete for {Count} medication lots", ids.Count);
-
-                var result = new BatchOperationResultDTO
-                {
-                    TotalRequested = ids.Count
-                };
-
-                // Lấy danh sách các lots (bao gồm cả đã xóa)
-                var allLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
-                var existingIds = allLots.Select(l => l.Id).ToList();
-                var notFoundIds = ids.Except(existingIds).ToList();
-
-                // Thêm lỗi cho các ID không tìm thấy
-                foreach (var notFoundId in notFoundIds)
-                {
-                    result.Errors.Add(new BatchOperationErrorDTO
-                    {
-                        Id = notFoundId.ToString(),
-                        Error = "Không tìm thấy lô thuốc",
-                        Details = $"Medication lot với ID {notFoundId} không tồn tại"
-                    });
-                }
-
-                // Thực hiện permanent delete cho các lots tồn tại
-                if (existingIds.Any())
-                {
-                    var deletedCount = await _medicationLotRepository.PermanentDeleteLotsAsync(existingIds);
-
-                    if (deletedCount > 0)
-                    {
-                        await _unitOfWork.SaveChangesAsync();
-
-                        result.SuccessCount = deletedCount;
-                        result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                    }
-                }
-
-                result.FailureCount = result.Errors.Count;
-                result.Message = GenerateBatchOperationMessage("xóa vĩnh viễn", result);
-
-                _logger.LogInformation(
-                    "Batch permanent delete completed: {SuccessCount} success, {FailureCount} failures",
-                    result.SuccessCount, result.FailureCount);
-
-                return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during batch permanent delete of medication lots");
-                return ApiResult<BatchOperationResultDTO>.Failure(ex);
-            }
-        }
-
-        #endregion
 
         #region Basic CRUD Operations
 
@@ -271,178 +72,276 @@ namespace Services.Implementations
 
         public async Task<ApiResult<MedicationLotResponseDTO>> CreateMedicationLotAsync(CreateMedicationLotRequest request)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                var validationResult = await ValidateCreateRequestAsync(request);
-                if (!validationResult.IsSuccess)
+                try
                 {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception(validationResult.Message));
+                    var validationResult = await ValidateCreateRequestAsync(request);
+                    if (!validationResult.IsSuccess)
+                    {
+                        return ApiResult<MedicationLotResponseDTO>.Failure(
+                            new Exception(validationResult.Message));
+                    }
+
+                    var lot = MapFromCreateRequest(request);
+                    var createdLot = await CreateAsync(lot);
+
+                    var lotWithMedication = await _medicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
+                    if (lotWithMedication == null)
+                    {
+                        return ApiResult<MedicationLotResponseDTO>.Failure(
+                            new Exception("Không thể lấy thông tin lô thuốc vừa tạo"));
+                    }
+
+                    var lotDTO = MapToResponseDTO(lotWithMedication);
+                    return ApiResult<MedicationLotResponseDTO>.Success(
+                        lotDTO, "Tạo lô thuốc thành công");
                 }
-
-                var lot = MapFromCreateRequest(request);
-                var createdLot = await CreateAsync(lot);
-
-                var lotWithMedication = await _medicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
-                if (lotWithMedication == null)
+                catch (Exception ex)
                 {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception("Không thể lấy thông tin lô thuốc vừa tạo"));
+                    _logger.LogError(ex, "Error creating medication lot");
+                    return ApiResult<MedicationLotResponseDTO>.Failure(ex);
                 }
-
-                var lotDTO = MapToResponseDTO(lotWithMedication);
-                return ApiResult<MedicationLotResponseDTO>.Success(
-                    lotDTO, "Tạo lô thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating medication lot");
-                return ApiResult<MedicationLotResponseDTO>.Failure(ex);
-            }
+            }, IsolationLevel.ReadCommitted);
         }
 
         public async Task<ApiResult<MedicationLotResponseDTO>> UpdateMedicationLotAsync(
             Guid id, UpdateMedicationLotRequest request)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                var lot = await _medicationLotRepository.GetByIdAsync(id);
-                if (lot == null)
+                try
                 {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception("Không tìm thấy lô thuốc"));
-                }
+                    var lot = await _medicationLotRepository.GetByIdAsync(id);
+                    if (lot == null)
+                    {
+                        return ApiResult<MedicationLotResponseDTO>.Failure(
+                            new Exception("Không tìm thấy lô thuốc"));
+                    }
 
-                var validationResult = await ValidateUpdateRequestAsync(request, id);
-                if (!validationResult.IsSuccess)
+                    var validationResult = await ValidateUpdateRequestAsync(request, id);
+                    if (!validationResult.IsSuccess)
+                    {
+                        return ApiResult<MedicationLotResponseDTO>.Failure(
+                            new Exception(validationResult.Message));
+                    }
+
+                    MapFromUpdateRequest(request, lot);
+                    await UpdateAsync(lot);
+
+                    var updatedLot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
+                    if (updatedLot == null)
+                    {
+                        return ApiResult<MedicationLotResponseDTO>.Failure(
+                            new Exception("Không thể lấy thông tin lô thuốc đã cập nhật"));
+                    }
+
+                    var lotDTO = MapToResponseDTO(updatedLot);
+                    return ApiResult<MedicationLotResponseDTO>.Success(
+                        lotDTO, "Cập nhật lô thuốc thành công");
+                }
+                catch (Exception ex)
                 {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception(validationResult.Message));
+                    _logger.LogError(ex, "Error updating medication lot: {LotId}", id);
+                    return ApiResult<MedicationLotResponseDTO>.Failure(ex);
                 }
-
-                MapFromUpdateRequest(request, lot);
-                await UpdateAsync(lot);
-
-                var updatedLot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
-                if (updatedLot == null)
-                {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception("Không thể lấy thông tin lô thuốc đã cập nhật"));
-                }
-
-                var lotDTO = MapToResponseDTO(updatedLot);
-                return ApiResult<MedicationLotResponseDTO>.Success(
-                    lotDTO, "Cập nhật lô thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating medication lot: {LotId}", id);
-                return ApiResult<MedicationLotResponseDTO>.Failure(ex);
-            }
+            }, IsolationLevel.ReadCommitted);
         }
-        public async Task<ApiResult<bool>> DeleteMedicationLotAsync(Guid id)
+
+        #endregion
+
+        #region Batch Operations (Unified - Support Single and Multiple)
+
+        /// <summary>
+        /// Xóa một hoặc nhiều lô thuốc cùng lúc (soft delete hoặc permanent delete)
+        /// Hỗ trợ cả single (1 ID) và batch (nhiều IDs)
+        /// </summary>
+        public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids, bool isPermanent = false)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                var lot = await _medicationLotRepository.GetByIdAsync(id);
-                if (lot == null)
+                try
                 {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không tìm thấy lô thuốc"));
-                }
+                    if (ids == null || !ids.Any())
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException("Danh sách ID không được rỗng"));
+                    }
 
-                if (lot.IsDeleted)
+                    var operationType = isPermanent ? "permanent delete" : "soft delete";
+                    var operationText = isPermanent ? "xóa vĩnh viễn" : "xóa";
+
+                    _logger.LogInformation("Starting batch {OperationType} for {Count} medication lots",
+                        operationType, ids.Count);
+
+                    var result = new BatchOperationResultDTO
+                    {
+                        TotalRequested = ids.Count
+                    };
+
+                    if (isPermanent)
+                    {
+                        // Permanent delete: lấy tất cả lots (bao gồm cả đã xóa)
+                        var allLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
+                        var existingIds = allLots.Select(l => l.Id).ToList();
+                        var notFoundIds = ids.Except(existingIds).ToList();
+
+                        // Thêm lỗi cho các ID không tìm thấy
+                        foreach (var notFoundId in notFoundIds)
+                        {
+                            result.Errors.Add(new BatchOperationErrorDTO
+                            {
+                                Id = notFoundId.ToString(),
+                                Error = "Không tìm thấy lô thuốc",
+                                Details = $"Medication lot với ID {notFoundId} không tồn tại"
+                            });
+                        }
+
+                        // Thực hiện permanent delete cho các lots tồn tại
+                        if (existingIds.Any())
+                        {
+                            var deletedCount = await _medicationLotRepository.PermanentDeleteLotsAsync(existingIds);
+
+                            if (deletedCount > 0)
+                            {
+                                await _unitOfWork.SaveChangesAsync();
+
+                                result.SuccessCount = deletedCount;
+                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Soft delete: chỉ lấy các lots chưa bị xóa
+                        var existingLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
+                        var existingIds = existingLots.Select(l => l.Id).ToList();
+                        var notFoundIds = ids.Except(existingIds).ToList();
+
+                        // Thêm lỗi cho các ID không tìm thấy
+                        foreach (var notFoundId in notFoundIds)
+                        {
+                            result.Errors.Add(new BatchOperationErrorDTO
+                            {
+                                Id = notFoundId.ToString(),
+                                Error = "Không tìm thấy lô thuốc hoặc đã bị xóa",
+                                Details = $"Medication lot với ID {notFoundId} không tồn tại hoặc đã bị xóa"
+                            });
+                        }
+
+                        // Thực hiện soft delete cho các lots tồn tại
+                        if (existingIds.Any())
+                        {
+                            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                            var deletedCount = await _medicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
+
+                            if (deletedCount > 0)
+                            {
+                                await _unitOfWork.SaveChangesAsync();
+
+                                result.SuccessCount = deletedCount;
+                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
+                            }
+                        }
+                    }
+
+                    result.FailureCount = result.Errors.Count;
+                    result.Message = GenerateBatchOperationMessage(operationText, result);
+
+                    _logger.LogInformation(
+                        "Batch {OperationType} completed: {SuccessCount} success, {FailureCount} failures",
+                        operationType, result.SuccessCount, result.FailureCount);
+
+                    return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
+                }
+                catch (Exception ex)
                 {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Lô thuốc này đã bị xóa trước đó"));
+                    var operationType = isPermanent ? "permanent delete" : "soft delete";
+                    _logger.LogError(ex, "Error during batch {OperationType} of medication lots", operationType);
+                    return ApiResult<BatchOperationResultDTO>.Failure(ex);
                 }
+            }, IsolationLevel.ReadCommitted);
+        }
 
-                // Get current user ID and use specific SoftDeleteLotAsync method
-                var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                var success = await _medicationLotRepository.SoftDeleteLotAsync(id, currentUserId);
-
-                if (!success)
-                {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không thể xóa lô thuốc"));
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-                _logger.LogInformation("Medication lot successfully deleted: {LotId}", id);
-
-                return ApiResult<bool>.Success(true, "Xóa lô thuốc thành công");
-            }
-            catch (Exception ex)
+        /// <summary>
+        /// Khôi phục một hoặc nhiều lô thuốc cùng lúc
+        /// Hỗ trợ cả single (1 ID) và batch (nhiều IDs)
+        /// </summary>
+        public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationLotsAsync(List<Guid> ids)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                _logger.LogError(ex, "Error deleting medication lot: {LotId}", id);
-                return ApiResult<bool>.Failure(ex);
-            }
+                try
+                {
+                    if (ids == null || !ids.Any())
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException("Danh sách ID không được rỗng"));
+                    }
+
+                    _logger.LogInformation("Starting batch restore for {Count} medication lots", ids.Count);
+
+                    var result = new BatchOperationResultDTO
+                    {
+                        TotalRequested = ids.Count
+                    };
+
+                    // Lấy danh sách các lots đã bị soft delete
+                    var deletedLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
+                    var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
+                    var notDeletedIds = ids.Except(deletedLotIds).ToList();
+
+                    // Thêm lỗi cho các ID không phải là soft deleted
+                    foreach (var notDeletedId in notDeletedIds)
+                    {
+                        var lot = deletedLots.FirstOrDefault(l => l.Id == notDeletedId);
+                        string errorMessage = lot == null
+                            ? "Không tìm thấy lô thuốc"
+                            : "Lô thuốc chưa bị xóa";
+
+                        result.Errors.Add(new BatchOperationErrorDTO
+                        {
+                            Id = notDeletedId.ToString(),
+                            Error = errorMessage,
+                            Details = $"Medication lot với ID {notDeletedId} {errorMessage.ToLower()}"
+                        });
+                    }
+
+                    // Thực hiện restore cho các lots đã bị soft delete
+                    if (deletedLotIds.Any())
+                    {
+                        var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                        var restoredCount = await _medicationLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
+
+                        if (restoredCount > 0)
+                        {
+                            await _unitOfWork.SaveChangesAsync();
+
+                            result.SuccessCount = restoredCount;
+                            result.SuccessIds = deletedLotIds.Select(id => id.ToString()).ToList();
+                        }
+                    }
+
+                    result.FailureCount = result.Errors.Count;
+                    result.Message = GenerateBatchOperationMessage("khôi phục", result);
+
+                    _logger.LogInformation(
+                        "Batch restore completed: {SuccessCount} success, {FailureCount} failures",
+                        result.SuccessCount, result.FailureCount);
+
+                    return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during batch restore of medication lots");
+                    return ApiResult<BatchOperationResultDTO>.Failure(ex);
+                }
+            }, IsolationLevel.ReadCommitted);
         }
 
         #endregion
 
         #region Soft Delete Operations
-
-        public async Task<ApiResult<MedicationLotResponseDTO>> RestoreMedicationLotAsync(Guid id)
-        {
-            try
-            {
-                var currentUserId = _currentUserService.GetUserId();
-                var success = await _medicationLotRepository.RestoreLotAsync(id, currentUserId ?? Guid.Empty);
-
-                if (!success)
-                {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception("Không tìm thấy lô thuốc đã bị xóa hoặc không thể khôi phục"));
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-
-                var restoredLot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
-                if (restoredLot == null)
-                {
-                    return ApiResult<MedicationLotResponseDTO>.Failure(
-                        new Exception("Không thể lấy thông tin lô thuốc đã khôi phục"));
-                }
-
-                var lotDTO = MapToResponseDTO(restoredLot);
-                return ApiResult<MedicationLotResponseDTO>.Success(
-                    lotDTO, "Khôi phục lô thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restoring medication lot: {LotId}", id);
-                return ApiResult<MedicationLotResponseDTO>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<bool>> PermanentDeleteMedicationLotAsync(Guid id)
-        {
-            try
-            {
-                var lot = await _medicationLotRepository.GetByIdAsync(id, includeDeleted: true);
-                if (lot == null)
-                {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không tìm thấy lô thuốc"));
-                }
-
-                var success = await _medicationLotRepository.DeleteAsync(id);
-                if (!success)
-                {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không thể xóa vĩnh viễn lô thuốc"));
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-                return ApiResult<bool>.Success(true, "Xóa vĩnh viễn lô thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error permanently deleting medication lot: {LotId}", id);
-                return ApiResult<bool>.Failure(ex);
-            }
-        }
 
         public async Task<ApiResult<PagedList<MedicationLotResponseDTO>>> GetSoftDeletedLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null)
@@ -467,35 +366,33 @@ namespace Services.Implementations
 
         public async Task<ApiResult<BatchOperationResultDTO>> CleanupExpiredLotsAsync(int daysToExpire = 90)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                // Xóa và lấy về số lượng lô thuốc đã xóa
-                var deletedCount = await _medicationLotRepository.PermanentDeleteExpiredLotsAsync(daysToExpire);
-                await _unitOfWork.SaveChangesAsync();
-
-                // Khởi tạo DTO kết quả batch
-                var batchResult = new BatchOperationResultDTO
+                try
                 {
-                    TotalRequested = deletedCount,      // Có thể thay bằng số lô expired nếu repo trả về danh sách
-                    SuccessCount = deletedCount,
-                    FailureCount = 0,
-                    Message = $"Đã dọn dẹp {deletedCount} lô thuốc hết hạn"
-                    // Nếu có danh sách ID, có thể gán thêm SuccessIds…
-                };
+                    var deletedCount = await _medicationLotRepository.PermanentDeleteExpiredLotsAsync(daysToExpire);
+                    await _unitOfWork.SaveChangesAsync();
 
-                // Trả về ApiResult với DTO
-                return ApiResult<BatchOperationResultDTO>.Success(
-                    batchResult,
-                    batchResult.Message
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cleaning up expired lots");
-                return ApiResult<BatchOperationResultDTO>.Failure(ex);
-            }
+                    var batchResult = new BatchOperationResultDTO
+                    {
+                        TotalRequested = deletedCount,
+                        SuccessCount = deletedCount,
+                        FailureCount = 0,
+                        Message = $"Đã dọn dẹp {deletedCount} lô thuốc hết hạn"
+                    };
+
+                    return ApiResult<BatchOperationResultDTO>.Success(
+                        batchResult,
+                        batchResult.Message
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error cleaning up expired lots");
+                    return ApiResult<BatchOperationResultDTO>.Failure(ex);
+                }
+            }, IsolationLevel.ReadCommitted);
         }
-
 
         #endregion
 
@@ -568,29 +465,32 @@ namespace Services.Implementations
 
         public async Task<ApiResult<bool>> UpdateQuantityAsync(Guid lotId, int newQuantity)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                if (newQuantity < 0)
+                try
                 {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Số lượng không được âm"));
-                }
+                    if (newQuantity < 0)
+                    {
+                        return ApiResult<bool>.Failure(
+                            new Exception("Số lượng không được âm"));
+                    }
 
-                var success = await _medicationLotRepository.UpdateQuantityAsync(lotId, newQuantity);
-                if (!success)
+                    var success = await _medicationLotRepository.UpdateQuantityAsync(lotId, newQuantity);
+                    if (!success)
+                    {
+                        return ApiResult<bool>.Failure(
+                            new Exception("Không tìm thấy lô thuốc"));
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    return ApiResult<bool>.Success(true, "Cập nhật số lượng thành công");
+                }
+                catch (Exception ex)
                 {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không tìm thấy lô thuốc"));
+                    _logger.LogError(ex, "Error updating quantity for lot: {LotId}", lotId);
+                    return ApiResult<bool>.Failure(ex);
                 }
-
-                await _unitOfWork.SaveChangesAsync();
-                return ApiResult<bool>.Success(true, "Cập nhật số lượng thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating quantity for lot: {LotId}", lotId);
-                return ApiResult<bool>.Failure(ex);
-            }
+            }, IsolationLevel.ReadCommitted);
         }
 
         #endregion
@@ -609,7 +509,7 @@ namespace Services.Implementations
                 var statistics = await _medicationLotRepository.GetAllStatisticsAsync(currentDate, expiryThreshold);
 
                 _logger.LogInformation(
-                    "Successfully calculated medication lot statistics: Total={TotalLots}, Active={ActiveLots}, Expired={ExpiredLots}, Expiring={ExpiringLots}",
+                    "Successfully calculated medication lot statistics: Total={TotalLots}, Active={ActiveLots}, Expired={ExpiredLots}, Expiring={ExpiringInNext30Days}",
                     statistics.TotalLots, statistics.ActiveLots, statistics.ExpiredLots, statistics.ExpiringInNext30Days);
 
                 return ApiResult<MedicationLotStatisticsResponseDTO>.Success(
