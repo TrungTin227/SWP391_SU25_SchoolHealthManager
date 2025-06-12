@@ -12,6 +12,7 @@ namespace Repositories.WorkSeeds.Implements
 
         // Specific repositories
         private IUserRepository? _userRepository;
+        private IHealProfileRepository? _healProfileRepository;
         private IStudentRepository? _studentRepository;
         private IParentRepository? _parentRepository;
         private IParentMedicationDeliveryRepository? _parentMedicationDeliveryRepository;
@@ -26,6 +27,8 @@ namespace Repositories.WorkSeeds.Implements
 
         public IUserRepository UserRepository =>
             _userRepository ??= _repositoryFactory.GetCustomRepository<IUserRepository>();
+        public IHealProfileRepository HealProfileRepository => 
+            _healProfileRepository ??= _repositoryFactory.GetCustomRepository<IHealProfileRepository>();
         public IStudentRepository StudentRepository =>
             _studentRepository ??= _repositoryFactory.GetCustomRepository<IStudentRepository>();
         public IParentRepository ParentRepository =>

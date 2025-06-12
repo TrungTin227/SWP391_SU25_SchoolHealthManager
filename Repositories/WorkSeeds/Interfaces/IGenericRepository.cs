@@ -15,6 +15,9 @@ namespace Repositories.WorkSeeds.Interfaces
         Task DeleteRangeAsync(IEnumerable<TKey> ids);
 
         // Query operations
+
+        IQueryable<TEntity> GetQueryable();
+
         Task<IReadOnlyList<TEntity>> GetAllAsync(
             Expression<Func<TEntity, bool>>? predicate = null,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
