@@ -230,5 +230,9 @@ namespace Repositories.WorkSeeds.Implements
             var property = obj.GetType().GetProperty(propertyName);
             property?.SetValue(obj, value);
         }
+        public virtual IQueryable<TEntity> GetQueryable()
+        {
+            return _dbSet.AsQueryable();
+        }
     }
 }

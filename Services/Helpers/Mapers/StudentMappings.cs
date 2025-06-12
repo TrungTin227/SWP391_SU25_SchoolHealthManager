@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DTOs.StudentDTOs.Request;
+using DTOs.StudentDTOs.Response;
 using static Quartz.Logging.OperationName;
 
 
@@ -57,7 +58,21 @@ namespace Services.Helpers.Mapers
             return existingStudent;
         }
 
-
+        public static GetAllStudentDTO ToGetAllStudent(this Student dto)
+        {
+            if (dto == null) return null;
+            return new GetAllStudentDTO
+            {
+                Id = dto.Id,
+                StudentCode = dto.StudentCode,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                DateOfBirth = dto.DateOfBirth,
+                Grade = dto.Grade,
+                Section = dto.Section,
+                Image = dto.Image,
+            };
+        }
 
     }
 }
