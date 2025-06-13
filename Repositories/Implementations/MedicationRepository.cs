@@ -7,10 +7,12 @@ namespace Repositories.Implementations
     public class MedicationRepository : GenericRepository<Medication, Guid>, IMedicationRepository
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
+        private readonly ICurrentTime _currentTime;
 
-        public MedicationRepository(SchoolHealthManagerDbContext context) : base(context)
+        public MedicationRepository(SchoolHealthManagerDbContext context, ICurrentTime currentTime) : base(context)
         {
             _dbContext = context;
+            _currentTime = currentTime;
         }
 
         #region Specific Business Logic Methods
@@ -115,7 +117,7 @@ namespace Repositories.Implementations
                 .Where(l => l.MedicationId == id && !l.IsDeleted)
                 .ToListAsync();
 
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
             foreach (var lot in lots)
             {
                 lot.IsDeleted = true;
@@ -150,7 +152,7 @@ namespace Repositories.Implementations
                 .Where(l => l.MedicationId == id && l.IsDeleted)
                 .ToListAsync();
 
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
             foreach (var lot in lots)
             {
                 lot.IsDeleted = false;
@@ -210,7 +212,7 @@ namespace Repositories.Implementations
         /// </summary>
         public async Task<int> PermanentDeleteExpiredAsync(int daysToExpire = 30)
         {
-            var expiredDate = DateTime.UtcNow.AddDays(-daysToExpire);
+            var expiredDate = _currentTime.GetVietnamTime().AddDays(-daysToExpire);
 
             var expiredMedications = await _dbContext.Medications
                 .IgnoreQueryFilters()

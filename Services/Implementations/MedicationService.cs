@@ -16,8 +16,9 @@ namespace Services.Implementations
             IMedicationRepository medicationRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
-            ILogger<MedicationService> logger)
-            : base(medicationRepository, currentUserService, unitOfWork)
+            ILogger<MedicationService> logger,
+            ICurrentTime currentTime)
+            : base(medicationRepository, currentUserService, unitOfWork, currentTime)
         {
             _medicationRepository = medicationRepository;
             _logger = logger;

@@ -99,7 +99,8 @@ namespace WebAPI.Extensions
             services.AddScoped<IRepositoryFactory, RepositoryFactory>();
             services.AddScoped<IMedicalSupplyLotRepository, MedicalSupplyLotRepository>();
             services.AddScoped<IMedicalSupplyRepository, MedicalSupplyRepository>();
-
+            services.AddScoped<IHealthEventRepository, HealthEventRepository>();
+            services.AddScoped<ICurrentTime, CurrentTime>();
 
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -114,6 +115,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IMedicationLotService, MedicationLotService>();
             services.AddScoped<IMedicalSupplyLotService, MedicalSupplyLotService>();
             services.AddScoped<IMedicalSupplyService, MedicalSupplyService>();
+            services.AddScoped<IHealthEventService, HealthEventService>();
 
             // 5. Email + Quartz
             services.AddEmailServices(opts =>

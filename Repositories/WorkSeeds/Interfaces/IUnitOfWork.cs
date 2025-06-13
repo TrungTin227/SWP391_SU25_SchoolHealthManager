@@ -12,5 +12,6 @@
         IMedicationLotRepository MedicationLotRepository { get; }
         IMedicalSupplyRepository MedicalSupplyRepository { get; }
         IMedicalSupplyLotRepository MedicalSupplyLotRepository { get; }
+        IHealthEventRepository HealthEventRepository { get; }
     }
 }

@@ -20,6 +20,7 @@ namespace Repositories.WorkSeeds.Implements
         private IMedicationLotRepository? _medicationLotRepository;
         private IMedicalSupplyRepository? _medicalSupplyRepository;
         private IMedicalSupplyLotRepository? _medicalSupplyLotRepository;
+        private IHealthEventRepository? _healthEventRepository;
 
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
@@ -47,6 +48,8 @@ namespace Repositories.WorkSeeds.Implements
             _medicalSupplyRepository ??= _repositoryFactory.GetCustomRepository<IMedicalSupplyRepository>();
         public IMedicalSupplyLotRepository MedicalSupplyLotRepository =>
             _medicalSupplyLotRepository ??= _repositoryFactory.GetCustomRepository<IMedicalSupplyLotRepository>();
+        public IHealthEventRepository HealthEventRepository =>
+            _healthEventRepository ??= _repositoryFactory.GetCustomRepository<IHealthEventRepository>();
 
 
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()

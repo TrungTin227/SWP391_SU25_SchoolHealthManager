@@ -7,10 +7,13 @@ namespace Repositories.Implementations
     public class MedicationLotRepository : GenericRepository<MedicationLot, Guid>, IMedicationLotRepository
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
+        private readonly ICurrentTime _currentTime;
 
-        public MedicationLotRepository(SchoolHealthManagerDbContext context) : base(context)
+
+        public MedicationLotRepository(SchoolHealthManagerDbContext context, ICurrentTime currentTime) : base(context)
         {
             _dbContext = context;
+            _currentTime = currentTime;
         }
 
         #region Basic CRUD Methods
@@ -96,7 +99,7 @@ namespace Repositories.Implementations
             if (!lots.Any())
                 return 0;
 
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
             foreach (var lot in lots)
             {
                 lot.IsDeleted = true;
@@ -126,7 +129,7 @@ namespace Repositories.Implementations
             if (!lots.Any())
                 return 0;
 
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
             foreach (var lot in lots)
             {
                 lot.IsDeleted = false;
@@ -186,7 +189,7 @@ namespace Repositories.Implementations
 
         public async Task<int> PermanentDeleteExpiredLotsAsync(int daysToExpire = 30)
         {
-            var expiredDate = DateTime.UtcNow.AddDays(-daysToExpire);
+            var expiredDate = _currentTime.GetVietnamTime().AddDays(-daysToExpire);
             var predicate = BuildPermanentDeletePredicate(expiredDate);
 
             var expiredLots = await _dbContext.MedicationLots
@@ -248,7 +251,7 @@ namespace Repositories.Implementations
 
         public async Task<int> GetAvailableQuantityAsync(Guid medicationId)
         {
-            var today = DateTime.UtcNow.Date;
+            var today = _currentTime.GetVietnamTime().Date;
 
             return await _dbContext.MedicationLots
                 .AsNoTracking()
@@ -267,7 +270,7 @@ namespace Repositories.Implementations
             }
 
             lot.Quantity = newQuantity;
-            lot.UpdatedAt = DateTime.UtcNow;
+            lot.UpdatedAt = _currentTime.GetVietnamTime();
 
             await UpdateAsync(lot);
             return true;
@@ -296,7 +299,7 @@ namespace Repositories.Implementations
                     ExpiredLots = g.Count(ml => ml.ExpiryDate.Date <= currentDate),
                     ExpiringInNext30Days = g.Count(ml => ml.ExpiryDate.Date > currentDate &&
                                          ml.ExpiryDate.Date <= expiryThreshold),
-                    GeneratedAt = DateTime.UtcNow
+                    GeneratedAt = _currentTime.GetVietnamTime()
                 })
                 .FirstOrDefaultAsync();
 
@@ -309,7 +312,7 @@ namespace Repositories.Implementations
                     ActiveLots = 0,
                     ExpiredLots = 0,
                     ExpiringInNext30Days = 0,
-                    GeneratedAt = DateTime.UtcNow
+                    GeneratedAt = _currentTime.GetVietnamTime()
                 };
             }
 
@@ -324,7 +327,7 @@ namespace Repositories.Implementations
         private Expression<Func<MedicationLot, bool>> BuildMedicationLotPredicate(
             string? searchTerm, Guid? medicationId, bool? isExpired)
         {
-            var today = DateTime.UtcNow.Date;
+            var today = _currentTime.GetVietnamTime().Date;
 
             return ml => !ml.IsDeleted &&
                         (string.IsNullOrWhiteSpace(searchTerm) ||
@@ -339,7 +342,7 @@ namespace Repositories.Implementations
 
         private Expression<Func<MedicationLot, bool>> BuildExpiringLotsPredicate(int daysBeforeExpiry)
         {
-            var today = DateTime.UtcNow.Date;
+            var today = _currentTime.GetVietnamTime().Date;
             var thresholdDate = today.AddDays(daysBeforeExpiry);
 
             return ml => !ml.IsDeleted &&
@@ -362,7 +365,7 @@ namespace Repositories.Implementations
 
         private Expression<Func<MedicationLot, bool>> BuildExpiredLotsPredicate()
         {
-            var today = DateTime.UtcNow.Date;
+            var today = _currentTime.GetVietnamTime().Date;
             return ml => !ml.IsDeleted && ml.ExpiryDate.Date <= today;
         }
 

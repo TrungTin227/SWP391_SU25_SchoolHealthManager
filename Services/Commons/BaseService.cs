@@ -8,15 +8,18 @@ namespace Services.Commons
         protected readonly IGenericRepository<TEntity, TKey> _repository;
         protected readonly ICurrentUserService _currentUserService;
         protected readonly IUnitOfWork _unitOfWork;
+        protected readonly ICurrentTime _currentTime;
 
         protected BaseService(
             IGenericRepository<TEntity, TKey> repository,
             ICurrentUserService currentUserService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            ICurrentTime currentTime)
         {
             _repository = repository;
             _currentUserService = currentUserService;
             _unitOfWork = unitOfWork;
+            _currentTime = currentTime;
         }
 
         public virtual async Task<TEntity> CreateAsync(TEntity entity)
@@ -50,7 +53,7 @@ namespace Services.Commons
         private void SetAuditFieldsForCreate(TEntity entity)
         {
             var currentUserId = _currentUserService.GetUserId();
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
 
             if (IsInheritedFromBaseEntity(entity.GetType()))
             {
@@ -86,7 +89,7 @@ namespace Services.Commons
         private void SetAuditFieldsForUpdate(TEntity entity)
         {
             var currentUserId = _currentUserService.GetUserId();
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
 
             if (IsInheritedFromBaseEntity(entity.GetType()))
             {

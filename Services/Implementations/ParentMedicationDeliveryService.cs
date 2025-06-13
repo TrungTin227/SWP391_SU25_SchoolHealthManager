@@ -20,10 +20,11 @@ namespace Services.Implementations
             IGenericRepository<ParentMedicationDelivery, Guid> parentMedicationDeliveryRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
-            SchoolHealthManagerDbContext dbContext
+            SchoolHealthManagerDbContext dbContext,
+            ICurrentTime currentTime
             )
         :
-            base(parentMedicationDeliveryRepository, currentUserService, unitOfWork)
+            base(parentMedicationDeliveryRepository, currentUserService, unitOfWork, currentTime)
         {
             _dbContext = dbContext;
         }

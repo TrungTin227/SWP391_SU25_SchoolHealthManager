@@ -7,12 +7,15 @@ namespace Repositories.Implementations
     public class MedicalSupplyRepository : GenericRepository<MedicalSupply, Guid>, IMedicalSupplyRepository
     {
         private readonly ILogger<MedicalSupplyRepository> _logger;
+        private readonly ICurrentTime _currentTime;
 
         public MedicalSupplyRepository(
             SchoolHealthManagerDbContext context,
-            ILogger<MedicalSupplyRepository> logger) : base(context)
+            ILogger<MedicalSupplyRepository> logger,
+            ICurrentTime currentTime) : base(context)
         {
             _logger = logger;
+            _currentTime = currentTime;
         }
 
         #region Query Operations
@@ -293,7 +296,7 @@ namespace Repositories.Implementations
                     ids.Count, deletedBy);
 
                 // Lấy các supplies tồn tại và chưa bị xóa
-                var currentTime = DateTime.UtcNow;
+                var currentTime = _currentTime.GetVietnamTime();
                 var supplies = await _context.MedicalSupplies
                     .Where(ms => ids.Contains(ms.Id) && !ms.IsDeleted)
                     .ToListAsync();
@@ -345,7 +348,7 @@ namespace Repositories.Implementations
                     ids.Count, restoredBy);
 
                 // Lấy các supplies đã bị soft delete
-                var currentTime = DateTime.UtcNow;
+                var currentTime = _currentTime.GetVietnamTime();
                 var supplies = await _context.MedicalSupplies
                     .Where(ms => ids.Contains(ms.Id) && ms.IsDeleted)
                     .ToListAsync();

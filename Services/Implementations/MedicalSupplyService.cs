@@ -15,8 +15,9 @@ namespace Services.Implementations
         public MedicalSupplyService(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            ILogger<MedicalSupplyService> logger)
-            : base(unitOfWork.MedicalSupplyRepository, currentUserService, unitOfWork)
+            ILogger<MedicalSupplyService> logger,
+            ICurrentTime currentTime)
+            : base(unitOfWork.MedicalSupplyRepository, currentUserService, unitOfWork, currentTime)
         {
             _medicalSupplyRepository = unitOfWork.MedicalSupplyRepository;
             _medicalSupplyLotRepository = unitOfWork.MedicalSupplyLotRepository;
