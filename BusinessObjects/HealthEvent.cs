@@ -32,7 +32,9 @@ namespace BusinessObjects
         public EventStatus EventStatus { get; set; }
 
         // Ai ghi nhận
-        public Guid ReportedBy { get; set; }
+        public Guid ReportedUserId { get; set; }
+
+        //navigation property
         public User ReportedUser { get; set; }
 
         // Các thuốc/vật tư đã dùng khi xử lý sự kiện

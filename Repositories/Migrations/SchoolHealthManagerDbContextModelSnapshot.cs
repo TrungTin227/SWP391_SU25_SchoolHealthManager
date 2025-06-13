@@ -480,9 +480,6 @@ namespace Repositories.Migrations
                     b.Property<DateTime>("OccurredAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("ReportedBy")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("ReportedUserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -686,7 +683,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("MedicalSupplyId");
 
-                    b.ToTable("MedicalSupplyLot");
+                    b.ToTable("MedicalSupplyLots");
                 });
 
             modelBuilder.Entity("BusinessObjects.Medication", b =>
@@ -1878,7 +1875,7 @@ namespace Repositories.Migrations
                     b.HasOne("BusinessObjects.User", "ReportedUser")
                         .WithMany()
                         .HasForeignKey("ReportedUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.Student", "Student")
@@ -1889,7 +1886,8 @@ namespace Repositories.Migrations
 
                     b.HasOne("BusinessObjects.VaccinationRecord", "VaccinationRecord")
                         .WithMany()
-                        .HasForeignKey("VaccinationRecordId");
+                        .HasForeignKey("VaccinationRecordId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("ReportedUser");
 

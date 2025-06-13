@@ -6,5 +6,6 @@
         Task<bool> ExistsByEmailAsync(string email);
         Task<User> GetUserDetailsByIdAsync(Guid id);
         Task<bool> ExistsByUsernameAsync(string username);
+        Task<bool> ExistsAsync(Guid userId);
     }
 }

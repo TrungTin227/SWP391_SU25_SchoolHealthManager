@@ -274,6 +274,17 @@ namespace Repositories
                       .WithMany(s => s.HealthEvents)
                       .HasForeignKey(he => he.StudentId)
                       .OnDelete(DeleteBehavior.Cascade);
+                //Relationship với User (ReportedUser)
+                entity.HasOne(he => he.ReportedUser)
+                       .WithMany()
+                       .HasForeignKey(he => he.ReportedUserId)
+                       .OnDelete(DeleteBehavior.NoAction);  // Không xóa User khi xóa HealthEvent
+
+                //Relationship với VaccinationRecord (nếu có)
+                entity.HasOne(he => he.VaccinationRecord)
+                      .WithMany()
+                      .HasForeignKey(he => he.VaccinationRecordId)
+                      .OnDelete(DeleteBehavior.NoAction); // Set null khi xóa VaccinationRecord
             });
 
             // CheckupRecord relationships

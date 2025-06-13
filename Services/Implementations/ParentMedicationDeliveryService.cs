@@ -7,6 +7,7 @@ using DTOs.ParentMedicationDeliveryDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Respond;
 using Repositories;
 using Repositories.Interfaces;
+using Services.Commons;
 
 namespace Services.Implementations
 {
@@ -19,10 +20,11 @@ namespace Services.Implementations
             IGenericRepository<ParentMedicationDelivery, Guid> parentMedicationDeliveryRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
-            SchoolHealthManagerDbContext dbContext
+            SchoolHealthManagerDbContext dbContext,
+            ICurrentTime currentTime
             )
         :
-            base(parentMedicationDeliveryRepository, currentUserService, unitOfWork)
+            base(parentMedicationDeliveryRepository, currentUserService, unitOfWork, currentTime)
         {
             _dbContext = dbContext;
         }

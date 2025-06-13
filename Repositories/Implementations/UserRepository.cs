@@ -91,5 +91,11 @@ namespace Repositories.Implementations
                 .AsNoTracking()
                 .AnyAsync(u => u.UserName == username);
         }
+        public async Task<bool> ExistsAsync(Guid userId)
+        {
+            return await _context.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Id == userId);
+        }
     }
 }

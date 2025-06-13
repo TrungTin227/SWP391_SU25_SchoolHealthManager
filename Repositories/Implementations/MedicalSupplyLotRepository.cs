@@ -1,18 +1,20 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Repositories.WorkSeeds.Implements;
 
 namespace Repositories.Implementations
 {
     public class MedicalSupplyLotRepository : GenericRepository<MedicalSupplyLot, Guid>, IMedicalSupplyLotRepository
     {
         private readonly ILogger<MedicalSupplyLotRepository> _logger;
+        private readonly ICurrentTime _currentTime;
 
         public MedicalSupplyLotRepository(
             SchoolHealthManagerDbContext context,
-            ILogger<MedicalSupplyLotRepository> logger) : base(context)
+            ILogger<MedicalSupplyLotRepository> logger,
+            ICurrentTime currentTime) : base(context)
         {
             _logger = logger;
+            _currentTime = currentTime;
         }
 
         #region Query Operations
@@ -327,7 +329,7 @@ namespace Repositories.Implementations
                 if (ids == null || !ids.Any())
                     return 0;
 
-                var currentTime = DateTime.UtcNow;
+                var currentTime = _currentTime.GetVietnamTime();
                 var lots = await _context.MedicalSupplyLots
                     .Where(msl => ids.Contains(msl.Id) && !msl.IsDeleted)
                     .ToListAsync();
@@ -363,7 +365,7 @@ namespace Repositories.Implementations
                 if (ids == null || !ids.Any())
                     return 0;
 
-                var currentTime = DateTime.UtcNow;
+                var currentTime = _currentTime.GetVietnamTime();
                 var lots = await _context.MedicalSupplyLots
                     .Where(msl => ids.Contains(msl.Id) && msl.IsDeleted)
                     .ToListAsync();

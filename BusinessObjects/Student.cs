@@ -17,6 +17,9 @@ namespace BusinessObjects
         [Required, MaxLength(50)]
         public string LastName { get; set; }         // Họ và tên đệm
 
+        [NotMapped]
+        public string FullName => $"{LastName} {FirstName}".Trim();
+
         [Required]
         public DateTime DateOfBirth { get; set; }    // Ngày sinh
 

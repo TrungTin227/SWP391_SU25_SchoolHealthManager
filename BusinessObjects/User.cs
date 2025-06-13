@@ -1,6 +1,7 @@
 ﻿using BusinessObjects.Common;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
@@ -11,6 +12,9 @@ namespace BusinessObjects
 
         [MaxLength(100)]
         public string LastName { get; set; }
+
+        [NotMapped]
+        public string FullName => $"{LastName} {FirstName}".Trim();
 
         public Gender Gender { get; set; }
         public bool IsFirstLogin { get; set; } = true; // Mặc định là true, sẽ được set thành false khi người dùng đăng nhập lần đầu tiên
