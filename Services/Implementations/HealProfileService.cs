@@ -18,9 +18,10 @@ namespace Services.Implementations
             IGenericRepository<HealthProfile,
             Guid> repository,
             ICurrentUserService currentUserService, 
-            IUnitOfWork unitOfWork
+            IUnitOfWork unitOfWork,
+            ICurrentTime currentTime
             ) : 
-            base(repository, currentUserService, unitOfWork)
+            base(repository, currentUserService, unitOfWork, currentTime)
         {
         }
 
