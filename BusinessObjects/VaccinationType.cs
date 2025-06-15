@@ -17,5 +17,6 @@ namespace BusinessObjects
         // thông tin về tháng tuổi tiêm mũi nào và khoảng cách giữa các mũi
         public int RecommendedAgeMonths { get; set; }   // Ví dụ: 0, 2, 6, 12, 60
         public int MinIntervalDays { get; set; }   // Khoảng cách tối thiểu (ngày)
+        public ICollection<VaccineDoseInfo> VaccineDoseInfos { get; set; } = new List<VaccineDoseInfo>();
     }
 }

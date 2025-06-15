@@ -1623,33 +1623,6 @@ namespace Repositories.Migrations
                     b.ToTable("VaccinationTypes");
                 });
 
-            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
-                {
-                    b.Property<Guid>("VaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("DoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MinIntervalDays")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RecommendedAgeMonths")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("VaccineDoseInfoDoseNumber")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("VaccineDoseInfoVaccineTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("VaccineTypeId", "DoseNumber");
-
-                    b.HasIndex("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
-
-                    b.ToTable("VaccineDoseInfos");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
@@ -1751,6 +1724,42 @@ namespace Repositories.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("VaccineDoseInfo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DoseNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinIntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("PreviousDoseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RecommendedAgeMonths")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreviousDoseId")
+                        .HasDatabaseName("IX_VaccineDoseInfos_PreviousDoseId");
+
+                    b.HasIndex("VaccineTypeId")
+                        .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId");
+
+                    b.HasIndex("VaccineTypeId", "DoseNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId_DoseNumber_Unique");
+
+                    b.ToTable("VaccineDoseInfos");
                 });
 
             modelBuilder.Entity("BusinessObjects.CheckupRecord", b =>
@@ -2147,21 +2156,6 @@ namespace Repositories.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
-                {
-                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
-                        .WithMany()
-                        .HasForeignKey("VaccineTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObjects.VaccineDoseInfo", null)
-                        .WithMany("NextDoseInfos")
-                        .HasForeignKey("VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber");
-
-                    b.Navigation("VaccineType");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("BusinessObjects.Role", null)
@@ -2211,6 +2205,24 @@ namespace Repositories.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VaccineDoseInfo", b =>
+                {
+                    b.HasOne("VaccineDoseInfo", "PreviousDose")
+                        .WithMany("NextDoses")
+                        .HasForeignKey("PreviousDoseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
+                        .WithMany("VaccineDoseInfos")
+                        .HasForeignKey("VaccineTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PreviousDose");
+
+                    b.Navigation("VaccineType");
                 });
 
             modelBuilder.Entity("BusinessObjects.CheckupCampaign", b =>
@@ -2304,9 +2316,14 @@ namespace Repositories.Migrations
                     b.Navigation("CounselingAppointments");
                 });
 
-            modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
+            modelBuilder.Entity("BusinessObjects.VaccinationType", b =>
                 {
-                    b.Navigation("NextDoseInfos");
+                    b.Navigation("VaccineDoseInfos");
+                });
+
+            modelBuilder.Entity("VaccineDoseInfo", b =>
+                {
+                    b.Navigation("NextDoses");
                 });
 #pragma warning restore 612, 618
         }

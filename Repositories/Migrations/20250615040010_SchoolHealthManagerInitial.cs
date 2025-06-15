@@ -418,16 +418,16 @@ namespace Repositories.Migrations
                 name: "VaccineDoseInfos",
                 columns: table => new
                 {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VaccineTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     DoseNumber = table.Column<int>(type: "int", nullable: false),
                     RecommendedAgeMonths = table.Column<int>(type: "int", nullable: false),
                     MinIntervalDays = table.Column<int>(type: "int", nullable: false),
-                    VaccineDoseInfoDoseNumber = table.Column<int>(type: "int", nullable: true),
-                    VaccineDoseInfoVaccineTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    PreviousDoseId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_VaccineDoseInfos", x => new { x.VaccineTypeId, x.DoseNumber });
+                    table.PrimaryKey("PK_VaccineDoseInfos", x => x.Id);
                     table.ForeignKey(
                         name: "FK_VaccineDoseInfos_VaccinationTypes_VaccineTypeId",
                         column: x => x.VaccineTypeId,
@@ -435,10 +435,11 @@ namespace Repositories.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_VaccineDoseInfos_VaccineDoseInfos_VaccineDoseInfoVaccineTypeId_VaccineDoseInfoDoseNumber",
-                        columns: x => new { x.VaccineDoseInfoVaccineTypeId, x.VaccineDoseInfoDoseNumber },
+                        name: "FK_VaccineDoseInfos_VaccineDoseInfos_PreviousDoseId",
+                        column: x => x.PreviousDoseId,
                         principalTable: "VaccineDoseInfos",
-                        principalColumns: new[] { "VaccineTypeId", "DoseNumber" });
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1299,9 +1300,20 @@ namespace Repositories.Migrations
                 column: "StudentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_VaccineDoseInfos_VaccineDoseInfoVaccineTypeId_VaccineDoseInfoDoseNumber",
+                name: "IX_VaccineDoseInfos_PreviousDoseId",
                 table: "VaccineDoseInfos",
-                columns: new[] { "VaccineDoseInfoVaccineTypeId", "VaccineDoseInfoDoseNumber" });
+                column: "PreviousDoseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VaccineDoseInfos_VaccineTypeId",
+                table: "VaccineDoseInfos",
+                column: "VaccineTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VaccineDoseInfos_VaccineTypeId_DoseNumber_Unique",
+                table: "VaccineDoseInfos",
+                columns: new[] { "VaccineTypeId", "DoseNumber" },
+                unique: true);
         }
 
         /// <inheritdoc />

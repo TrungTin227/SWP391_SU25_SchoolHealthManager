@@ -325,10 +325,45 @@ namespace Repositories
         #region Vaccination Management Configuration
         private static void ConfigureVaccinationManagement(ModelBuilder builder)
         {
-            // VaccineDoseInfo composite key
+            // VaccineDoseInfo configuration
             builder.Entity<VaccineDoseInfo>(entity =>
             {
-                entity.HasKey(v => new { v.VaccineTypeId, v.DoseNumber });
+                // Primary key
+                entity.HasKey(v => v.Id);
+
+                // Relationship với VaccinationType (Many-to-One)
+                entity.HasOne(v => v.VaccineType)
+                      .WithMany(vt => vt.VaccineDoseInfos)
+                      .HasForeignKey(v => v.VaccineTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Self-reference relationship (Many-to-One)
+                entity.HasOne(v => v.PreviousDose)
+                      .WithMany(v => v.NextDoses)
+                      .HasForeignKey(v => v.PreviousDoseId)
+                      .OnDelete(DeleteBehavior.Restrict); // Tránh cascade delete
+
+                // Unique constraint: Mỗi VaccineType chỉ có 1 DoseNumber duy nhất
+                entity.HasIndex(v => new { v.VaccineTypeId, v.DoseNumber })
+                      .IsUnique()
+                      .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId_DoseNumber_Unique");
+
+                // Performance indexes
+                entity.HasIndex(v => v.VaccineTypeId)
+                      .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId");
+
+                entity.HasIndex(v => v.PreviousDoseId)
+                      .HasDatabaseName("IX_VaccineDoseInfos_PreviousDoseId");
+
+                // Constraints
+                entity.Property(v => v.DoseNumber)
+                      .IsRequired();
+
+                entity.Property(v => v.RecommendedAgeMonths)
+                      .IsRequired();
+
+                entity.Property(v => v.MinIntervalDays)
+                      .IsRequired();
             });
 
             // VaccinationRecord relationships
