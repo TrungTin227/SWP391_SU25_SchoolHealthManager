@@ -1,8 +1,9 @@
-﻿using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Repositories.Implementations;
+using System.Text;
 
 
 namespace WebAPI.Extensions
@@ -118,9 +119,11 @@ namespace WebAPI.Extensions
             services.AddScoped<IHealthEventService, HealthEventService>();
 
             // 5. Email + Quartz
-            services.AddEmailServices(opts =>
-                configuration.GetSection("EmailSettings").Bind(opts)
-            );
+            services.AddEmailServices(options =>
+            {
+                configuration.GetSection("EmailSettings").Bind(options);
+                options.SchoolName = "Trường Tiểu học Lê Văn Việt";
+            });
 
             // 6. Controllers
             services.AddControllers();
