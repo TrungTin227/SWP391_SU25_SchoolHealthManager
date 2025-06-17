@@ -13,6 +13,7 @@ namespace DTOs.HealProfile.Responds
     public class HealProfileResponseDTO
     {
         public GetAllStudentDTO StudentInformation { get; set; }
+        public Guid ProfileId { get; set; }
         public int Version { get; set; }
         public DateTime ProfileDate { get; set; }
         public string? Allergies { get; set; }
