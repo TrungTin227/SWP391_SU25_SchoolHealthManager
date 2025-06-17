@@ -11,12 +11,12 @@ namespace Services.Helpers.Mapers
 {
     public static class HealProfileMappings
     {
-            public static HealthProfile ToEntity(CreateHealProfileRequestDTO dto)
+            public static HealthProfile ToEntity(CreateHealProfileRequestDTO dto, Student student, Parent parent)
             {
                 return new HealthProfile
                 {
-                    StudentId = dto.StudentId,
-                    ParentId = dto.ParentId,
+                    StudentId = student.Id,
+                    ParentId = parent.UserId,
                     ProfileDate = DateTime.UtcNow,
                     Allergies = dto.Allergies ?? string.Empty,
                     ChronicConditions = dto.ChronicConditions ?? string.Empty,
@@ -31,6 +31,7 @@ namespace Services.Helpers.Mapers
             {
                 return new HealProfileResponseDTO
                 {
+                    ProfileId = entity.Id,
                     Version = entity.Version,
                     ProfileDate = entity.ProfileDate,
                     Allergies = entity.Allergies,

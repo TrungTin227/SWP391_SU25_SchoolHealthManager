@@ -1,5 +1,6 @@
 ﻿using DTOs.HealProfile.Requests;
 using Microsoft.AspNetCore.Mvc;
+using Quartz.Util;
 
 namespace WebAPI.Controllers
 {
@@ -26,18 +27,18 @@ namespace WebAPI.Controllers
             }
             return BadRequest(result);
         }
-        [HttpPost("update-healprofile-by-id/{id}")]
-        public async Task<IActionResult> UpdateHealthProfileById(Guid id, [FromBody] UpdateHealProfileRequestDTO request)
+        [HttpPost("update-healprofile-by-studentcode/{studentCode}")]
+        public async Task<IActionResult> UpdateHealthProfileById(string studentCode, [FromBody] UpdateHealProfileRequestDTO request)
         {
             if (request == null)
             {
                 return BadRequest("Request cannot be null");
             }
-            if (id == Guid.Empty)
+            if (studentCode.IsNullOrWhiteSpace())
             {
-                return BadRequest("Id của hồ sơ sức khỏe không được null!!");
+                return BadRequest("Mã học sinh không được null!!");
             }
-            var result = await _healProfileService.UpdateHealProfileByIdAsync(id, request);
+            var result = await _healProfileService.UpdateHealProfileByStudentCodeAsync(studentCode, request);
             if (result.IsSuccess)
             {
                 return Ok(result);
@@ -61,14 +62,14 @@ namespace WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("get-all-healprofiles-by-student-id/{id}")]
-        public async Task<IActionResult> GetAllHealProfilesByStudentId(Guid id)
+        [HttpGet("get-all-healprofiles-by-student-code/{code}")]
+        public async Task<IActionResult> GetAllHealProfilesByStudentId(string code)
         {
-            if (id == Guid.Empty)
+            if (code.IsNullOrWhiteSpace())
             {
-                return BadRequest("Id của học sinh không được null!!");
+                return BadRequest("Mã học sinh không được null!!");
             }
-            var result = await _healProfileService.GetAllHealProfileByStudentIdAsync(id);
+            var result = await _healProfileService.GetAllHealProfileByStudentCodeAsync(code);
             if (result.IsSuccess)
             {
                 return Ok(result);
@@ -91,14 +92,14 @@ namespace WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("get-newest-healprofile-by-student-id/{studentId}")]
-        public async Task<IActionResult> GetHealProfileByStudentId(Guid studentId)
+        [HttpGet("get-newest-healprofile-by-student-code/{studentcode}")]
+        public async Task<IActionResult> GetHealProfileByStudentId(string studentcode)
         {
-            if (studentId == Guid.Empty)
+            if (studentcode.IsNullOrWhiteSpace())
             {
-                return BadRequest("Id của học sinh không được null!!");
+                return BadRequest("Mã học sinh không được null!!");
             }
-            var result = await _healProfileService.GetHealProfileByStudentIdAsync(studentId);
+            var result = await _healProfileService.GetNewestHealProfileByStudentCodeAsync(studentcode);
             if (result.IsSuccess)
             {
                 return Ok(result);
@@ -106,19 +107,19 @@ namespace WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("get-newest-healprofile-by-parent-id/{parentId}")]
-        public async Task<IActionResult> GetHealProfileByParentId(Guid parentId)
-        {
-            if (parentId == Guid.Empty)
-            {
-                return BadRequest("Id của phụ huynh không được null!!");
-            }
-            var result = await _healProfileService.GetHealProfileByParentIdAsync(parentId);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
-        }
+        //[HttpGet("get-newest-healprofile-by-parent-id/{parentId}")]
+        //public async Task<IActionResult> GetHealProfileByParentId(Guid parentId)
+        //{
+        //    if (parentId == Guid.Empty)
+        //    {
+        //        return BadRequest("Id của phụ huynh không được null!!");
+        //    }
+        //    var result = await _healProfileService.GetHealProfileByParentIdAsync(parentId);
+        //    if (result.IsSuccess)
+        //    {
+        //        return Ok(result);
+        //    }
+        //    return BadRequest(result);
+        //}
     }
 }
