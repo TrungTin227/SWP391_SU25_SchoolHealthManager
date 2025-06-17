@@ -17,7 +17,7 @@ namespace BusinessObjects
         public MedicationCategory Category { get; set; }
         public MedicationStatus Status { get; set; }
 
-        public ICollection<MedicationLot> Lots { get; set; }
+        public virtual ICollection<MedicationLot> Lots { get; set; } = new List<MedicationLot>();
     }
 
 }
