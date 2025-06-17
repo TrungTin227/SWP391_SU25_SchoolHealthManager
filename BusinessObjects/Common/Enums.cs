@@ -34,4 +34,14 @@
     public enum ReportType { HealthEvent, Vaccination, Checkup, Supply, Monthly, Annual }
     public enum NotificationStatus { Pending, Sent, Delivered, Failed }
     public enum FileType { PDF, Image, Document, Other }
+    public enum LotType{Medicine, Vaccine }
+    public enum ParentConsentStatus
+    {
+        Pending = 0,        // Chờ phụ huynh ký
+        Sent = 1,           // Đã gửi thông báo
+        Signed = 2,         // Phụ huynh đã ký đồng ý
+        Declined = 3,       // Phụ huynh từ chối
+        Expired = 4         // Hết hạn ký
+    }
+    public enum SessionStatus { Registered, Absent, Excused, Completed }
 }

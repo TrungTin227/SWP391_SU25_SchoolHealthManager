@@ -615,7 +615,7 @@ namespace Services.Implementations
             return new MedicationLotResponseDTO
             {
                 Id = lot.Id,
-                MedicationId = lot.MedicationId,
+                MedicationId = lot.MedicationId ?? Guid.Empty,
                 LotNumber = lot.LotNumber,
                 ExpiryDate = lot.ExpiryDate,
                 Quantity = lot.Quantity,
