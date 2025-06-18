@@ -74,36 +74,11 @@ namespace Services.Implementations
             if (student == null)
             {
                 return ApiResult<List<HealProfileResponseDTO>>.Failure(
-                    new Exception("Không tìm thấy học sinh với ID này."));
+                    new Exception("Không tìm thấy học sinh với mã học sinh này."));
             }
 
             var profiles = await _unitOfWork.HealProfileRepository
                 .GetAllAsync(p => p.StudentId == student.Id);
-
-            if (profiles == null || !profiles.Any())
-            {
-                return ApiResult<List<HealProfileResponseDTO>>.Failure(
-                    new Exception("Không tìm thấy hồ sơ sức khỏe nào cho học sinh này."));
-            }
-
-            var result = profiles
-                .Select(HealProfileMappings.FromEntity) // map từng item
-                .ToList();
-
-            return ApiResult<List<HealProfileResponseDTO>>.Success(result, "Lấy danh sách hồ sơ sức khỏe thành công.");
-        }
-
-        public async Task<ApiResult<List<HealProfileResponseDTO>>> GetAllHealProfileByStudentIdAsync(Guid studentId)
-        {
-
-            if (await _unitOfWork.StudentRepository.GetByIdAsync(studentId) == null)
-            {
-                return ApiResult<List<HealProfileResponseDTO>>.Failure(
-                    new Exception("Không tìm thấy học sinh với ID này."));
-            }
-
-            var profiles = await _unitOfWork.HealProfileRepository
-                .GetAllAsync(p => p.StudentId == studentId);
 
             if (profiles == null || !profiles.Any())
             {
@@ -131,6 +106,7 @@ namespace Services.Implementations
             {
                 return ApiResult<HealProfileResponseDTO>.Failure(new Exception("Không tìm thấy hồ sơ sức khỏe."));
             }
+
             // Map sang ResponseDTO với string enums
             var response = HealProfileMappings.FromEntity(entity);
             return ApiResult<HealProfileResponseDTO>.Success(response, "Lấy thông tin hồ sơ sức khỏe thành công.");
@@ -164,25 +140,9 @@ namespace Services.Implementations
                     new Exception("Không tìm thấy hồ sơ sức khỏe nào dựa trên mã học sinh này."));
             }
             // Giả sử chỉ lấy hồ sơ đầu tiên nếu có nhiều
-            var profile = profiles.First();
+            var profile = profiles.First(); 
             var response = HealProfileMappings.FromEntity(profile);
             return ApiResult<HealProfileResponseDTO>.Success(response, "Lấy thông tin hồ sơ sức khỏe thành công.");
-        }
-
-        public async Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByStudentIdAsync(Guid studentId)
-        {
-            var profiles = await _unitOfWork.HealProfileRepository
-                .GetAllAsync(p => p.StudentId == studentId);
-            if (profiles == null || !profiles.Any())
-            {
-                return ApiResult<HealProfileResponseDTO>.Failure(
-                    new Exception("Không tìm thấy hồ sơ sức khỏe nào dựa trên id học sinh này."));
-            }
-            // Giả sử chỉ lấy hồ sơ đầu tiên nếu có nhiều
-            var profile = profiles.First();
-            var response = HealProfileMappings.FromEntity(profile);
-            return ApiResult<HealProfileResponseDTO>.Success(response, "Lấy thông tin hồ sơ sức khỏe thành công.");
-
         }
 
         public async Task<ApiResult<HealProfileResponseDTO>> GetNewestHealProfileByStudentCodeAsync(string studentcode)
@@ -213,6 +173,7 @@ namespace Services.Implementations
 
             // Map sang ResponseDTO
             var response = HealProfileMappings.FromEntity(profile);
+            response.StudentInformation = StudentMappings.ToGetAllStudent(student);
             return ApiResult<HealProfileResponseDTO>.Success(response, "Lấy thông tin hồ sơ sức khỏe thành công.");
         }
 
@@ -223,52 +184,6 @@ namespace Services.Implementations
             await _unitOfWork.SaveChangesAsync();
             return ApiResult<bool>.Success(result, "Xóa hồ sơ sức khỏe thành công");
         }
-
-        //public async Task<ApiResult<HealProfileResponseDTO>> UpdateHealProfileByIdAsync(Guid id, UpdateHealProfileRequestDTO request)
-        //{
-        //    var entity = await _unitOfWork.HealProfileRepository.GetByIdAsync(id);
-
-        //    if (entity == null)
-        //    {
-        //        return ApiResult<HealProfileResponseDTO>.Failure(new Exception("Không tìm thấy hồ sơ sức khỏe."));
-        //    }
-        //    if (entity.Version != request.Version)
-        //    {
-        //        return ApiResult<HealProfileResponseDTO>.Failure(new Exception($"Dữ liệu đã được cập nhật trước đó. Phiên bản hiện tại là {entity.Version}."));
-        //    }
-
-        //    // Cập nhật các field từ DTO
-        //    entity.Version = request.Version;
-        //    entity.ProfileDate = request.ProfileDate;
-
-        //    if (request.Allergies != null)
-        //        entity.Allergies = request.Allergies;
-
-        //    if (request.ChronicConditions != null)
-        //        entity.ChronicConditions = request.ChronicConditions;
-
-        //    if (request.TreatmentHistory != null)
-        //        entity.TreatmentHistory = request.TreatmentHistory;
-
-        //    if (request.VaccinationSummary != null)
-        //        entity.VaccinationSummary = request.VaccinationSummary;
-
-        //    if (request.Vision.HasValue)
-        //        entity.Vision = request.Vision.Value;
-
-        //    if (request.Hearing.HasValue)
-        //        entity.Hearing = request.Hearing.Value;
-
-        //    // Audit info nếu hàm dc mở
-        //    //SetAuditFieldsForUpdate(entity);
-
-
-        //    await _unitOfWork.SaveChangesAsync();
-
-        //    // Map sang ResponseDTO với string enums
-        //    var response = HealProfileMappings.FromEntity(entity);
-        //    return ApiResult<HealProfileResponseDTO>.Success(response,"Cập nhật thông tin hồ sơ sức khỏe thành công");
-        //}
 
 
         public async Task<ApiResult<HealProfileResponseDTO>> UpdateHealProfileByStudentCodeAsync(string studentcode, UpdateHealProfileRequestDTO request)
@@ -295,15 +210,7 @@ namespace Services.Implementations
                 return ApiResult<HealProfileResponseDTO>.Failure(new Exception("Không tìm thấy hồ sơ sức khỏe."));
             }
 
-            // Kiểm tra version
-            //if (entity.Version != request.Version)
-            //{
-            //    return ApiResult<HealProfileResponseDTO>.Failure(new Exception($"Dữ liệu đã được cập nhật trước đó. Phiên bản hiện tại là {entity.Version}."));
-            //}
-
-            //// Cập nhật các field từ DTO
-            //entity.Version = request.Version;
-            entity.ProfileDate = request.ProfileDate;
+            entity.ProfileDate = DateTime.UtcNow;
 
             if (request.Allergies != null)
                 entity.Allergies = request.Allergies;
