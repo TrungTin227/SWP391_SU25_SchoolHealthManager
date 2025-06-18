@@ -625,7 +625,7 @@ namespace Repositories
                 .HasMaxLength(50)
                 .IsUnicode(true);
 
-            // ✅ SỬA: VaccinationSchedule enum (loại bỏ duplicate)
+            // VaccinationSchedule enum
             builder.Entity<VaccinationSchedule>()
                 .Property(e => e.ScheduleStatus)
                 .HasConversion(new EnumToStringConverter<ScheduleStatus>())
@@ -644,6 +644,15 @@ namespace Repositories
                 .HasConversion(new EnumToStringConverter<ParentConsentStatus>())
                 .HasMaxLength(50)
                 .IsUnicode(true);
+
+            // VaccinationCampaign enum
+            builder.Entity<VaccinationCampaign>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<VaccinationCampaignStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+
         }
         #endregion
     }

@@ -16,6 +16,7 @@
         IVaccineTypeRepository VaccineTypeRepository { get; }
         IVaccineDoseInfoRepository VaccineDoseInfoRepository { get; }
         IVaccineLotRepository VaccineLotRepository { get; }
+        IVaccinationCampaignRepository VaccinationCampaignRepository { get; }
 
     }
 }
