@@ -21,6 +21,8 @@ namespace Repositories.WorkSeeds.Implements
         private IMedicalSupplyRepository? _medicalSupplyRepository;
         private IMedicalSupplyLotRepository? _medicalSupplyLotRepository;
         private IHealthEventRepository? _healthEventRepository;
+        private IVaccineDoseInfoRepository? _vaccineDoseInfoRepository;
+        private IVaccineTypeRepository? _vaccineTypeRepository;
 
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
@@ -50,7 +52,10 @@ namespace Repositories.WorkSeeds.Implements
             _medicalSupplyLotRepository ??= _repositoryFactory.GetCustomRepository<IMedicalSupplyLotRepository>();
         public IHealthEventRepository HealthEventRepository =>
             _healthEventRepository ??= _repositoryFactory.GetCustomRepository<IHealthEventRepository>();
-
+        public IVaccineDoseInfoRepository VaccineDoseInfoRepository => 
+            _vaccineDoseInfoRepository ??= _repositoryFactory.GetCustomRepository<IVaccineDoseInfoRepository>();
+        public IVaccineTypeRepository VaccineTypeRepository => 
+            _vaccineTypeRepository ??= _repositoryFactory.GetCustomRepository<IVaccineTypeRepository>();
 
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
