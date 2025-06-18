@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DTOs.NurseDTOs.Request
+namespace Repositories.Implementations
 {
-    public class AddNurseRequestDTO
+    public class NurseRepository
     {
-        public Guid Id { get; set; }
     }
 }

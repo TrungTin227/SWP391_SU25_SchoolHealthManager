@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DTOs.NurseDTOs.Request
+namespace Services.Implementations
 {
-    public class AddNurseRequestDTO
+    public class NurseService : INurseService
     {
-        public Guid Id { get; set; }
+
     }
 }
