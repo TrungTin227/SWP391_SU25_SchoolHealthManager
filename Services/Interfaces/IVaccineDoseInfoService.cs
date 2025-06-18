@@ -1,7 +1,4 @@
-﻿using DTOs.VaccineDoseInfoDTOs.Request;
-using DTOs.VaccineDoseInfoDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IVaccineDoseInfoService
     {

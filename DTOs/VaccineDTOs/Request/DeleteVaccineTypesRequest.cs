@@ -1,4 +1,6 @@
-﻿namespace DTOs.VaccineDTOs.Request
+﻿using DTOs.Common;
+
+namespace DTOs.VaccineDTOs.Request
 {
     public class DeleteVaccineTypesRequest : BatchIdsRequest
     {
@@ -9,8 +11,4 @@
     {
     }
 
-    public abstract class BatchIdsRequest
-    {
-        public List<Guid> Ids { get; set; } = new();
-    }
 }

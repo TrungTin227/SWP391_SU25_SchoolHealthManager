@@ -1,7 +1,4 @@
-﻿using DTOs.MedicalSupplyLotDTOs.Request;
-using DTOs.MedicalSupplyLotDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IMedicalSupplyLotService
     {
