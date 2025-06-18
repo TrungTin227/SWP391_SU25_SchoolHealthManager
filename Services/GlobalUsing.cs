@@ -14,3 +14,5 @@ global using DTOs.Common;
 global using DTOs.MedicalSupplyDTOs.Request;
 global using DTOs.MedicalSupplyDTOs.Response;
 global using Repositories.WorkSeeds.Extensions;
+global using DTOs.VaccineDTOs.Request;
+global using DTOs.VaccineDTOs.Response;

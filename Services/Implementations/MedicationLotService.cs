@@ -3,6 +3,7 @@ using DTOs.MedicationLotDTOs.Response;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
 using Services.Commons;
+using Services.Mappers;
 using System.Data;
 
 namespace Services.Implementations
@@ -36,8 +37,7 @@ namespace Services.Implementations
                 var lots = await _medicationLotRepository.GetMedicationLotsAsync(
                     pageNumber, pageSize, searchTerm, medicationId, isExpired);
 
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(lots, lotDTOs);
+                var result = MedicationLotMapper.MapToPagedResponseDTO(lots);
 
                 return ApiResult<PagedList<MedicationLotResponseDTO>>.Success(
                     result, "Lấy danh sách lô thuốc thành công");
@@ -60,7 +60,7 @@ namespace Services.Implementations
                         new Exception("Không tìm thấy lô thuốc"));
                 }
 
-                var lotDTO = MapToResponseDTO(lot);
+                var lotDTO = MedicationLotMapper.MapToResponseDTO(lot);
                 return ApiResult<MedicationLotResponseDTO>.Success(
                     lotDTO, "Lấy thông tin lô thuốc thành công");
             }
@@ -84,7 +84,7 @@ namespace Services.Implementations
                             new Exception(validationResult.Message));
                     }
 
-                    var lot = MapFromCreateRequest(request);
+                    var lot = MedicationLotMapper.MapFromCreateRequest(request);
                     var createdLot = await CreateAsync(lot);
 
                     var lotWithMedication = await _medicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
@@ -94,7 +94,7 @@ namespace Services.Implementations
                             new Exception("Không thể lấy thông tin lô thuốc vừa tạo"));
                     }
 
-                    var lotDTO = MapToResponseDTO(lotWithMedication);
+                    var lotDTO = MedicationLotMapper.MapToResponseDTO(lotWithMedication);
                     return ApiResult<MedicationLotResponseDTO>.Success(
                         lotDTO, "Tạo lô thuốc thành công");
                 }
@@ -127,7 +127,7 @@ namespace Services.Implementations
                             new Exception(validationResult.Message));
                     }
 
-                    MapFromUpdateRequest(request, lot);
+                    MedicationLotMapper.MapFromUpdateRequest(request, lot);
                     await UpdateAsync(lot);
 
                     var updatedLot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
@@ -137,7 +137,7 @@ namespace Services.Implementations
                             new Exception("Không thể lấy thông tin lô thuốc đã cập nhật"));
                     }
 
-                    var lotDTO = MapToResponseDTO(updatedLot);
+                    var lotDTO = MedicationLotMapper.MapToResponseDTO(updatedLot);
                     return ApiResult<MedicationLotResponseDTO>.Success(
                         lotDTO, "Cập nhật lô thuốc thành công");
                 }
@@ -352,8 +352,7 @@ namespace Services.Implementations
                 var lots = await _medicationLotRepository.GetSoftDeletedLotsAsync(
                     pageNumber, pageSize, searchTerm);
 
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(lots, lotDTOs);
+                var result = MedicationLotMapper.MapToPagedResponseDTO(lots);
 
                 return ApiResult<PagedList<MedicationLotResponseDTO>>.Success(
                     result, "Lấy danh sách lô thuốc đã xóa thành công");
@@ -404,7 +403,7 @@ namespace Services.Implementations
             try
             {
                 var lots = await _medicationLotRepository.GetExpiringLotsAsync(daysBeforeExpiry);
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
+                var lotDTOs = MedicationLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<MedicationLotResponseDTO>>.Success(
                     lotDTOs, $"Lấy danh sách lô thuốc sắp hết hạn trong {daysBeforeExpiry} ngày thành công");
@@ -421,7 +420,7 @@ namespace Services.Implementations
             try
             {
                 var lots = await _medicationLotRepository.GetExpiredLotsAsync();
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
+                var lotDTOs = MedicationLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<MedicationLotResponseDTO>>.Success(
                     lotDTOs, "Lấy danh sách lô thuốc đã hết hạn thành công");
@@ -438,7 +437,7 @@ namespace Services.Implementations
             try
             {
                 var lots = await _medicationLotRepository.GetLotsByMedicationIdAsync(medicationId);
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
+                var lotDTOs = MedicationLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<MedicationLotResponseDTO>>.Success(
                     lotDTOs, "Lấy danh sách lô thuốc theo ID thuốc thành công");
@@ -588,57 +587,6 @@ namespace Services.Implementations
             }
 
             return (true, "Valid");
-        }
-
-        private static MedicationLot MapFromCreateRequest(CreateMedicationLotRequest request)
-        {
-            return new MedicationLot
-            {
-                MedicationId = request.MedicationId,
-                LotNumber = request.LotNumber,
-                ExpiryDate = request.ExpiryDate,
-                Quantity = request.Quantity,
-                StorageLocation = request.StorageLocation
-            };
-        }
-
-        private static void MapFromUpdateRequest(UpdateMedicationLotRequest request, MedicationLot lot)
-        {
-            lot.LotNumber = request.LotNumber;
-            lot.ExpiryDate = request.ExpiryDate;
-            lot.Quantity = request.Quantity;
-            lot.StorageLocation = request.StorageLocation;
-        }
-
-        private static MedicationLotResponseDTO MapToResponseDTO(MedicationLot lot)
-        {
-            return new MedicationLotResponseDTO
-            {
-                Id = lot.Id,
-                MedicationId = lot.MedicationId ?? Guid.Empty,
-                LotNumber = lot.LotNumber,
-                ExpiryDate = lot.ExpiryDate,
-                Quantity = lot.Quantity,
-                StorageLocation = lot.StorageLocation,
-                IsDeleted = lot.IsDeleted,
-                CreatedAt = lot.CreatedAt,
-                UpdatedAt = lot.UpdatedAt,
-                CreatedBy = lot.CreatedBy.ToString() ?? string.Empty,
-                UpdatedBy = lot.UpdatedBy.ToString() ?? string.Empty,
-                MedicationName = lot.Medication?.Name ?? string.Empty,
-                MedicationUnit = lot.Medication?.Unit ?? string.Empty
-            };
-        }
-
-        private static PagedList<MedicationLotResponseDTO> CreatePagedResult(
-            PagedList<MedicationLot> sourcePaged,
-            List<MedicationLotResponseDTO> mappedItems)
-        {
-            return new PagedList<MedicationLotResponseDTO>(
-                mappedItems,
-                sourcePaged.MetaData.TotalCount,
-                sourcePaged.MetaData.CurrentPage,
-                sourcePaged.MetaData.PageSize);
         }
 
         #endregion

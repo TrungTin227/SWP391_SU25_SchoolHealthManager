@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
-    public class VaccineDoseInfo
+    public class VaccineDoseInfo : BaseEntity
     {
         [Key]
         public Guid Id { get; set; }

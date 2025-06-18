@@ -13,5 +13,8 @@
         IMedicalSupplyRepository MedicalSupplyRepository { get; }
         IMedicalSupplyLotRepository MedicalSupplyLotRepository { get; }
         IHealthEventRepository HealthEventRepository { get; }
+        IVaccineTypeRepository VaccineTypeRepository { get; }
+        IVaccineDoseInfoRepository VaccineDoseInfoRepository { get; }
+         
     }
 }
