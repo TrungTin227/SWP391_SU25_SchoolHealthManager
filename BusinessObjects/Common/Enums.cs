@@ -44,4 +44,11 @@
         Expired = 4         // Hết hạn ký
     }
     public enum SessionStatus { Registered, Absent, Excused, Completed }
+    public enum VaccinationCampaignStatus
+    {
+        Pending = 0,      // Vừa tạo, chờ xem xét
+        InProgress = 1,   // Đã có thuốc/vật tư, đang thực hiện
+        Resolved = 2,     // Đã hoàn thành
+        Cancelled = 3     // Đã hủy
+    }
 }

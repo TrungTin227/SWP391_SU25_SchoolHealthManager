@@ -28,3 +28,5 @@ global using DTOs.MedicalSupplyLotDTOs.Request;
 global using DTOs.MedicalSupplyLotDTOs.Response;
 global using Services.Commons;
 global using Services.Helpers.Mappers;
+global using DTOs.VaccinationCampaignDTOs.Request;
+global using DTOs.VaccinationCampaignDTOs.Response;
