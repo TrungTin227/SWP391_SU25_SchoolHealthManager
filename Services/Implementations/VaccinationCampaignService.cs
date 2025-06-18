@@ -78,7 +78,7 @@ namespace Services.Implementations
                         new KeyNotFoundException($"Không tìm thấy chiến dịch tiêm chủng với ID: {id}"));
                 }
 
-                var response = VaccinationCampaignMapper.MapToDetailResponseDTO(campaign);
+                var response = VaccinationCampaignMapper.MapToDetailResponseDTO(campaign); //  MAP VACCINE TYPE
                 return ApiResult<VaccinationCampaignDetailResponseDTO>.Success(response, "Lấy chi tiết chiến dịch tiêm chủng thành công");
             }
             catch (Exception ex)
@@ -107,18 +107,7 @@ namespace Services.Implementations
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
                             new ArgumentException("Ngày bắt đầu phải nhỏ hơn ngày kết thúc"));
                     }
-
-                    // Validate vaccine types if provided
-                    if (request.VaccineTypeIds.Any())
-                    {
-                        var vaccineTypes = await _vaccineTypeRepository.GetVaccineTypesByIdsAsync(request.VaccineTypeIds);
-                        if (vaccineTypes.Count != request.VaccineTypeIds.Count)
-                        {
-                            return ApiResult<VaccinationCampaignResponseDTO>.Failure(
-                                new ArgumentException("Một hoặc nhiều loại vaccine không tồn tại"));
-                        }
-                    }
-
+                    
                     var campaign = VaccinationCampaignMapper.MapFromCreateRequest(request);
                     campaign.Status = VaccinationCampaignStatus.Pending; // Initial status
 

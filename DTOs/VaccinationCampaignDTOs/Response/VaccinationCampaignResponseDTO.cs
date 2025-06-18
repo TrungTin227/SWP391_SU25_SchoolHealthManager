@@ -24,14 +24,12 @@ namespace DTOs.VaccinationCampaignDTOs.Response
 
     public class VaccinationCampaignDetailResponseDTO : VaccinationCampaignResponseDTO
     {
-        public List<VaccineTypeResponseDTO> VaccineTypes { get; set; } = new List<VaccineTypeResponseDTO>();
         public List<VaccinationScheduleResponseDTO> Schedules { get; set; } = new List<VaccinationScheduleResponseDTO>();
     }
 
     public class VaccinationScheduleResponseDTO
     {
         public Guid Id { get; set; }
-        public Guid VaccinationTypeId { get; set; }
         public string VaccinationTypeName { get; set; } = string.Empty;
         public DateTime ScheduledAt { get; set; }
         public ScheduleStatus ScheduleStatus { get; set; }

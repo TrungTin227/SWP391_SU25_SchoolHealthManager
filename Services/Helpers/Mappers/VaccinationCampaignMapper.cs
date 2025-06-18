@@ -71,14 +71,7 @@
                 IsDeleted = baseDto.IsDeleted,
                 CreatedBy = baseDto.CreatedBy,
                 UpdatedBy = baseDto.UpdatedBy,
-
-                VaccineTypes = campaign.Schedules?
-                    .Select(s => s.VaccinationType)
-                    .Where(vt => vt != null)
-                    .Distinct()
-                    .Select(VaccineTypeMapper.MapToResponseDTO)
-                    .ToList() ?? new List<VaccineTypeResponseDTO>(),
-
+ 
                 Schedules = campaign.Schedules?
                     .Select(MapToScheduleResponseDTO)
                     .ToList() ?? new List<VaccinationScheduleResponseDTO>()
@@ -90,7 +83,6 @@
             return new VaccinationScheduleResponseDTO
             {
                 Id = schedule.Id,
-                VaccinationTypeId = schedule.VaccinationTypeId,
                 VaccinationTypeName = schedule.VaccinationType?.Name ?? string.Empty,
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,

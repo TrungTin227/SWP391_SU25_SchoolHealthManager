@@ -16,7 +16,5 @@ namespace DTOs.VaccinationCampaignDTOs.Request
 
         [Required(ErrorMessage = "Ngày kết thúc là bắt buộc")]
         public DateTime EndDate { get; set; }
-
-        public List<Guid> VaccineTypeIds { get; set; } = new List<Guid>();
     }
 }
