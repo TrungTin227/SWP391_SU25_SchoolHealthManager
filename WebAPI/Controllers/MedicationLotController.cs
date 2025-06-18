@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using WebAPI.Middlewares;
-using DTOs.MedicationLotDTOs.Request;
 
 namespace WebAPI.Controllers
 {

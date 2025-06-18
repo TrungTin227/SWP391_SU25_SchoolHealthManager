@@ -1,6 +1,4 @@
-﻿using DTOs.MedicationLotDTOs.Response;
-using DTOs.VaccineDoseInfoDTOs.Response;
-using Services.Mappers;
+﻿using Services.Mappers;
 
 namespace Services.Helpers.Mappers
 {

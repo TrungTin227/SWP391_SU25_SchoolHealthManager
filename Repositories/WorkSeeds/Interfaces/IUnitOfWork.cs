@@ -15,6 +15,7 @@
         IHealthEventRepository HealthEventRepository { get; }
         IVaccineTypeRepository VaccineTypeRepository { get; }
         IVaccineDoseInfoRepository VaccineDoseInfoRepository { get; }
-         
+        IVaccineLotRepository VaccineLotRepository { get; }
+
     }
 }

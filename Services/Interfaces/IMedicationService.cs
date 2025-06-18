@@ -1,7 +1,4 @@
-﻿using DTOs.MedicationDTOs.Request;
-using DTOs.MedicationDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IMedicationService
     {
