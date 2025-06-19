@@ -14,6 +14,7 @@ namespace DTOs.VaccinationScheduleDTOs.Request
         public DateTime ScheduledAt { get; set; }
 
         [Required(ErrorMessage = "Danh sách học sinh là bắt buộc")]
+        [MinLength(1, ErrorMessage = "Phải có ít nhất một học sinh trong lịch tiêm")]
         public List<Guid> StudentIds { get; set; } = new List<Guid>();
 
         public string? Notes { get; set; }

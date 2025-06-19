@@ -30,6 +30,13 @@ namespace Services.Implementations
             {
                 try
                 {
+                    // Validate có ít nhất 1 học sinh
+                    if (request.StudentIds == null || !request.StudentIds.Any())
+                    {
+                        return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
+                            new InvalidOperationException("Phải có ít nhất một học sinh để tạo lịch tiêm"));
+                    }
+
                     // Validate campaign exists
                     var campaign = await _unitOfWork.VaccinationCampaignRepository.GetByIdAsync(request.CampaignId);
                     if (campaign == null)
@@ -44,6 +51,15 @@ namespace Services.Implementations
                     {
                         return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
                             new KeyNotFoundException($"Không tìm thấy loại vắc-xin với ID: {request.VaccinationTypeId}"));
+                    }
+
+                    // Validate tất cả StudentIds có tồn tại
+                    var validStudentIds = await _unitOfWork.StudentRepository.GetAllAsync(s => request.StudentIds.Contains(s.Id));
+                    if (validStudentIds.Count != request.StudentIds.Count)
+                    {
+                        var invalidIds = request.StudentIds.Except(validStudentIds.Select(s => s.Id)).ToList();
+                        return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
+                            new InvalidOperationException($"Các học sinh không tồn tại: {string.Join(", ", invalidIds)}"));
                     }
 
                     // Check for conflicts
@@ -66,10 +82,16 @@ namespace Services.Implementations
                     var createdSchedule = await CreateAsync(schedule);
 
                     // Add students to schedule
-                    if (request.StudentIds.Any())
+                    var currentUserId = GetCurrentUserIdOrThrow();
+                    var addStudentsResult = await _scheduleRepository.AddStudentsToScheduleAsync(
+                        createdSchedule.Id, request.StudentIds, currentUserId);
+
+                    if (!addStudentsResult)
                     {
-                        var currentUserId = GetCurrentUserIdOrThrow();
-                        await _scheduleRepository.AddStudentsToScheduleAsync(createdSchedule.Id, request.StudentIds, currentUserId);
+                        // Nếu không thể thêm học sinh, rollback
+                        await _unitOfWork.VaccinationScheduleRepository.DeleteAsync(createdSchedule.Id);
+                        return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
+                            new InvalidOperationException("Không thể thêm học sinh vào lịch tiêm"));
                     }
 
                     var scheduleWithDetails = await _scheduleRepository.GetScheduleWithDetailsAsync(createdSchedule.Id);
