@@ -12,10 +12,10 @@ namespace BusinessObjects
         public User User { get; set; }
 
         [MaxLength(100)]
-        public string Position { get; set; }
+        public string? Position { get; set; }
 
         [MaxLength(100)]
-        public string Department { get; set; }
+        public string? Department { get; set; }
         public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; }
          = new List<CounselingAppointment>();
     }

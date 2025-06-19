@@ -51,7 +51,7 @@ namespace Services.Implementations
                 var nurse = new NurseProfile
                 {
                     UserId = request.Id,
-                    Position = Position.Other,
+                    Position = Position.Other.ToString(),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     CreatedBy = _currentUserService.GetUserId() ?? SystemGuid,
@@ -179,11 +179,11 @@ namespace Services.Implementations
                 await _userManager.AddToRoleAsync(newUser, "Nurse");
                 await _userService.SendWelcomeEmailsAsync(newUser.Email);
 
-                // Tạo record Parent luôn
+             
                 var nurse = new NurseProfile
                 {
                     UserId = newUser.Id,
-                    Position = Position.Other,
+                    Position = Position.Other.ToString(),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     CreatedBy = currentUserId,
