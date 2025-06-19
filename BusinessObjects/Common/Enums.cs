@@ -34,4 +34,5 @@
     public enum ReportType { HealthEvent, Vaccination, Checkup, Supply, Monthly, Annual }
     public enum NotificationStatus { Pending, Sent, Delivered, Failed }
     public enum FileType { PDF, Image, Document, Other }
+    public enum Position { VaccinationNurse, Other }
 }

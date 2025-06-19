@@ -29,24 +29,179 @@ namespace Services.Implementations
             _userService = userService;
             _logger = logger;
         }
-        public Task<ApiResult<AddNurseRequestDTO>> CreateNurseAsync(AddNurseRequestDTO request)
+        public async Task<ApiResult<AddNurseRequestDTO>> CreateNurseAsync(AddNurseRequestDTO request)
         {
-            throw new NotImplementedException();
+            try
+            {
+                if (request == null || request.Id == Guid.Empty)
+                {
+                    return ApiResult<AddNurseRequestDTO>.Failure(new Exception("Yêu cầu nhập User ID!!"));
+                }
+
+                if (await _userManager.FindByIdAsync(request.Id.ToString()) == null)
+                {
+                    return ApiResult<AddNurseRequestDTO>.Failure(new Exception("Không tìm thấy User"));
+                }
+
+                if (await _nurseRepository.GetNurseByUserIdAsync(request.Id) != null)
+                {
+                    return ApiResult<AddNurseRequestDTO>.Failure(new Exception("User này đã đăng kí Nhân Viên Y Tế!!"));
+                }
+
+                var nurse = new NurseProfile
+                {
+                    UserId = request.Id,
+                    Position = Position.Other,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = _currentUserService.GetUserId() ?? SystemGuid,
+                    UpdatedBy = _currentUserService.GetUserId() ?? SystemGuid
+
+                };
+                var result = _nurseRepository.CreateNurseAsync(nurse);
+                if (result == null)
+                {
+                    return ApiResult<AddNurseRequestDTO>.Failure(new Exception("Gặp lỗi khi tạo Nhân Viên Y tế!!"));
+                }
+                return ApiResult<AddNurseRequestDTO>.Success(request, "Tạo Nhân Viên Y Tế thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<AddNurseRequestDTO>.Failure(ex);
+            }
         }
 
-        public Task<ApiResult<List<GetNurseDTO>>> GetAllNursesAsync()
+        public async Task<ApiResult<List<GetNurseDTO>>> GetAllNursesAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                var nurses = await _nurseRepository.GetNurseDtoAsync();
+                if (nurses == null || !nurses.Any())
+                {
+                    return ApiResult<List<GetNurseDTO>>.Failure(new Exception("Không tìm thấy Nhân Viên Y Tế nào!!"));
+                }
+                return ApiResult<List<GetNurseDTO>>.Success(nurses, "Lấy danh sách Nhân Viên Y Tế thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<GetNurseDTO>>.Failure(ex);
+            }
         }
 
-        public Task<ApiResult<UserRegisterRespondDTO>> RegisterNurseUserAsync(UserRegisterRequestDTO user)
+        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterNurseUserAsync(UserRegisterRequestDTO user)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var existing = await _nurseRepository.FindByEmailAsync(user.Email);
+                if (existing == true)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
+                }
+                var currentUserId = _currentUserService.GetUserId() ?? SystemGuid;
+
+                //if (currentUserId == SystemGuid)
+                //{
+                //    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Current user is not authenticated."));
+                //}
+
+                var newUser = new User
+                {
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    UserName = user.Email,
+                    Gender = user.Gender,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = currentUserId,
+                    IsDeleted = false,
+                    EmailConfirmed = false  // optional
+                };
+
+                var result = await _userManager.CreateAsync(newUser, user.Password);
+
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception($"Đăng kí thất bại!!! Lỗi: {errors}"));
+                }
+                else if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(newUser, "Nurse");
+                    await _userService.SendWelcomeEmailsAsync(newUser.Email);
+                }
+
+                return ApiResult<UserRegisterRespondDTO>.Success(UserMappings.ToUserRegisterResponse(newUser), "Đăng kí user thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<UserRegisterRespondDTO>.Failure(ex);
+            }
         }
 
-        public Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user)
+        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // Check nếu email đã tồn tại
+                var existing = await _nurseRepository.FindByEmailAsync(user.Email);
+                if (existing)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
+                }
+
+                var currentUserId = _currentUserService.GetUserId() ?? SystemGuid;
+
+                // Tạo User mới
+                var newUser = new User
+                {
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    UserName = user.Email,
+                    Gender = user.Gender,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = currentUserId,
+                    IsDeleted = false,
+                    EmailConfirmed = false
+                };
+
+                var result = await _userManager.CreateAsync(newUser, user.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception($"Đăng kí thất bại!!! Lỗi: {errors}"));
+                }
+
+                await _userManager.AddToRoleAsync(newUser, "Nurse");
+                await _userService.SendWelcomeEmailsAsync(newUser.Email);
+
+                // Tạo record Parent luôn
+                var nurse = new NurseProfile
+                {
+                    UserId = newUser.Id,
+                    Position = Position.Other,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedBy = currentUserId
+                };
+
+                var nurseResult = await _nurseRepository.CreateNurseAsync(nurse);
+                if (nurseResult == null)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Tạo user thành công nhưng tạo Nhân Viên Y Tế thất bại!!"));
+                }
+
+                return ApiResult<UserRegisterRespondDTO>.Success(UserMappings.ToUserRegisterResponse(newUser), "Đăng kí Nhân Viên Y Tế thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<UserRegisterRespondDTO>.Failure(ex);
+            }
         }
 
         public Task<ApiResult<bool>> SoftDeleteByNurseIdAsync(Guid NurseId)
