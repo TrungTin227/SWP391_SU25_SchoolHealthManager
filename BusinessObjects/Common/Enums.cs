@@ -3,7 +3,7 @@
     public enum Gender { Male, Female, Other }
     public enum Relationship { Father, Mother, Guardian, Other }
     public enum EventType { Accident, Fever, Fall, Disease, Other, VaccineReaction }
-    public enum ScheduleStatus { Scheduled, Completed, Cancelled }
+    public enum ScheduleStatus { Pending, InProgress, Completed, Cancelled }
     public enum ReferenceType { ConsentForm, HealthEvent, ScreeningResult }
     public enum RoleType{Student, Parent, SchoolNurse, Manager, Admin }
     public enum ScheduleType {Vaccination, Consultation }
@@ -43,7 +43,14 @@
         Declined = 3,       // Phụ huynh từ chối
         Expired = 4         // Hết hạn ký
     }
-    public enum SessionStatus { Registered, Absent, Excused, Completed }
+    public enum SessionStatus
+    {
+        Registered = 0,
+        Present = 1,
+        Absent = 2,
+        Excused = 3,
+        Completed = 4
+    }
     public enum VaccinationCampaignStatus
     {
         Pending = 0,      // Vừa tạo, chờ xem xét

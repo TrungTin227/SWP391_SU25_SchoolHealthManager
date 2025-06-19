@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
-    public class SessionStudent
+    public class SessionStudent : BaseEntity
     {
         [Key]
         public Guid Id { get; set; }

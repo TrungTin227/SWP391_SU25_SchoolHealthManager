@@ -25,6 +25,7 @@ namespace Repositories.WorkSeeds.Implements
         private IVaccineTypeRepository? _vaccineTypeRepository;
         private IVaccineLotRepository? _vaccineLotRepository;
         private IVaccinationCampaignRepository? _vaccinationCampaignRepository;
+        private IVaccinationScheduleRepository? _vaccinationScheduleRepository;
 
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
@@ -62,6 +63,8 @@ namespace Repositories.WorkSeeds.Implements
             _vaccineLotRepository ??= _repositoryFactory.GetCustomRepository<IVaccineLotRepository>();
         public IVaccinationCampaignRepository VaccinationCampaignRepository => 
             _vaccinationCampaignRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationCampaignRepository>();
+        public IVaccinationScheduleRepository VaccinationScheduleRepository => 
+            _vaccinationScheduleRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationScheduleRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {

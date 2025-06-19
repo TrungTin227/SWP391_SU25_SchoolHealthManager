@@ -106,6 +106,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IVaccineTypeRepository, VaccineTypeRepository>();
             services.AddScoped<IVaccineLotRepository, VaccineLotRepository>();
             services.AddScoped<IVaccinationCampaignRepository, VaccinationCampaignRepository>();
+            services.AddScoped<IVaccinationScheduleRepository, VaccinationScheduleRepository>();
 
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -125,6 +126,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IVaccineTypeService, VaccineTypeService>();
             services.AddScoped<IVaccineLotService, VaccineLotService>();
             services.AddScoped<IVaccinationCampaignService, VaccinationCampaignService>();
+            services.AddScoped<IVaccinationScheduleService, VaccinationScheduleService>();
 
             // 5. Email + Quartz
             services.AddEmailServices(options =>
