@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObjects;
 using DTOs.NurseDTOs.Request;
 using DTOs.NurseDTOs.Response;
 using Microsoft.AspNetCore.Identity;
@@ -204,9 +205,33 @@ namespace Services.Implementations
             }
         }
 
-        public Task<ApiResult<bool>> SoftDeleteByNurseIdAsync(Guid NurseId)
-        {
-            throw new NotImplementedException();
+        public async Task<ApiResult<bool>> SoftDeleteByNurseIdAsync(Guid NurseId)
+        { 
+            try
+            {
+                if (NurseId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Yêu cầu nhập Nurse ID!!"));
+                }
+                var nurse = await _nurseRepository.GetNurseByUserIdAsync(NurseId);
+                if (nurse == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy Nhân Viên Y Tế với ID này: " + NurseId + " !!"));
+                }
+                nurse.DeletedAt = DateTime.UtcNow;
+                nurse.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
+                var result = await _nurseRepository.SoftDeleteByNurseId(NurseId);
+                if (!result)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Xóa Nhân Viên Y Tế thất bại!!"));
+                }
+                return ApiResult<bool>.Success(true, "Xóa Nhân Viên Y Tế thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa Nhân Viên Y Tế");
+                return ApiResult<bool>.Failure(ex);
+            }
         }
 
         public Task<ApiResult<bool>> UpdateNurseAsync(UpdateNurseRequest request)
