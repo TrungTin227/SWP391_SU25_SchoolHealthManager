@@ -117,10 +117,32 @@ namespace Repositories.Implementations
 
                 if (schedule == null) return false;
 
-                var existingStudentIds = schedule.SessionStudents.Select(ss => ss.StudentId).ToHashSet();
-                var newStudentIds = studentIds.Where(id => !existingStudentIds.Contains(id)).ToList();
+                // Kiểm tra studentIds có tồn tại trong database
+                var validStudentIds = await _context.Students
+                    .Where(s => studentIds.Contains(s.Id) && !s.IsDeleted)
+                    .Select(s => s.Id)
+                    .ToListAsync();
 
-                if (!newStudentIds.Any()) return true;
+                //  Kiểm tra nếu có studentId không hợp lệ
+                var invalidStudentIds = studentIds.Except(validStudentIds).ToList();
+                if (invalidStudentIds.Any())
+                {
+                    _logger.LogWarning("Các studentId không hợp lệ: {InvalidIds}", string.Join(", ", invalidStudentIds));
+                    // Tùy chọn: Có thể throw exception hoặc chỉ log warning
+                    // throw new InvalidOperationException($"Các studentId không tồn tại: {string.Join(", ", invalidStudentIds)}");
+                }
+
+                var existingStudentIds = schedule.SessionStudents.Select(ss => ss.StudentId).ToHashSet();
+
+                // Chỉ sử dụng studentIds hợp lệ và chưa tồn tại
+                var newStudentIds = validStudentIds.Where(id => !existingStudentIds.Contains(id)).ToList();
+
+                if (!newStudentIds.Any())
+                {
+                    // thông báo: Không có studentId hợp lệ nào để thêm
+                    _logger.LogInformation("Không có studentId hợp lệ nào để thêm vào lịch tiêm {ScheduleId}", scheduleId);
+                    return invalidStudentIds.Any() ? false : true; // Trả về false nếu có invalid IDs
+                }
 
                 var now = _currentTime.GetVietnamTime();
                 var sessionStudents = newStudentIds.Select(studentId => new SessionStudent
@@ -136,7 +158,16 @@ namespace Repositories.Implementations
                 }).ToList();
 
                 _context.SessionStudents.AddRange(sessionStudents);
-                return await _context.SaveChangesAsync() > 0;
+
+                var result = await _context.SaveChangesAsync() > 0;
+
+                if (result)
+                {
+                    _logger.LogInformation("Đã thêm {Count} học sinh hợp lệ vào lịch tiêm {ScheduleId}",
+                        newStudentIds.Count, scheduleId);
+                }
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -303,9 +334,10 @@ namespace Repositories.Implementations
 
         public async Task<bool> IsScheduleConflictAsync(Guid campaignId, DateTime scheduledAt, Guid? excludeScheduleId = null)
         {
+            //  So sánh datetime chính xác, không chỉ ngày
             var query = _context.VaccinationSchedules
                 .Where(vs => vs.CampaignId == campaignId &&
-                           vs.ScheduledAt.Date == scheduledAt.Date &&
+                           vs.ScheduledAt == scheduledAt &&  // So sánh chính xác datetime
                            !vs.IsDeleted);
 
             if (excludeScheduleId.HasValue)
