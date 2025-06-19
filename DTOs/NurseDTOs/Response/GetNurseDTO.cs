@@ -8,7 +8,7 @@ namespace DTOs.NurseDTOs.Response
 {
     public class GetNurseDTO
     {
-        public Guid UserID { get; set; }
+        public Guid UserId { get; set; }
         public string? Username { get; set; }
 
     }
