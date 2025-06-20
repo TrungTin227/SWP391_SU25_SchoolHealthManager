@@ -129,7 +129,7 @@ namespace Services.Implementations
                 }
                 else if (result.Succeeded)
                 {
-                    await _userManager.AddToRoleAsync(newUser, "Nurse");
+                    await _userManager.AddToRoleAsync(newUser, "SchoolNurse");
                     await _userService.SendWelcomeEmailsAsync(newUser.Email);
                 }
 
