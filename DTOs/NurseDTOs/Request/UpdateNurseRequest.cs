@@ -17,7 +17,5 @@ namespace DTOs.NurseDTOs.Request
         
         [MaxLength(100)]
         public string? Department { get; set; }         //phòng ban (tiêm chủng, ...) 
-        
-                 
     }
 }
