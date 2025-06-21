@@ -147,7 +147,7 @@ namespace Services.Implementations
             {
                 // Check nếu email đã tồn tại
                 var existing = await _nurseRepository.FindByEmailAsync(user.Email);
-                if (existing)
+                if (existing != null)
                 {
                     return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
                 }
