@@ -9,17 +9,19 @@ namespace Services.Implementations
     {
         private readonly IVaccinationScheduleRepository _scheduleRepository;
         private readonly ILogger<VaccinationScheduleService> _logger;
-
+        private readonly ISessionStudentService _SessionStudentService; 
         public VaccinationScheduleService(
             IVaccinationScheduleRepository scheduleRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
-            ILogger<VaccinationScheduleService> logger)
+            ILogger<VaccinationScheduleService> logger,
+            ISessionStudentService sessionStudentService)
             : base(scheduleRepository, currentUserService, unitOfWork, currentTime)
         {
             _scheduleRepository = scheduleRepository;
             _logger = logger;
+            _SessionStudentService = sessionStudentService;
         }
 
         #region CRUD Operations
@@ -96,7 +98,7 @@ namespace Services.Implementations
 
                     var scheduleWithDetails = await _scheduleRepository.GetScheduleWithDetailsAsync(createdSchedule.Id);
                     var response = VaccinationScheduleMapper.MapToDetailResponseDTO(scheduleWithDetails!);
-
+                    await _SessionStudentService.SendVaccinationNotificationEmailToParents(request.StudentIds, vaccinationType.Name, scheduleWithDetails);
                     _logger.LogInformation("Tạo lịch tiêm thành công: {ScheduleId}", createdSchedule.Id);
                     return ApiResult<VaccinationScheduleDetailResponseDTO>.Success(response, "Tạo lịch tiêm thành công");
                 }

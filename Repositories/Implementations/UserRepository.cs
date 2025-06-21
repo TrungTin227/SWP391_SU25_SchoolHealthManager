@@ -3,14 +3,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : GenericRepository<User,Guid>, IUserRepository
     {
         private readonly SchoolHealthManagerDbContext _context;
 
-        public UserRepository(SchoolHealthManagerDbContext context)
+        public UserRepository(SchoolHealthManagerDbContext context) : base(context)
         {
             _context = context;
         }
+
 
         public async Task<PagedList<UserDetailsDTO>> GetUserDetailsAsync(int pageNumber, int pageSize)
         {
