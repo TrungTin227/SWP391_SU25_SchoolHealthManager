@@ -13,6 +13,8 @@ namespace Repositories.WorkSeeds.Interfaces
         Task AddRangeAsync(IEnumerable<TEntity> entities);
         Task UpdateRangeAsync(IEnumerable<TEntity> entities);
         Task DeleteRangeAsync(IEnumerable<TKey> ids);
+        Task<List<TEntity>> GetByIdsAsync(List<TKey> ids);
+
 
         // Query operations
 
