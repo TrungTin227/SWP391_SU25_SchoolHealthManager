@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace Services.Implementations
 {
-    public class SessionStudentServce : BaseService<SessionStudentServce, Guid>, ISessionStudentService
+    public class SessionStudentService : BaseService<SessionStudentService, Guid>, ISessionStudentService
     {
         private readonly ISchoolHealthEmailService _schoolHealthEmailService;
-        public SessionStudentServce(
-            IGenericRepository<SessionStudentServce, Guid> repository,
+        public SessionStudentService(
+            IGenericRepository<SessionStudentService, Guid> repository,
             ICurrentUserService currentUserService, IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
             ISchoolHealthEmailService schoolHealthEmailService) : base(repository, currentUserService, unitOfWork, currentTime)

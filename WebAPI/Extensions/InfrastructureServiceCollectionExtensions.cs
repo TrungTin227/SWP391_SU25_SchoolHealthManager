@@ -117,7 +117,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IHealProfileService, HealProfileService>();
             services.AddScoped<IParentMedicationDeliveryService, ParentMedicationDeliveryService>();
             services.AddScoped<IStudentService, StudentService>();
-            services.AddScoped<ISessionStudentService, SessionStudentServce>();
+            services.AddScoped<ISessionStudentService, SessionStudentService>();
             services.AddScoped<IUserEmailService, UserEmailService>();
             services.AddScoped<IMedicationService, MedicationService>();
             services.AddScoped<IMedicationLotService, MedicationLotService>();
