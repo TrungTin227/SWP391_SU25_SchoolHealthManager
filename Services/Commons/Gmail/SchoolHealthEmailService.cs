@@ -131,7 +131,8 @@ namespace Services.Implementations
                             
                             <p><strong>Quý phụ huynh vui lòng:</strong></p>
                             <ul>
-                                <li>Xác nhận đồng ý tiêm chủng cho con em</li>
+                                <li>Xác nhận đồng ý tiêm chủng cho con em qua đường link sau: <a href=""http://localhost:5173/parents/confirm-vaccin"">link</a>
+</li>
                                 <li>Đảm bảo con em có mặt đúng thời gian</li>
                                 <li>Thông báo nếu con em có tiền sử dị ứng</li>
                                 <li>Cho con em ăn sáng đầy đủ trước khi tiêm</li>

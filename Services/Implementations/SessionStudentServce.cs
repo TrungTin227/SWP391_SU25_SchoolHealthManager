@@ -1,5 +1,6 @@
 ﻿using DTOs.SessionStudentDTOs.Requests;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -12,47 +13,64 @@ namespace Services.Implementations
     public class SessionStudentService : BaseService<SessionStudentService, Guid>, ISessionStudentService
     {
         private readonly ISchoolHealthEmailService _schoolHealthEmailService;
+        private readonly ILogger<SessionStudentService> _logger;
         public SessionStudentService(
             IGenericRepository<SessionStudentService, Guid> repository,
             ICurrentUserService currentUserService, IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
-            ISchoolHealthEmailService schoolHealthEmailService) : base(repository, currentUserService, unitOfWork, currentTime)
+            ISchoolHealthEmailService schoolHealthEmailService, 
+            ILogger<SessionStudentService> logger) : base(repository, currentUserService, unitOfWork, currentTime)
         {
             _schoolHealthEmailService = schoolHealthEmailService;
+            _logger = logger;
         }
 
-        public async Task<ApiResult<bool>> ParentAcptVaccineAsync(Guid sessionStudentId, ParentAcptVaccine request)
+        public async Task<ApiResult<bool>> ParentAcptVaccineAsync(ParentAcptVaccine request)
+        {
+            try
+            {
+                _logger.LogInformation("Starting ParentAcptVaccineAsync for StudentId: {StudentId}, VaccinationScheduleId: {VaccinationScheduleId}", request.StudentId, request.VaccinationScheduleId);
+                // 1. Lấy thông tin SessionStudent theo Id
+
+                var sessionStudent = await _unitOfWork.SessionStudentRepository.FirstOrDefaultAsync(ss => ss.StudentId == request.StudentId && ss.VaccinationScheduleId == request.VaccinationScheduleId);
+
+                if (sessionStudent == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Session student not found."));
+                }
+                // 2. Cập nhật trạng thái đồng ý của phụ huynh
+                sessionStudent.ConsentStatus = request.ConsentStatus;
+                sessionStudent.ParentSignedAt = DateTime.UtcNow;
+                sessionStudent.ParentNotes = request.ParentNote;
+                sessionStudent.ParentSignature = request.ParentSignature;
+                sessionStudent.UpdatedAt = DateTime.UtcNow;
+                var userId = _currentUserService.GetUserId();
+                if (userId.HasValue)
+                {
+                    sessionStudent.UpdatedBy = userId.Value;
+                }
+                else
+                {
+                    _logger.LogWarning("UserId is null in ParentAcptVaccineAsync");
+                    // Có thể return lỗi hoặc xử lý theo logic riêng tuỳ yêu cầu
+                }
+
+                // 3. Lưu thay đổi
+                await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
+                await _unitOfWork.SaveChangesAsync();
+                return ApiResult<bool>.Success(true, "Parent consent status updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception($"Lỗi khi gán giá trị cho session học sinh!!: {ex.Message}"));
+            }
+        }
+
+        public async Task<ApiResult<bool>> ParentDeclineVaccineAsync(ParentAcptVaccine request)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<ApiResult<bool>> ParentDeclineVaccineAsync(Guid sessionStudentId, ParentAcptVaccine request)
-        {
-            throw new NotImplementedException();
-        }
-
-        //public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentId, string VaccineName, DateTime schedule)
-        //{
-        //    //var 
-        //    //return await _schoolHealthEmailService.SendVaccinationConsentRequestAsync(studentId);
-        //    try {
-        //        foreach (Guid studentid in studentId)
-        //        {
-        //            var student = await _unitOfWork.StudentRepository.GetByIdAsync(studentid);
-        //            var parent = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(student.ParentUserId);
-        //            await _schoolHealthEmailService.SendVaccinationConsentRequestAsync(
-        //                parent.Email,
-        //                student.FullName,
-        //                VaccineName,
-        //                schedule);
-        //        }
-        //        return ApiResult<bool>.Success(true, "Vaccination notification email sent successfully to parents.");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return ApiResult<bool>.Failure(new Exception($"Error processing student IDs: {ex.Message}"));
-        //    }
-        //}
         public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
         {
             try
@@ -128,7 +146,7 @@ namespace Services.Implementations
             await _unitOfWork.SessionStudentRepository.UpdateRangeAsync(sessionStudents);
             await _unitOfWork.SaveChangesAsync();
 
-            return ApiResult<bool>.Success(true,"Cập nhật thời gian thông báo cho phụ huynh tiêm chủng thành công!!");
+            return ApiResult<bool>.Success(true, "Cập nhật thời gian thông báo cho phụ huynh tiêm chủng thành công!!");
         }
 
     }
