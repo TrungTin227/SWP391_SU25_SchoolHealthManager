@@ -1,6 +1,4 @@
-﻿using DTOs.VaccinationCampaignDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
 namespace WebAPI.Controllers
