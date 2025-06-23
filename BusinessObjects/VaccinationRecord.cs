@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace BusinessObjects
 {
@@ -36,6 +37,8 @@ namespace BusinessObjects
         public DateTime VaccinatedAt { get; set; }
         public bool ReactionFollowup24h { get; set; }
         public bool ReactionFollowup72h { get; set; }
+        public VaccinationReactionSeverity ReactionSeverity { get; set; }
+
 
         // Loại vắc-xin (có thể suy từ VaccineLot, nhưng để trực tiếp cho query dễ)
         public Guid VaccineTypeId { get; set; }

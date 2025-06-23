@@ -651,7 +651,11 @@ namespace Repositories
                 .HasConversion(new EnumToStringConverter<VaccinationCampaignStatus>())
                 .HasMaxLength(50)
                 .IsUnicode(true);
-
+            builder.Entity<VaccinationRecord>()
+                .Property(vr => vr.ReactionSeverity)
+                .HasConversion(new EnumToStringConverter<VaccinationReactionSeverity>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
 
         }
         #endregion
