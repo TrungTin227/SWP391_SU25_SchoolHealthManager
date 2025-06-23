@@ -5,7 +5,7 @@
         #region Query Operations
         Task<PagedList<MedicalSupplyLot>> GetMedicalSupplyLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicalSupplyId = null, bool? isExpired = null);
+            Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false);
         Task<MedicalSupplyLot?> GetLotWithSupplyAsync(Guid id);
         Task<List<MedicalSupplyLot>> GetMedicalSupplyLotsByIdsAsync(List<Guid> ids, bool includeDeleted = false);
         Task<PagedList<MedicalSupplyLot>> GetSoftDeletedLotsAsync(
@@ -25,7 +25,7 @@
         Task<bool> LotNumberExistsAsync(string lotNumber, Guid? excludeId = null);
         #endregion
 
-        #region Unified Delete & Restore Operations
+        #region Delete & Restore Operations
         Task<int> SoftDeleteLotsAsync(List<Guid> ids, Guid deletedBy);
         Task<int> RestoreLotsAsync(List<Guid> ids, Guid restoredBy);
         Task<int> PermanentDeleteLotsAsync(List<Guid> ids);

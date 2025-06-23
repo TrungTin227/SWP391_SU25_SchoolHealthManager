@@ -30,3 +30,6 @@ global using Services.Commons;
 global using Services.Helpers.Mappers;
 global using DTOs.VaccinationCampaignDTOs.Request;
 global using DTOs.VaccinationCampaignDTOs.Response;
+global using Repositories.Interfaces;
+global using DTOs.VaccinationScheduleDTOs.Request;
+global using DTOs.VaccinationScheduleDTOs.Response;

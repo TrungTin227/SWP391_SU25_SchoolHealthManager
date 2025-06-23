@@ -1,11 +1,16 @@
-﻿using DTOs.VaccinationScheduleDTOs.Request;
-using DTOs.VaccinationScheduleDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IVaccinationScheduleService
     {
         // CRUD Operations
+        Task<ApiResult<PagedList<VaccinationScheduleResponseDTO>>> GetSchedulesAsync(
+            Guid? campaignId,
+            DateTime? startDate,
+            DateTime? endDate,
+            ScheduleStatus? status,
+            string? searchTerm,
+            int pageNumber,
+            int pageSize);
         Task<ApiResult<VaccinationScheduleDetailResponseDTO>> CreateScheduleAsync(CreateVaccinationScheduleRequest request);
         Task<ApiResult<VaccinationScheduleDetailResponseDTO>> UpdateScheduleAsync(Guid id, UpdateVaccinationScheduleRequest request);
         Task<ApiResult<VaccinationScheduleDetailResponseDTO>> GetScheduleByIdAsync(Guid id);

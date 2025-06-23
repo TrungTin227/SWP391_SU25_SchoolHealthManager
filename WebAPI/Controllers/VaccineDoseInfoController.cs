@@ -9,14 +9,11 @@ namespace WebAPI.Controllers
     public class VaccineDoseInfoController : ControllerBase
     {
         private readonly IVaccineDoseInfoService _vaccineDoseInfoService;
-        private readonly ILogger<VaccineDoseInfoController> _logger;
 
         public VaccineDoseInfoController(
-            IVaccineDoseInfoService vaccineDoseInfoService,
-            ILogger<VaccineDoseInfoController> logger)
+            IVaccineDoseInfoService vaccineDoseInfoService)
         {
             _vaccineDoseInfoService = vaccineDoseInfoService;
-            _logger = logger;
         }
 
         #region Basic CRUD Operations
@@ -36,17 +33,7 @@ namespace WebAPI.Controllers
 
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-
-        /// <summary>
-        /// Lấy thông tin liều vaccine theo ID
-        /// </summary>
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetVaccineDoseInfoById(Guid id)
-        {
-            var result = await _vaccineDoseInfoService.GetVaccineDoseInfoByIdAsync(id);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
+     
         /// <summary>
         /// Lấy thông tin chi tiết liều vaccine theo ID
         /// </summary>
@@ -65,10 +52,12 @@ namespace WebAPI.Controllers
         {
             var result = await _vaccineDoseInfoService.CreateVaccineDoseInfoAsync(request);
 
-            return result.IsSuccess ? CreatedAtAction(
-                nameof(GetVaccineDoseInfoById),
-                new { id = result.Data?.Id },
-                result) : BadRequest(result);
+            return result.IsSuccess
+                ? CreatedAtAction(
+                    nameof(GetVaccineDoseInfoDetailById),
+                    new { id = result.Data?.Id },
+                    result)
+                : BadRequest(result);
         }
 
         /// <summary>
@@ -103,17 +92,7 @@ namespace WebAPI.Controllers
 
         #endregion
 
-        #region Business Operations
-
-        /// <summary>
-        /// Lấy danh sách thông tin liều vaccine theo loại vaccine
-        /// </summary>
-        [HttpGet("by-vaccine-type/{vaccineTypeId:guid}")]
-        public async Task<IActionResult> GetDoseInfosByVaccineType(Guid vaccineTypeId)
-        {
-            var result = await _vaccineDoseInfoService.GetDoseInfosByVaccineTypeAsync(vaccineTypeId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        #region Business Operations       
 
         /// <summary>
         /// Lấy thông tin mũi tiêm tiếp theo được khuyến nghị

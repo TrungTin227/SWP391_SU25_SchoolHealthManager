@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.VaccinationCampaignDTOs.Response;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Repositories.Implementations
@@ -15,6 +16,45 @@ namespace Repositories.Implementations
         {
             _logger = logger;
             _currentTime = currentTime;
+        }
+
+        public async Task<PagedList<VaccinationSchedule>> GetSchedulesAsync(
+           Guid? campaignId,
+           DateTime? startDate,
+           DateTime? endDate,
+           ScheduleStatus? status,
+           string? searchTerm,
+           int pageNumber,
+           int pageSize)
+        {
+            IQueryable<VaccinationSchedule> query = _context.VaccinationSchedules
+                .Include(vs => vs.Campaign)
+                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.SessionStudents).ThenInclude(ss => ss.Student)
+                .Include(vs => vs.Records)
+                .Where(vs => !vs.IsDeleted);
+
+            if (campaignId.HasValue)
+                query = query.Where(vs => vs.CampaignId == campaignId.Value);
+            if (startDate.HasValue)
+                query = query.Where(vs => vs.ScheduledAt >= startDate.Value);
+            if (endDate.HasValue)
+                query = query.Where(vs => vs.ScheduledAt <= endDate.Value);
+            if (status.HasValue)
+                query = query.Where(vs => vs.ScheduleStatus == status.Value);
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.Trim().ToLower();
+                query = query.Where(vs =>
+                    vs.Campaign.Name.ToLower().Contains(term) ||
+                    vs.VaccinationType.Name.ToLower().Contains(term) ||
+                    vs.VaccinationType.Code.ToLower().Contains(term));
+            }
+
+            query = query.OrderBy(vs => vs.ScheduledAt)
+                         .ThenBy(vs => vs.Campaign.Name);
+
+            return await PagedList<VaccinationSchedule>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(

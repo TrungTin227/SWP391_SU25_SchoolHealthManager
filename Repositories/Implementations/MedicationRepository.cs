@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Repositories.WorkSeeds.Implements;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace Repositories.Implementations
@@ -239,7 +239,23 @@ namespace Repositories.Implementations
         }
 
         #endregion
+        public async Task<Dictionary<Guid, int>> GetTotalQuantitiesByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            return await _context.MedicationLots
+                .Where(lot => lot.MedicationId.HasValue && medicationIds.Contains(lot.MedicationId.Value) && !lot.IsDeleted)
+                .GroupBy(lot => lot.MedicationId.Value)
+                .Select(g => new { MedicationId = g.Key, TotalQuantity = g.Sum(x => x.Quantity) })
+                .ToDictionaryAsync(x => x.MedicationId, x => x.TotalQuantity);
+        }
 
+        public async Task<Dictionary<Guid, int>> GetLotCountsByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            return await _context.MedicationLots
+                .Where(lot => lot.MedicationId.HasValue && medicationIds.Contains(lot.MedicationId.Value) && !lot.IsDeleted)
+                .GroupBy(lot => lot.MedicationId.Value)
+                .Select(g => new { MedicationId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.MedicationId, x => x.Count);
+        }
         #region Private Helper Methods
 
         private Expression<Func<Medication, bool>> BuildMedicationPredicate(string? searchTerm, MedicationCategory? category)

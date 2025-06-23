@@ -23,10 +23,18 @@ namespace WebAPI.Controllers
             [FromQuery][Range(1, 100)] int pageSize = 10,
             [FromQuery] string? searchTerm = null,
             [FromQuery] Guid? vaccineTypeId = null,
-            [FromQuery] bool? isExpired = null)
+            [FromQuery] bool? isExpired = null,
+            [FromQuery][Range(1, 365)] int? daysBeforeExpiry = null,
+            [FromQuery] bool? isDeleted = null)
         {
             var result = await _vaccineLotService.GetVaccineLotsAsync(
-                pageNumber, pageSize, searchTerm, vaccineTypeId, isExpired);
+                pageNumber,
+                pageSize,
+                searchTerm,
+                vaccineTypeId,
+                isExpired,
+                daysBeforeExpiry,
+                isDeleted);
 
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
@@ -42,11 +50,9 @@ namespace WebAPI.Controllers
         public async Task<IActionResult> CreateVaccineLot([FromBody] CreateVaccineLotRequest request)
         {
             var result = await _vaccineLotService.CreateVaccineLotAsync(request);
-
-            return result.IsSuccess ? CreatedAtAction(
-                nameof(GetVaccineLotById),
-                new { id = result.Data?.Id },
-                result) : BadRequest(result);
+            return result.IsSuccess
+                ? CreatedAtAction(nameof(GetVaccineLotById), new { id = result.Data?.Id }, result)
+                : BadRequest(result);
         }
 
         [HttpPut("{id:guid}")]
@@ -76,50 +82,12 @@ namespace WebAPI.Controllers
 
         #endregion
 
-        #region Business Operations
-
-        [HttpGet("by-vaccine-type/{vaccineTypeId:guid}")]
-        public async Task<IActionResult> GetLotsByVaccineType(Guid vaccineTypeId)
-        {
-            var result = await _vaccineLotService.GetLotsByVaccineTypeAsync(vaccineTypeId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpGet("expiring")]
-        public async Task<IActionResult> GetExpiringVaccineLots(
-            [FromQuery][Range(1, 365)] int daysBeforeExpiry = 30)
-        {
-            var result = await _vaccineLotService.GetExpiringVaccineLotsAsync(daysBeforeExpiry);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpGet("expired")]
-        public async Task<IActionResult> GetExpiredVaccineLots()
-        {
-            var result = await _vaccineLotService.GetExpiredVaccineLotsAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        #region Quantity Update
 
         [HttpPatch("{id:guid}/quantity")]
         public async Task<IActionResult> UpdateVaccineQuantity(Guid id, [FromBody] UpdateQuantityRequest request)
         {
             var result = await _vaccineLotService.UpdateVaccineQuantityAsync(id, request.Quantity);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        #endregion
-
-        #region Soft Delete Operations
-
-        [HttpGet("deleted")]
-        public async Task<IActionResult> GetSoftDeletedVaccineLots(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery][Range(1, 100)] int pageSize = 10,
-            [FromQuery] string? searchTerm = null)
-        {
-            var result = await _vaccineLotService.GetSoftDeletedVaccineLotsAsync(
-                pageNumber, pageSize, searchTerm);
-
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
@@ -136,15 +104,15 @@ namespace WebAPI.Controllers
 
         #endregion
 
-        #region Private Helper Methods
+        #region Private Helpers
 
         private IActionResult HandleBatchOperationResult(dynamic result)
         {
             if (result.Data is BatchOperationResultDTO batchResult)
             {
-                return batchResult.IsCompleteSuccess ? Ok(result) :
-                       batchResult.IsPartialSuccess ? StatusCode(207, result) :
-                       BadRequest(result);
+                return batchResult.IsCompleteSuccess ? Ok(result)
+                     : batchResult.IsPartialSuccess ? StatusCode(207, result)
+                     : BadRequest(result);
             }
 
             return result.IsSuccess ? Ok(result) : BadRequest(result);

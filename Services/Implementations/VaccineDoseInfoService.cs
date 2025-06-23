@@ -1,9 +1,4 @@
-﻿using DTOs.VaccineDoseInfoDTOs.Request;
-using DTOs.VaccineDoseInfoDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
-using Services.Helpers.Mappers;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
 {
