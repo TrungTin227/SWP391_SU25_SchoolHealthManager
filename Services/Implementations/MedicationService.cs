@@ -1,9 +1,4 @@
-﻿using DTOs.MedicationDTOs.Request;
-using DTOs.MedicationDTOs.Response;
-using DTOs.MedicationLotDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
 {
@@ -405,30 +400,119 @@ namespace Services.Implementations
         /// <summary>
         /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
         /// </summary>
-        public async Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30)
+        private async Task<List<MedicationResponse>> MapToMedicationResponsesAsync(IEnumerable<Medication> medications)
         {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            try
             {
-                try
+                var medicationList = medications.ToList();
+
+                if (!medicationList.Any())
                 {
-                    var deletedCount = await _medicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
-
-                    await _unitOfWork.SaveChangesAsync();
-
-                    _logger.LogInformation("Cleaned up {Count} expired medications older than {Days} days", deletedCount, daysToExpire);
-
-                    var message = deletedCount > 0
-                        ? $"Đã xóa vĩnh viễn {deletedCount} thuốc hết hạn"
-                        : "Không có thuốc hết hạn nào để xóa";
-
-                    return ApiResult<string>.Success(message, message);
+                    return new List<MedicationResponse>();
                 }
-                catch (Exception ex)
+
+                var currentUserId = _currentUserService.GetUserId();
+
+                _logger.LogDebug("Mapping {Count} medications to responses for user {UserId}",
+                    medicationList.Count, currentUserId);
+
+                // 🎯 BƯỚC 1: Batch load tất cả data cần thiết trong 1 lần
+                var medicationIds = medicationList.Select(m => m.Id).ToList();
+
+                // Lấy tất cả total quantities cho tất cả medications
+                var totalQuantities = await GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
+
+                // Lấy thêm các data khác nếu cần (ví dụ: lot counts, etc.)
+                var lotCounts = await GetLotCountsByMedicationIdsAsync(medicationIds);
+
+                // 🎯 BƯỚC 2: Map synchronously với data đã load sẵn
+                var responses = medicationList.Select(medication =>
                 {
-                    _logger.LogError(ex, "Error occurred while cleaning up expired medications");
-                    return ApiResult<string>.Failure(new Exception("Đã xảy ra lỗi khi dọn dẹp thuốc hết hạn"));
-                }
-            });
+                    try
+                    {
+                        var totalQuantity = totalQuantities.GetValueOrDefault(medication.Id, 0);
+                        var totalLots = lotCounts.GetValueOrDefault(medication.Id, 0);
+
+                        return MapToMedicationResponse(medication, totalQuantity, totalLots);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error mapping medication {MedicationId} to response", medication.Id);
+                        // Return basic response if mapping fails
+                        return new MedicationResponse
+                        {
+                            Id = medication.Id,
+                            Name = medication.Name,
+                            Unit = medication.Unit ?? "N/A",
+                            DosageForm = medication.DosageForm ?? "N/A",
+                            Category = medication.Category,
+                            Status = medication.Status,
+                            CreatedAt = medication.CreatedAt,
+                            UpdatedAt = medication.UpdatedAt,
+                            TotalLots = 0,
+                            TotalQuantity = 0
+                        };
+                    }
+                }).ToList();
+
+                _logger.LogDebug("Successfully mapped {Count} medications to responses for user {UserId}",
+                    responses.Count, currentUserId);
+
+                return responses;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Critical error in MapToMedicationResponsesAsync for user {UserId}",
+                    _currentUserService.GetUserId());
+                throw new Exception("Lỗi xử lý dữ liệu thuốc", ex);
+            }
+        }
+
+        // 🎯 BƯỚC 3: Thêm các helper methods để batch load
+        private async Task<Dictionary<Guid, int>> GetTotalQuantitiesByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            try
+            {
+                // Gọi repository method để lấy tất cả quantities trong 1 query
+                return await _medicationRepository.GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting total quantities for medications");
+                return new Dictionary<Guid, int>();
+            }
+        }
+
+        private async Task<Dictionary<Guid, int>> GetLotCountsByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            try
+            {
+                return await _medicationRepository.GetLotCountsByMedicationIdsAsync(medicationIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting lot counts for medications");
+                return new Dictionary<Guid, int>();
+            }
+        }
+
+        // 🎯 BƯỚC 4: Sync mapping method (không async)
+        private MedicationResponse MapToMedicationResponse(Medication medication, int totalQuantity, int totalLots)
+        {
+            return new MedicationResponse
+            {
+                Id = medication.Id,
+                Name = medication.Name,
+                Unit = medication.Unit ?? "N/A",
+                DosageForm = medication.DosageForm ?? "N/A",
+                Category = medication.Category,
+                Status = medication.Status,
+                CreatedAt = medication.CreatedAt,
+                UpdatedAt = medication.UpdatedAt,
+                TotalLots = totalLots,
+                TotalQuantity = totalQuantity
+                // Thêm các fields khác nếu cần
+            };
         }
 
         /// <summary>

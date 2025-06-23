@@ -25,18 +25,28 @@ namespace Services.Implementations
         #region Basic CRUD Operations
 
         public async Task<ApiResult<PagedList<VaccineLotResponseDTO>>> GetVaccineLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? vaccineTypeId = null, bool? isExpired = null)
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            Guid? vaccineTypeId = null,
+            bool? isExpired = null,
+            int? daysBeforeExpiry = null,
+            bool? isDeleted = null)
         {
             try
             {
                 var lots = await _vaccineLotRepository.GetVaccineLotsAsync(
-                    pageNumber, pageSize, searchTerm, vaccineTypeId, isExpired);
+                    pageNumber,
+                    pageSize,
+                    searchTerm,
+                    vaccineTypeId,
+                    isExpired,
+                    daysBeforeExpiry,
+                    isDeleted);
 
-                var result = VaccineLotMapper.MapToPagedResponseDTO(lots);
-
+                var resultDto = VaccineLotMapper.MapToPagedResponseDTO(lots);
                 return ApiResult<PagedList<VaccineLotResponseDTO>>.Success(
-                    result, "Lấy danh sách lô vaccine thành công");
+                    resultDto, "Lấy danh sách lô vaccine thành công");
             }
             catch (Exception ex)
             {

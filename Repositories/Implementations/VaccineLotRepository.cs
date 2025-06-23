@@ -18,10 +18,16 @@ namespace Repositories.Implementations
         #region Basic CRUD Methods
 
         public async Task<PagedList<MedicationLot>> GetVaccineLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? vaccineTypeId = null, bool? isExpired = null)
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            Guid? vaccineTypeId = null,
+            bool? isExpired = null,
+            int? daysBeforeExpiry = null,
+            bool? isDeleted = null)
         {
-            var predicate = BuildVaccineLotPredicate(searchTerm, vaccineTypeId, isExpired);
+            var predicate = BuildVaccineLotPredicate(
+                searchTerm, vaccineTypeId, isExpired, daysBeforeExpiry, isDeleted);
 
             return await GetPagedAsync(
                 pageNumber,
@@ -270,6 +276,31 @@ namespace Repositories.Implementations
                          ml.LotNumber.Contains(searchTerm) ||
                          ml.StorageLocation.Contains(searchTerm) ||
                          ml.VaccineType.Name.Contains(searchTerm));
+        }
+        private Expression<Func<MedicationLot, bool>> BuildVaccineLotPredicate(
+            string? searchTerm,
+            Guid? vaccineTypeId,
+            bool? isExpired,
+            int? daysBeforeExpiry,
+            bool? isDeleted)
+        {
+            var today = _currentTime.GetVietnamTime().Date;
+            DateTime? threshold = daysBeforeExpiry.HasValue
+                ? today.AddDays(daysBeforeExpiry.Value)
+                : (DateTime?)null;
+
+            return ml =>
+                ml.Type == LotType.Vaccine
+                && (!isDeleted.HasValue || ml.IsDeleted == isDeleted.Value)
+                && (!vaccineTypeId.HasValue || ml.VaccineTypeId == vaccineTypeId.Value)
+                && (string.IsNullOrWhiteSpace(searchTerm)
+                    || ml.LotNumber.Contains(searchTerm)
+                    || ml.StorageLocation.Contains(searchTerm)
+                    || ml.VaccineType.Name.Contains(searchTerm))
+                && (!isExpired.HasValue
+                    || (isExpired.Value ? ml.ExpiryDate.Date <= today : ml.ExpiryDate.Date > today))
+                && (!threshold.HasValue
+                    || (ml.ExpiryDate.Date > today && ml.ExpiryDate.Date <= threshold.Value));
         }
 
         #endregion

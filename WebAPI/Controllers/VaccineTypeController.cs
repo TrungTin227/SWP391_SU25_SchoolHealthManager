@@ -152,16 +152,6 @@ namespace WebAPI.Controllers
         #region Business Operations
 
         /// <summary>
-        /// Lấy danh sách loại vaccine đang hoạt động
-        /// </summary>
-        [HttpGet("active")]
-        public async Task<IActionResult> GetActiveVaccineTypes()
-        {
-            var result = await _vaccineTypeService.GetActiveVaccineTypesAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
         /// Thay đổi trạng thái hoạt động của loại vaccine
         /// </summary>
         [HttpPatch("{id:guid}/toggle-status")]
@@ -174,25 +164,6 @@ namespace WebAPI.Controllers
         #endregion
 
         #region Private Helper Methods
-
-        // ✅ FIX: Định nghĩa abstract class
-        public abstract class BatchIdsRequest
-        {
-            public List<Guid> Ids { get; set; } = new();
-        }
-
-        private static void ValidateBatchRequest(BatchIdsRequest request, int maxItems, string operation)
-        {
-            if (request?.Ids == null || !request.Ids.Any())
-                throw new ArgumentException("Danh sách ID không được rỗng");
-
-            if (request.Ids.Count > maxItems)
-                throw new ArgumentException($"Không thể {operation} quá {maxItems} loại vaccine cùng lúc");
-
-            if (request.Ids.Any(id => id == Guid.Empty))
-                throw new ArgumentException("Danh sách chứa ID không hợp lệ");
-        }
-
         private IActionResult HandleBatchOperationResult(dynamic result)
         {
             if (result.Data is BatchOperationResultDTO batchResult)

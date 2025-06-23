@@ -5,7 +5,8 @@
         #region Basic CRUD Methods
         Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicationId = null, bool? isExpired = null);
+            Guid? medicationId = null, bool? isExpired = null,
+            int? daysBeforeExpiry = null, bool includeDeleted = false);
         Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId);
         Task<MedicationLot?> GetByIdAsync(Guid id, bool includeDeleted = false);
         #endregion

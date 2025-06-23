@@ -1,12 +1,12 @@
-﻿using DTOs.VaccinationScheduleDTOs.Request;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    //[Authorize]
     public class VaccinationScheduleController : ControllerBase
     {
         private readonly IVaccinationScheduleService _scheduleService;
@@ -17,6 +17,36 @@ namespace WebAPI.Controllers
         }
 
         #region CRUD Operations
+
+        /// <summary>
+        /// Lấy danh sách lịch tiêm chủng với phân trang, tìm kiếm và bộ lọc linh hoạt
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetSchedules(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery][Range(1, 100)] int pageSize = 10,
+            [FromQuery] Guid? campaignId = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] ScheduleStatus? status = null,
+            [FromQuery] string? searchTerm = null)
+        {
+            if (pageNumber < 1)
+                throw new ArgumentException("Số trang phải lớn hơn 0");
+
+            var result = await _scheduleService.GetSchedulesAsync(
+                campaignId,
+                startDate,
+                endDate,
+                status,
+                searchTerm,
+                pageNumber,
+                pageSize
+            );
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
 
         [HttpPost]
         //[Authorize(Roles = "Admin,Nurse")]
@@ -40,32 +70,6 @@ namespace WebAPI.Controllers
             var result = await _scheduleService.GetScheduleByIdAsync(id);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-
-        [HttpGet("campaign/{campaignId}")]
-        public async Task<IActionResult> GetSchedulesByCampaign(
-            Guid campaignId,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? searchTerm = null)
-        {
-            var result = await _scheduleService.GetSchedulesByCampaignAsync(
-                campaignId, pageNumber, pageSize, searchTerm);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpGet("date-range")]
-        public async Task<IActionResult> GetSchedulesByDateRange(
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? searchTerm = null)
-        {
-            var result = await _scheduleService.GetSchedulesByDateRangeAsync(
-                startDate, endDate, pageNumber, pageSize, searchTerm);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
         #endregion
 
         #region Student Management
@@ -89,14 +93,6 @@ namespace WebAPI.Controllers
         #endregion
 
         #region Status Management
-
-        [HttpPatch("{scheduleId}/status")]
-        //[Authorize(Roles = "Admin,Nurse")]
-        public async Task<IActionResult> UpdateScheduleStatus(Guid scheduleId, [FromBody] ScheduleStatus newStatus)
-        {
-            var result = await _scheduleService.UpdateScheduleStatusAsync(scheduleId, newStatus);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
 
         [HttpPatch("batch/status")]
         //[Authorize(Roles = "Admin,Nurse")]
@@ -154,26 +150,6 @@ namespace WebAPI.Controllers
             [FromQuery] string? searchTerm = null)
         {
             var result = await _scheduleService.GetSoftDeletedSchedulesAsync(pageNumber, pageSize, searchTerm);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        #endregion
-
-        #region Business Operations
-
-        [HttpGet("pending")]
-        //[Authorize(Roles = "Admin,Nurse")]
-        public async Task<IActionResult> GetPendingSchedules()
-        {
-            var result = await _scheduleService.GetPendingSchedulesAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        [HttpGet("in-progress")]
-        //[Authorize(Roles = "Admin,Nurse")]
-        public async Task<IActionResult> GetInProgressSchedules()
-        {
-            var result = await _scheduleService.GetInProgressSchedulesAsync();
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

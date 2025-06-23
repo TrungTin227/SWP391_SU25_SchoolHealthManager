@@ -7,7 +7,7 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    //[Authorize]
     [ValidateModel]
     public class VaccinationCampaignController : ControllerBase
     {
@@ -19,7 +19,7 @@ namespace WebAPI.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách chiến dịch tiêm chủng với phân trang và bộ lọc
+        /// Lấy danh sách hoặc theo ID một chiến dịch tiêm chủng
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetVaccinationCampaigns(
@@ -28,25 +28,26 @@ namespace WebAPI.Controllers
             [FromQuery] string? searchTerm = null,
             [FromQuery] VaccinationCampaignStatus? status = null,
             [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] Guid? id = null)     // thêm tham số id
         {
             if (pageNumber < 1)
                 throw new ArgumentException("Số trang phải lớn hơn 0");
 
+            if (id.HasValue)
+            {
+                var single = await _vaccinationCampaignService.GetVaccinationCampaignByIdAsync(id.Value);
+                return single.IsSuccess
+                    ? Ok(single)
+                    : NotFound(single);
+            }
+
             var result = await _vaccinationCampaignService.GetVaccinationCampaignsAsync(
                 pageNumber, pageSize, searchTerm, status, startDate, endDate);
 
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Lấy thông tin chi tiết chiến dịch tiêm chủng theo ID
-        /// </summary>
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetVaccinationCampaignById(Guid id)
-        {
-            var result = await _vaccinationCampaignService.GetVaccinationCampaignByIdAsync(id);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            return result.IsSuccess
+                ? Ok(result)
+                : BadRequest(result);
         }
 
         /// <summary>

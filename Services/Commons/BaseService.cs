@@ -1,6 +1,4 @@
-﻿using Repositories.Interfaces;
-
-namespace Services.Commons
+﻿namespace Services.Commons
 {
     public abstract class BaseService<TEntity, TKey>
     where TEntity : class

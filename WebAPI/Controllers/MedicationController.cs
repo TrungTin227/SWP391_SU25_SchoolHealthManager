@@ -127,20 +127,6 @@ namespace WebAPI.Controllers
 
         #endregion
 
-        #region Query Operations
-
-        /// <summary>
-        /// Lấy danh sách thuốc đang hoạt động
-        /// </summary>
-        [HttpGet("active")]
-        public async Task<IActionResult> GetActiveMedications()
-        {
-            var result = await _medicationService.GetActiveMedicationsAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        #endregion
-
         #region Metadata Operations
 
         /// <summary>

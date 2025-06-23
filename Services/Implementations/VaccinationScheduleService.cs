@@ -1,7 +1,4 @@
-﻿using DTOs.VaccinationScheduleDTOs.Request;
-using DTOs.VaccinationScheduleDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
 {
@@ -25,6 +22,39 @@ namespace Services.Implementations
         }
 
         #region CRUD Operations
+
+        public async Task<ApiResult<PagedList<VaccinationScheduleResponseDTO>>> GetSchedulesAsync(
+            Guid? campaignId,
+            DateTime? startDate,
+            DateTime? endDate,
+            ScheduleStatus? status,
+            string? searchTerm,
+            int pageNumber,
+            int pageSize)
+        {
+            try
+            {
+                var schedules = await _scheduleRepository.GetSchedulesAsync(
+                    campaignId,
+                    startDate,
+                    endDate,
+                    status,
+                    searchTerm,
+                    pageNumber,
+                    pageSize);
+
+                var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
+                return ApiResult<PagedList<VaccinationScheduleResponseDTO>>.Success(
+                    response,
+                    $"Lấy lịch tiêm thành công. Tổng: {response.MetaData.TotalCount}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving filtered schedules");
+                return ApiResult<PagedList<VaccinationScheduleResponseDTO>>.Failure(
+                    new Exception("Đã xảy ra lỗi khi lấy danh sách lịch tiêm"));
+            }
+        }
 
         public async Task<ApiResult<VaccinationScheduleDetailResponseDTO>> CreateScheduleAsync(CreateVaccinationScheduleRequest request)
         {

@@ -4,8 +4,13 @@
     {
         #region Basic CRUD Operations
         Task<ApiResult<PagedList<VaccineLotResponseDTO>>> GetVaccineLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? vaccineTypeId = null, bool? isExpired = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            Guid? vaccineTypeId = null,
+            bool? isExpired = null,
+            int? daysBeforeExpiry = null,
+            bool? isDeleted = null);
         Task<ApiResult<VaccineLotResponseDTO>> GetVaccineLotByIdAsync(Guid id);
         Task<ApiResult<VaccineLotResponseDTO>> CreateVaccineLotAsync(CreateVaccineLotRequest request);
         Task<ApiResult<VaccineLotResponseDTO>> UpdateVaccineLotAsync(Guid id, UpdateVaccineLotRequest request);

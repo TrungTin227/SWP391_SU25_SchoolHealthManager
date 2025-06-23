@@ -9,7 +9,6 @@ namespace Repositories.Implementations
         private readonly SchoolHealthManagerDbContext _dbContext;
         private readonly ICurrentTime _currentTime;
 
-
         public MedicationLotRepository(SchoolHealthManagerDbContext context, ICurrentTime currentTime) : base(context)
         {
             _dbContext = context;
@@ -19,18 +18,28 @@ namespace Repositories.Implementations
         #region Basic CRUD Methods
 
         public async Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicationId = null, bool? isExpired = null)
+                int pageNumber, int pageSize, string? searchTerm = null,
+                Guid? medicationId = null, bool? isExpired = null,
+                int? daysBeforeExpiry = null, bool includeDeleted = false)
         {
-            var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired);
+            var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired, daysBeforeExpiry, includeDeleted);
 
-            return await GetPagedAsync(
-                pageNumber,
-                pageSize,
-                predicate,
-                orderBy: q => q.OrderBy(ml => ml.ExpiryDate).ThenBy(ml => ml.LotNumber),
-                includes: ml => ml.Medication
-            );
+            IQueryable<MedicationLot> query = includeDeleted
+                ? _dbContext.MedicationLots.IgnoreQueryFilters().Include(ml => ml.Medication)
+                : _dbContext.MedicationLots.Include(ml => ml.Medication);
+
+            // Áp dụng filter và ordering
+            var orderedQuery = query.Where(predicate)
+                                   .OrderBy(ml => ml.ExpiryDate)
+                                   .ThenBy(ml => ml.LotNumber);
+
+            var totalCount = await orderedQuery.CountAsync();
+            var items = await orderedQuery
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedList<MedicationLot>(items, totalCount, pageNumber, pageSize);
         }
 
         public async Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId)
@@ -325,19 +334,33 @@ namespace Repositories.Implementations
         #region Private Helper Methods - Predicate Builders
 
         private Expression<Func<MedicationLot, bool>> BuildMedicationLotPredicate(
-            string? searchTerm, Guid? medicationId, bool? isExpired)
+            string? searchTerm, Guid? medicationId, bool? isExpired,
+            int? daysBeforeExpiry, bool includeDeleted)
         {
             var today = _currentTime.GetVietnamTime().Date;
 
-            return ml => !ml.IsDeleted &&
-                        (string.IsNullOrWhiteSpace(searchTerm) ||
-                         ml.LotNumber.Contains(searchTerm) ||
-                         ml.StorageLocation.Contains(searchTerm) ||
-                         ml.Medication.Name.Contains(searchTerm)) &&
-                        (!medicationId.HasValue || ml.MedicationId == medicationId.Value) &&
-                        (!isExpired.HasValue ||
-                         (isExpired.Value && ml.ExpiryDate.Date <= today) ||
-                         (!isExpired.Value && ml.ExpiryDate.Date > today));
+            return ml =>
+                // Deleted filter
+                (includeDeleted || !ml.IsDeleted) &&
+
+                // Search term filter
+                (string.IsNullOrWhiteSpace(searchTerm) ||
+                 ml.LotNumber.Contains(searchTerm) ||
+                 ml.StorageLocation.Contains(searchTerm) ||
+                 ml.Medication.Name.Contains(searchTerm)) &&
+
+                // Medication ID filter
+                (!medicationId.HasValue || ml.MedicationId == medicationId.Value) &&
+
+                // Expired filter
+                (!isExpired.HasValue ||
+                 (isExpired.Value && ml.ExpiryDate.Date <= today) ||
+                 (!isExpired.Value && ml.ExpiryDate.Date > today)) &&
+
+                // Days before expiry filter
+                (!daysBeforeExpiry.HasValue ||
+                 (ml.ExpiryDate.Date <= today.AddDays(daysBeforeExpiry.Value) &&
+                  ml.ExpiryDate.Date > today));
         }
 
         private Expression<Func<MedicationLot, bool>> BuildExpiringLotsPredicate(int daysBeforeExpiry)

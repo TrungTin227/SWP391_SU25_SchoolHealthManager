@@ -3,6 +3,14 @@
     public interface IVaccinationScheduleRepository : IGenericRepository<VaccinationSchedule, Guid>
     {
         // Business queries
+        Task<PagedList<VaccinationSchedule>> GetSchedulesAsync(
+            Guid? campaignId,
+            DateTime? startDate,
+            DateTime? endDate,
+            ScheduleStatus? status,
+            string? searchTerm,
+            int pageNumber,
+            int pageSize);
         Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(
             Guid campaignId, int pageNumber, int pageSize, string? searchTerm = null);
 

@@ -1,7 +1,4 @@
-﻿using DTOs.MedicalSupplyLotDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
 using System.Data;
 
 namespace Services.Implementations
@@ -27,18 +24,30 @@ namespace Services.Implementations
         #region Basic CRUD Operations
 
         public async Task<ApiResult<PagedList<MedicalSupplyResponseDTO>>> GetMedicalSuppliesAsync(
-            int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null)
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            bool? isActive = null,
+            bool includeDeleted = false)
         {
             try
             {
                 var supplies = await _medicalSupplyRepository.GetMedicalSuppliesAsync(
-                    pageNumber, pageSize, searchTerm, isActive);
+                    pageNumber,
+                    pageSize,
+                    searchTerm,
+                    isActive,
+                    includeDeleted);
 
-                var supplyDTOs = supplies.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(supplies, supplyDTOs);
+                var dtoList = supplies.Select(MapToResponseDTO).ToList();
+                var resultPage = new PagedList<MedicalSupplyResponseDTO>(
+                    dtoList,
+                    supplies.MetaData.TotalCount,
+                    supplies.MetaData.CurrentPage,
+                    supplies.MetaData.PageSize);
 
                 return ApiResult<PagedList<MedicalSupplyResponseDTO>>.Success(
-                    result, "Lấy danh sách vật tư y tế thành công");
+                    resultPage, "Lấy danh sách vật tư y tế thành công");
             }
             catch (Exception ex)
             {

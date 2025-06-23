@@ -5,9 +5,17 @@ namespace Repositories.Interfaces
     public interface IVaccineLotRepository : IGenericRepository<MedicationLot, Guid>
     {
         #region Basic CRUD Methods
+        /// <summary>
+        /// Lấy danh sách theo trang với filter chung: searchTerm, vaccineTypeId, expired, expiring, deleted
+        /// </summary>
         Task<PagedList<MedicationLot>> GetVaccineLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? vaccineTypeId = null, bool? isExpired = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            Guid? vaccineTypeId = null,
+            bool? isExpired = null,
+            int? daysBeforeExpiry = null,
+            bool? isDeleted = null);
         Task<MedicationLot?> GetVaccineLotWithDetailsAsync(Guid lotId);
         Task<MedicationLot?> GetVaccineLotByIdAsync(Guid id, bool includeDeleted = false);
         #endregion

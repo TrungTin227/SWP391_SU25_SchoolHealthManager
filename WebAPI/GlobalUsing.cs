@@ -21,3 +21,5 @@ global using DTOs.VaccineLotDTOs.Request;
 global using WebAPI.Middlewares;
 global using DTOs.VaccineDTOs.Request;
 global using DTOs.VaccineDoseInfoDTOs.Request;
+global using DTOs.MedicalSupplyLotDTOs.Request;
+global using DTOs.VaccinationScheduleDTOs.Request;

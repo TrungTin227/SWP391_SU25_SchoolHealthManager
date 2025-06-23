@@ -1,8 +1,4 @@
-﻿using DTOs.MedicalSupplyLotDTOs.Request;
-using DTOs.MedicalSupplyLotDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
 using System.Data;
 
 namespace Services.Implementations
@@ -29,12 +25,12 @@ namespace Services.Implementations
 
         public async Task<ApiResult<PagedList<MedicalSupplyLotResponseDTO>>> GetMedicalSupplyLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicalSupplyId = null, bool? isExpired = null)
+            Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false)
         {
             try
             {
                 var lots = await _medicalSupplyLotRepository.GetMedicalSupplyLotsAsync(
-                    pageNumber, pageSize, searchTerm, medicalSupplyId, isExpired);
+                    pageNumber, pageSize, searchTerm, medicalSupplyId, isExpired, includeDeleted);
 
                 var dtos = lots.Select(MedicalSupplyLotMapper.ToResponseDTO);
                 var result = MedicalSupplyLotMapper.ToPagedResult(lots, dtos);
