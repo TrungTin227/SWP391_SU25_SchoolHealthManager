@@ -8,7 +8,7 @@ using DTOs.VaccinationRecordDTOs.Response;
 
 namespace Repositories.Interfaces
 {
-    public interface IVaccinationRecord
+    public interface IVaccinationRecordRepository
     {
         Task<IEnumerable<VaccinationRecordResponse>> GetAllAsync();
         Task<VaccinationRecordResponse?> GetByIdAsync(Guid id);

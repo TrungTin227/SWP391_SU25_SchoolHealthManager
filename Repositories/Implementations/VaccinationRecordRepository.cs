@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations
 {
-    public class VaccinationRecord : IVaccinationRecord
+    public class VaccinationRecordRepository : IVaccinationRecordRepository
     {
         private readonly SchoolHealthManagerDbContext _context;
         public async Task<VaccinationRecordResponse> CreateAsync(CreateVaccinationRecordRequest request)

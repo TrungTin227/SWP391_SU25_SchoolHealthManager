@@ -11,9 +11,9 @@ namespace Services.Implementations
 {
     public class VaccinationRecordService : IVaccinationRecordService
     {
-        private readonly IVaccinationRecord _repository;
+        private readonly IVaccinationRecordRepository _repository;
 
-        public VaccinationRecordService(IVaccinationRecord repository)
+        public VaccinationRecordService(IVaccinationRecordRepository repository)
         {
             _repository = repository;
         }
