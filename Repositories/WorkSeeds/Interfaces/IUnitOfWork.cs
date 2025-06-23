@@ -19,6 +19,7 @@
         IVaccineLotRepository VaccineLotRepository { get; }
         IVaccinationCampaignRepository VaccinationCampaignRepository { get; }
         IVaccinationScheduleRepository VaccinationScheduleRepository { get; }
+        IParentVaccinationRepository ParentVaccinationRepository { get; }
 
     }
 }

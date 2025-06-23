@@ -39,8 +39,8 @@
     {
         Pending = 0,        // Chờ phụ huynh ký
         Sent = 1,           // Đã gửi thông báo
-        Signed = 2,         // Phụ huynh đã ký đồng ý
-        Declined = 3,       // Phụ huynh từ chối
+        Approved = 2,         // Phụ huynh đã ký đồng ý
+        Rejected = 3,       // Phụ huynh từ chối
         Expired = 4         // Hết hạn ký
     }
     public enum SessionStatus
@@ -58,4 +58,12 @@
         Resolved = 2,     // Đã hoàn thành
         Cancelled = 3     // Đã hủy
     }
+    public enum VaccinationReactionSeverity
+    {
+        None = 0,          // Không có phản ứng
+        Mild = 1,          // Nhẹ
+        Moderate = 2,      // Vừa phải
+        Severe = 3         // Nặng
+    }
+    
 }
