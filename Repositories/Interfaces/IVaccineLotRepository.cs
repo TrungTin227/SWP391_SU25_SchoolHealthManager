@@ -12,15 +12,13 @@ namespace Repositories.Interfaces
         Task<MedicationLot?> GetVaccineLotByIdAsync(Guid id, bool includeDeleted = false);
         #endregion
 
-        #region Batch Operations
-        Task<List<MedicationLot>> GetVaccineLotsByIdsAsync(List<Guid> ids, bool includeDeleted = false);
+        #region Batch Operations    
         Task<int> SoftDeleteVaccineLotsAsync(List<Guid> ids, Guid deletedBy);
         Task<int> RestoreVaccineLotsAsync(List<Guid> ids, Guid restoredBy);
         #endregion
 
         #region Vaccine-Specific Operations
         Task<List<MedicationLot>> GetLotsByVaccineTypeAsync(Guid vaccineTypeId);
-        Task<int> GetAvailableVaccineQuantityAsync(Guid vaccineTypeId);
         Task<List<MedicationLot>> GetExpiringVaccineLotsAsync(int daysBeforeExpiry = 30);
         Task<List<MedicationLot>> GetExpiredVaccineLotsAsync();
         Task<bool> UpdateVaccineQuantityAsync(Guid lotId, int newQuantity);

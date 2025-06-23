@@ -85,13 +85,6 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("available-quantity/{vaccineTypeId:guid}")]
-        public async Task<IActionResult> GetAvailableVaccineQuantity(Guid vaccineTypeId)
-        {
-            var result = await _vaccineLotService.GetAvailableVaccineQuantityAsync(vaccineTypeId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
         [HttpGet("expiring")]
         public async Task<IActionResult> GetExpiringVaccineLots(
             [FromQuery][Range(1, 365)] int daysBeforeExpiry = 30)

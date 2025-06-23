@@ -20,7 +20,6 @@
         Task<ApiResult<List<VaccineLotResponseDTO>>> GetExpiringVaccineLotsAsync(int daysBeforeExpiry = 30);
         Task<ApiResult<List<VaccineLotResponseDTO>>> GetExpiredVaccineLotsAsync();
         Task<ApiResult<List<VaccineLotResponseDTO>>> GetLotsByVaccineTypeAsync(Guid vaccineTypeId);
-        Task<ApiResult<int>> GetAvailableVaccineQuantityAsync(Guid vaccineTypeId);
         Task<ApiResult<bool>> UpdateVaccineQuantityAsync(Guid lotId, int newQuantity);
         #endregion
 

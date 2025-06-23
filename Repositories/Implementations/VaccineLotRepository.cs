@@ -59,18 +59,6 @@ namespace Repositories.Implementations
 
         #region Batch Operations
 
-        public async Task<List<MedicationLot>> GetVaccineLotsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
-        {
-            var query = includeDeleted
-                ? _dbContext.MedicationLots.IgnoreQueryFilters()
-                : _dbContext.MedicationLots.AsQueryable();
-
-            return await query
-                .Include(ml => ml.VaccineType)
-                .Where(ml => ids.Contains(ml.Id) && ml.Type == LotType.Vaccine)
-                .ToListAsync();
-        }
-
         public async Task<int> SoftDeleteVaccineLotsAsync(List<Guid> ids, Guid deletedBy)
         {
             var currentTime = _currentTime.GetVietnamTime();
@@ -119,19 +107,6 @@ namespace Repositories.Implementations
             );
 
             return lots.ToList();
-        }
-
-        public async Task<int> GetAvailableVaccineQuantityAsync(Guid vaccineTypeId)
-        {
-            var today = _currentTime.GetVietnamTime().Date;
-
-            return await _dbContext.MedicationLots
-                .AsNoTracking()
-                .Where(ml => ml.VaccineTypeId == vaccineTypeId &&
-                            !ml.IsDeleted &&
-                            ml.Type == LotType.Vaccine &&
-                            ml.ExpiryDate.Date > today)
-                .SumAsync(ml => ml.Quantity);
         }
 
         public async Task<List<MedicationLot>> GetExpiringVaccineLotsAsync(int daysBeforeExpiry = 30)

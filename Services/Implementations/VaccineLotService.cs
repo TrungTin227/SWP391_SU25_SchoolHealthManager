@@ -291,20 +291,6 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<int>> GetAvailableVaccineQuantityAsync(Guid vaccineTypeId)
-        {
-            try
-            {
-                var quantity = await _vaccineLotRepository.GetAvailableVaccineQuantityAsync(vaccineTypeId);
-                return ApiResult<int>.Success(quantity, "Lấy số lượng vaccine khả dụng thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting available vaccine quantity: {VaccineTypeId}", vaccineTypeId);
-                return ApiResult<int>.Failure(ex);
-            }
-        }
-
         public async Task<ApiResult<bool>> UpdateVaccineQuantityAsync(Guid lotId, int newQuantity)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
