@@ -14,8 +14,11 @@ namespace BusinessObjects
         public VisionLevel VisionRight { get; set; } 
         public HearingLevel Hearing { get; set; } 
         public decimal? BloodPressureDiastolic { get; set; } //huyết áp 
-        public string? Notes { get; set; }           // phát hiện bất thường
-        public bool FollowUpNeeded { get; set; }    // cần hẹn tư vấn
+        public Guid? ExaminedByNurseId { get; set; }              // Y tá thực hiện
+        public User? ExaminedByNurse { get; set; }
+        public DateTime ExaminedAt { get; set; }                  // Thời gian khám thực tế
+        public string? Remarks { get; set; }              // Khuyến nghị
+        public CheckupRecordStatus Status { get; set; }           // Hoàn thành/Cần tái khám
         public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
 
     }

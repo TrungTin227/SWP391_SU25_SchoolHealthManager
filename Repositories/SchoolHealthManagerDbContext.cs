@@ -508,7 +508,7 @@ namespace Repositories
 
             // CheckupSchedule enum
             builder.Entity<CheckupSchedule>()
-                .Property(e => e.Status)
+                .Property(e => e.ParentConsentStatus)
                 .HasConversion(new EnumToStringConverter<CheckupScheduleStatus>())
                 .HasMaxLength(50)
                 .IsUnicode(true);
@@ -656,7 +656,16 @@ namespace Repositories
                 .HasConversion(new EnumToStringConverter<VaccinationReactionSeverity>())
                 .HasMaxLength(50)
                 .IsUnicode(true);
-
+            builder.Entity<CheckupCampaign>()
+                .Property(vr => vr.Status)
+                .HasConversion(new EnumToStringConverter<CheckupCampaignStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<CheckupRecord>()
+                .Property(vr => vr.Status)
+                .HasConversion(new EnumToStringConverter<CheckupRecordStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
         }
         #endregion
     }
