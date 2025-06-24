@@ -4,8 +4,6 @@ namespace Services.Implementations
 {
     public class VaccinationCampaignService : BaseService<VaccinationCampaign, Guid>, IVaccinationCampaignService
     {
-        private readonly IVaccinationCampaignRepository _vaccinationCampaignRepository;
-        private readonly IVaccineTypeRepository _vaccineTypeRepository;
         private readonly ILogger<VaccinationCampaignService> _logger;
 
         public VaccinationCampaignService(
@@ -15,8 +13,6 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(unitOfWork.VaccinationCampaignRepository, currentUserService, unitOfWork, currentTime)
         {
-            _vaccinationCampaignRepository = unitOfWork.VaccinationCampaignRepository;
-            _vaccineTypeRepository = unitOfWork.VaccineTypeRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -28,7 +24,7 @@ namespace Services.Implementations
         {
             try
             {
-                var pagedCampaigns = await _vaccinationCampaignRepository.GetVaccinationCampaignsAsync(
+                var pagedCampaigns = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignsAsync(
                     pageNumber, pageSize, searchTerm, status, startDate, endDate);
 
                 var responseItems = pagedCampaigns.Select(VaccinationCampaignMapper.MapToResponseDTO).ToList();
@@ -49,7 +45,7 @@ namespace Services.Implementations
         {
             try
             {
-                var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(id);
+                var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(id);
                 if (campaign == null)
                 {
                     return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -70,7 +66,7 @@ namespace Services.Implementations
         {
             try
             {
-                var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignWithDetailsAsync(id);
+                var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignWithDetailsAsync(id);
                 if (campaign == null)
                 {
                     return ApiResult<VaccinationCampaignDetailResponseDTO>.Failure(
@@ -94,7 +90,7 @@ namespace Services.Implementations
                 try
                 {
                     // Validate campaign name uniqueness
-                    if (await _vaccinationCampaignRepository.CampaignNameExistsAsync(request.Name))
+                    if (await _unitOfWork.VaccinationCampaignRepository.CampaignNameExistsAsync(request.Name))
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
                             new ArgumentException("Tên chiến dịch tiêm chủng đã tồn tại"));
@@ -106,7 +102,7 @@ namespace Services.Implementations
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
                             new ArgumentException("Ngày bắt đầu phải nhỏ hơn ngày kết thúc"));
                     }
-                    
+
                     var campaign = VaccinationCampaignMapper.MapFromCreateRequest(request);
                     campaign.Status = VaccinationCampaignStatus.Pending; // Initial status
 
@@ -130,7 +126,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(request.Id);
+                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(request.Id);
                     if (campaign == null)
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -140,7 +136,7 @@ namespace Services.Implementations
                     // Validate campaign name uniqueness if name is being updated
                     if (!string.IsNullOrEmpty(request.Name) && request.Name != campaign.Name)
                     {
-                        if (await _vaccinationCampaignRepository.CampaignNameExistsAsync(request.Name, request.Id))
+                        if (await _unitOfWork.VaccinationCampaignRepository.CampaignNameExistsAsync(request.Name, request.Id))
                         {
                             return ApiResult<VaccinationCampaignResponseDTO>.Failure(
                                 new ArgumentException("Tên chiến dịch tiêm chủng đã tồn tại"));
@@ -174,7 +170,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     if (campaign == null)
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -188,10 +184,10 @@ namespace Services.Implementations
                     }
 
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _vaccinationCampaignRepository.UpdateCampaignStatusAsync(
+                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
                         campaignId, VaccinationCampaignStatus.InProgress, currentUserId);
 
-                    var updatedCampaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
 
                     _logger.LogInformation("Chiến dịch tiêm chủng được bắt đầu: {CampaignId}", campaignId);
@@ -211,7 +207,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     if (campaign == null)
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -225,10 +221,10 @@ namespace Services.Implementations
                     }
 
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _vaccinationCampaignRepository.UpdateCampaignStatusAsync(
+                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
                         campaignId, VaccinationCampaignStatus.Resolved, currentUserId);
 
-                    var updatedCampaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
 
                     _logger.LogInformation("Chiến dịch tiêm chủng được hoàn thành: {CampaignId}", campaignId);
@@ -248,7 +244,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var campaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     if (campaign == null)
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -262,10 +258,10 @@ namespace Services.Implementations
                     }
 
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _vaccinationCampaignRepository.UpdateCampaignStatusAsync(
+                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
                         campaignId, VaccinationCampaignStatus.Cancelled, currentUserId);
 
-                    var updatedCampaign = await _vaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
                     var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
 
                     _logger.LogInformation("Chiến dịch tiêm chủng được hủy: {CampaignId}", campaignId);
@@ -290,7 +286,7 @@ namespace Services.Implementations
                 try
                 {
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var deletedCount = await _vaccinationCampaignRepository.SoftDeleteCampaignsAsync(campaignIds, currentUserId);
+                    var deletedCount = await _unitOfWork.VaccinationCampaignRepository.SoftDeleteCampaignsAsync(campaignIds, currentUserId);
 
                     var result = new BatchOperationResultDTO
                     {
@@ -319,7 +315,7 @@ namespace Services.Implementations
                 try
                 {
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var restoredCount = await _vaccinationCampaignRepository.RestoreCampaignsAsync(campaignIds, currentUserId);
+                    var restoredCount = await _unitOfWork.VaccinationCampaignRepository.RestoreCampaignsAsync(campaignIds, currentUserId);
 
                     var result = new BatchOperationResultDTO
                     {
@@ -356,7 +352,7 @@ namespace Services.Implementations
                     {
                         try
                         {
-                            var affected = await _vaccinationCampaignRepository.UpdateCampaignStatusAsync(
+                            var affected = await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
                                 update.CampaignId, update.Status, currentUserId);
 
                             if (affected > 0)
@@ -418,7 +414,7 @@ namespace Services.Implementations
         {
             try
             {
-                var pagedCampaigns = await _vaccinationCampaignRepository.GetSoftDeletedCampaignsAsync(
+                var pagedCampaigns = await _unitOfWork.VaccinationCampaignRepository.GetSoftDeletedCampaignsAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var responseItems = pagedCampaigns.Select(VaccinationCampaignMapper.MapToResponseDTO).ToList();

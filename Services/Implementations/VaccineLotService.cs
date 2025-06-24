@@ -1,13 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
 using System.Data;
 
 namespace Services.Implementations
 {
     public class VaccineLotService : BaseService<MedicationLot, Guid>, IVaccineLotService
     {
-        private readonly IVaccineLotRepository _vaccineLotRepository;
-        private readonly IVaccineTypeRepository _vaccineTypeRepository;
         private readonly ILogger<VaccineLotService> _logger;
 
         public VaccineLotService(
@@ -17,8 +14,6 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(unitOfWork.VaccineLotRepository, currentUserService, unitOfWork, currentTime)
         {
-            _vaccineLotRepository = unitOfWork.VaccineLotRepository;
-            _vaccineTypeRepository = unitOfWork.VaccineTypeRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -35,7 +30,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _vaccineLotRepository.GetVaccineLotsAsync(
+                var lots = await _unitOfWork.VaccineLotRepository.GetVaccineLotsAsync(
                     pageNumber,
                     pageSize,
                     searchTerm,
@@ -59,7 +54,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lot = await _vaccineLotRepository.GetVaccineLotWithDetailsAsync(id);
+                var lot = await _unitOfWork.VaccineLotRepository.GetVaccineLotWithDetailsAsync(id);
                 if (lot == null)
                 {
                     return ApiResult<VaccineLotResponseDTO>.Failure(
@@ -111,7 +106,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var existingLot = await _vaccineLotRepository.GetVaccineLotByIdAsync(id);
+                    var existingLot = await _unitOfWork.VaccineLotRepository.GetVaccineLotByIdAsync(id);
                     if (existingLot == null)
                     {
                         return ApiResult<VaccineLotResponseDTO>.Failure(
@@ -159,7 +154,7 @@ namespace Services.Implementations
 
                     var result = new BatchOperationResultDTO { TotalRequested = ids.Count };
 
-                    var deletedCount = await _vaccineLotRepository.SoftDeleteVaccineLotsAsync(ids, currentUserId.Value);
+                    var deletedCount = await _unitOfWork.VaccineLotRepository.SoftDeleteVaccineLotsAsync(ids, currentUserId.Value);
                     result.SuccessCount = deletedCount;
                     result.FailureCount = ids.Count - deletedCount;
 
@@ -210,7 +205,7 @@ namespace Services.Implementations
 
                     var result = new BatchOperationResultDTO { TotalRequested = ids.Count };
 
-                    var restoredCount = await _vaccineLotRepository.RestoreVaccineLotsAsync(ids, currentUserId.Value);
+                    var restoredCount = await _unitOfWork.VaccineLotRepository.RestoreVaccineLotsAsync(ids, currentUserId.Value);
                     result.SuccessCount = restoredCount;
                     result.FailureCount = ids.Count - restoredCount;
 
@@ -254,7 +249,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _vaccineLotRepository.GetExpiringVaccineLotsAsync(daysBeforeExpiry);
+                var lots = await _unitOfWork.VaccineLotRepository.GetExpiringVaccineLotsAsync(daysBeforeExpiry);
                 var lotDTOs = VaccineLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<VaccineLotResponseDTO>>.Success(
@@ -271,7 +266,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _vaccineLotRepository.GetExpiredVaccineLotsAsync();
+                var lots = await _unitOfWork.VaccineLotRepository.GetExpiredVaccineLotsAsync();
                 var lotDTOs = VaccineLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<VaccineLotResponseDTO>>.Success(
@@ -288,7 +283,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _vaccineLotRepository.GetLotsByVaccineTypeAsync(vaccineTypeId);
+                var lots = await _unitOfWork.VaccineLotRepository.GetLotsByVaccineTypeAsync(vaccineTypeId);
                 var lotDTOs = VaccineLotMapper.MapToResponseDTOList(lots);
 
                 return ApiResult<List<VaccineLotResponseDTO>>.Success(
@@ -312,7 +307,7 @@ namespace Services.Implementations
                         return ApiResult<bool>.Failure(new Exception("Số lượng không được âm"));
                     }
 
-                    var success = await _vaccineLotRepository.UpdateVaccineQuantityAsync(lotId, newQuantity);
+                    var success = await _unitOfWork.VaccineLotRepository.UpdateVaccineQuantityAsync(lotId, newQuantity);
                     if (!success)
                     {
                         return ApiResult<bool>.Failure(new Exception("Không tìm thấy lô vaccine"));
@@ -338,7 +333,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _vaccineLotRepository.GetSoftDeletedVaccineLotsAsync(
+                var lots = await _unitOfWork.VaccineLotRepository.GetSoftDeletedVaccineLotsAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var result = VaccineLotMapper.MapToPagedResponseDTO(lots);
@@ -366,7 +361,7 @@ namespace Services.Implementations
                 var currentDate = _currentTime.GetVietnamTime().Date;
                 var expiryThreshold = currentDate.AddDays(30);
 
-                var statistics = await _vaccineLotRepository.GetVaccineLotStatisticsAsync(currentDate, expiryThreshold);
+                var statistics = await _unitOfWork.VaccineLotRepository.GetVaccineLotStatisticsAsync(currentDate, expiryThreshold);
 
                 _logger.LogInformation(
                     "Successfully calculated vaccine lot statistics: Total={TotalLots}, Active={ActiveLots}",
@@ -408,13 +403,13 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateCreateRequestAsync(CreateVaccineLotRequest request)
         {
-            var vaccineType = await _vaccineTypeRepository.GetByIdAsync(request.VaccineTypeId);
+            var vaccineType = await _unitOfWork.VaccineTypeRepository.GetByIdAsync(request.VaccineTypeId);
             if (vaccineType == null)
             {
                 return (false, "Không tìm thấy loại vaccine");
             }
 
-            var lotNumberExists = await _vaccineLotRepository.VaccineLotNumberExistsAsync(request.LotNumber);
+            var lotNumberExists = await _unitOfWork.VaccineLotRepository.VaccineLotNumberExistsAsync(request.LotNumber);
             if (lotNumberExists)
             {
                 return (false, $"Số lô vaccine '{request.LotNumber}' đã tồn tại");
@@ -435,7 +430,7 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateUpdateRequestAsync(UpdateVaccineLotRequest request, Guid excludeId)
         {
-            var lotNumberExists = await _vaccineLotRepository.VaccineLotNumberExistsAsync(request.LotNumber, excludeId);
+            var lotNumberExists = await _unitOfWork.VaccineLotRepository.VaccineLotNumberExistsAsync(request.LotNumber, excludeId);
             if (lotNumberExists)
             {
                 return (false, $"Số lô vaccine '{request.LotNumber}' đã tồn tại");

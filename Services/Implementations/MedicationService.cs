@@ -4,7 +4,6 @@ namespace Services.Implementations
 {
     public class MedicationService : BaseService<Medication, Guid>, IMedicationService
     {
-        private readonly IMedicationRepository _medicationRepository;
         private readonly ILogger<MedicationService> _logger;
 
         public MedicationService(
@@ -15,7 +14,6 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(medicationRepository, currentUserService, unitOfWork, currentTime)
         {
-            _medicationRepository = medicationRepository;
             _logger = logger;
         }
 
@@ -104,7 +102,7 @@ namespace Services.Implementations
                         new ArgumentException("ID thuốc không hợp lệ"));
                 }
 
-                var medication = await _medicationRepository.GetByIdAsync(id, m => m.Lots);
+                var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
 
                 if (medication == null || medication.IsDeleted)
                 {
@@ -136,7 +134,7 @@ namespace Services.Implementations
                         new ArgumentException("ID thuốc không hợp lệ"));
                 }
 
-                var medication = await _medicationRepository.GetByIdAsync(id, m => m.Lots);
+                var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
 
                 if (medication == null || medication.IsDeleted)
                 {
@@ -209,7 +207,7 @@ namespace Services.Implementations
                             new ArgumentException("ID thuốc không hợp lệ"));
                     }
 
-                    var medication = await _medicationRepository.GetByIdAsync(id, m => m.Lots);
+                    var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
 
                     if (medication == null || medication.IsDeleted)
                     {
@@ -324,7 +322,7 @@ namespace Services.Implementations
         {
             try
             {
-                var medications = await _medicationRepository.GetActiveMedicationsAsync();
+                var medications = await _unitOfWork.MedicationRepository.GetActiveMedicationsAsync();
                 var responses = await MapToMedicationResponsesAsync(medications);
 
                 return ApiResult<List<MedicationResponse>>.Success(
@@ -353,7 +351,7 @@ namespace Services.Implementations
                             new ArgumentException("Số ngày hết hạn phải lớn hơn 0"));
                     }
 
-                    var deletedCount = await _medicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
+                    var deletedCount = await _unitOfWork.MedicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
                     await _unitOfWork.SaveChangesAsync();
 
                     var message = deletedCount > 0
@@ -408,7 +406,7 @@ namespace Services.Implementations
             if (string.IsNullOrWhiteSpace(request.Name))
                 return (false, "Tên thuốc không được để trống");
 
-            if (await _medicationRepository.MedicationNameExistsAsync(request.Name))
+            if (await _unitOfWork.MedicationRepository.MedicationNameExistsAsync(request.Name))
                 return (false, "Tên thuốc đã tồn tại");
 
             return (true, string.Empty);
@@ -419,7 +417,7 @@ namespace Services.Implementations
             if (string.IsNullOrWhiteSpace(request.Name))
                 return (false, "Tên thuốc không được để trống");
 
-            if (await _medicationRepository.MedicationNameExistsAsync(request.Name, excludeId))
+            if (await _unitOfWork.MedicationRepository.MedicationNameExistsAsync(request.Name, excludeId))
                 return (false, "Tên thuốc đã tồn tại");
 
             return (true, string.Empty);
@@ -435,13 +433,13 @@ namespace Services.Implementations
             if (includeDeleted)
             {
                 _logger.LogInformation("Fetching medications including deleted ones");
-                return await _medicationRepository.GetAllMedicationsIncludingDeletedAsync(
+                return await _unitOfWork.MedicationRepository.GetAllMedicationsIncludingDeletedAsync(
                     pageNumber, pageSize, searchTerm, category);
             }
             else
             {
                 _logger.LogInformation("Fetching active medications only");
-                return await _medicationRepository.GetMedicationsAsync(
+                return await _unitOfWork.MedicationRepository.GetMedicationsAsync(
                     pageNumber, pageSize, searchTerm, category);
             }
         }
@@ -460,8 +458,8 @@ namespace Services.Implementations
                 try
                 {
                     bool success = isPermanent
-                        ? await _medicationRepository.PermanentDeleteWithLotsAsync(id)
-                        : await _medicationRepository.SoftDeleteWithLotsAsync(id, currentUserId);
+                        ? await _unitOfWork.MedicationRepository.PermanentDeleteWithLotsAsync(id)
+                        : await _unitOfWork.MedicationRepository.SoftDeleteWithLotsAsync(id, currentUserId);
 
                     if (success)
                     {
@@ -492,7 +490,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var success = await _medicationRepository.RestoreWithLotsAsync(id, currentUserId);
+                    var success = await _unitOfWork.MedicationRepository.RestoreWithLotsAsync(id, currentUserId);
 
                     if (success)
                     {
@@ -592,7 +590,7 @@ namespace Services.Implementations
         {
             try
             {
-                var totalQuantity = await _medicationRepository.GetTotalQuantityByMedicationIdAsync(medication.Id);
+                var totalQuantity = await _unitOfWork.MedicationRepository.GetTotalQuantityByMedicationIdAsync(medication.Id);
                 var totalLots = medication.Lots?.Count ?? 0;
 
                 return MapToMedicationResponse(medication, totalQuantity, totalLots);
@@ -611,7 +609,7 @@ namespace Services.Implementations
         {
             try
             {
-                return await _medicationRepository.GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
+                return await _unitOfWork.MedicationRepository.GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
             }
             catch (Exception ex)
             {
@@ -627,7 +625,7 @@ namespace Services.Implementations
         {
             try
             {
-                return await _medicationRepository.GetLotCountsByMedicationIdsAsync(medicationIds);
+                return await _unitOfWork.MedicationRepository.GetLotCountsByMedicationIdsAsync(medicationIds);
             }
             catch (Exception ex)
             {

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Repositories.Implementations;
+using Repositories.Interfaces;
 using System.Text;
 
 
@@ -109,6 +110,8 @@ namespace WebAPI.Extensions
             services.AddScoped<IVaccinationCampaignRepository, VaccinationCampaignRepository>();
             services.AddScoped<IVaccinationScheduleRepository, VaccinationScheduleRepository>();
             services.AddScoped<IParentVaccinationRepository, ParentVaccinationRepository>();
+            services.AddScoped<ICheckupCampaignRepository, CheckupCampaignRepository>();
+            services.AddScoped<ICheckupScheduleRepository, CheckupScheduleRepository>(); 
 
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -131,6 +134,7 @@ namespace WebAPI.Extensions
             services.AddScoped<IVaccinationCampaignService, VaccinationCampaignService>();
             services.AddScoped<IVaccinationScheduleService, VaccinationScheduleService>();
             services.AddScoped<IParentVaccinationService, ParentVaccinationService>();
+            services.AddScoped<ICheckupCampaignService, CheckupCampaignService>();
 
             // 5. Email + Quartz
             services.AddEmailServices(options =>

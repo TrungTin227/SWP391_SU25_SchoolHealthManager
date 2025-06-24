@@ -4,8 +4,7 @@ namespace Services.Implementations
 {
     public class VaccineDoseInfoService : BaseService<VaccineDoseInfo, Guid>, IVaccineDoseInfoService
     {
-        private readonly IVaccineDoseInfoRepository _vaccineDoseInfoRepository;
-        private readonly IVaccineTypeRepository _vaccineTypeRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<VaccineDoseInfoService> _logger;
 
         public VaccineDoseInfoService(
@@ -15,8 +14,7 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(unitOfWork.VaccineDoseInfoRepository, currentUserService, unitOfWork, currentTime)
         {
-            _vaccineDoseInfoRepository = unitOfWork.VaccineDoseInfoRepository;
-            _vaccineTypeRepository = unitOfWork.VaccineTypeRepository;
+            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -27,7 +25,7 @@ namespace Services.Implementations
         {
             try
             {
-                var pagedDoseInfos = await _vaccineDoseInfoRepository.GetVaccineDoseInfosAsync(
+                var pagedDoseInfos = await _unitOfWork.VaccineDoseInfoRepository.GetVaccineDoseInfosAsync(
                     pageNumber, pageSize, vaccineTypeId, doseNumber);
 
                 var responseItems = pagedDoseInfos.Select(VaccineDoseInfoMapper.MapToResponseDTO).ToList();
@@ -48,7 +46,7 @@ namespace Services.Implementations
         {
             try
             {
-                var doseInfo = await _vaccineDoseInfoRepository.GetVaccineDoseInfoByIdAsync(id);
+                var doseInfo = await _unitOfWork.VaccineDoseInfoRepository.GetVaccineDoseInfoByIdAsync(id);
                 if (doseInfo == null)
                 {
                     return ApiResult<VaccineDoseInfoResponseDTO>.Failure(
@@ -69,7 +67,7 @@ namespace Services.Implementations
         {
             try
             {
-                var doseInfo = await _vaccineDoseInfoRepository.GetVaccineDoseInfoWithDetailsAsync(id);
+                var doseInfo = await _unitOfWork.VaccineDoseInfoRepository.GetVaccineDoseInfoWithDetailsAsync(id);
                 if (doseInfo == null)
                 {
                     return ApiResult<VaccineDoseInfoDetailResponseDTO>.Failure(
@@ -91,7 +89,7 @@ namespace Services.Implementations
             try
             {
                 // Validate vaccine type exists
-                var vaccineType = await _vaccineTypeRepository.GetByIdAsync(request.VaccineTypeId);
+                var vaccineType = await _unitOfWork.VaccineTypeRepository.GetByIdAsync(request.VaccineTypeId);
                 if (vaccineType == null)
                 {
                     return ApiResult<VaccineDoseInfoResponseDTO>.Failure(
@@ -99,7 +97,7 @@ namespace Services.Implementations
                 }
 
                 // Validate unique dose number for vaccine type
-                var isDoseNumberExists = await _vaccineDoseInfoRepository.IsDoseNumberExistsAsync(
+                var isDoseNumberExists = await _unitOfWork.VaccineDoseInfoRepository.IsDoseNumberExistsAsync(
                     request.VaccineTypeId, request.DoseNumber);
                 if (isDoseNumberExists)
                 {
@@ -110,7 +108,7 @@ namespace Services.Implementations
                 // Validate previous dose if specified
                 if (request.PreviousDoseId.HasValue)
                 {
-                    var previousDose = await _vaccineDoseInfoRepository.GetByIdAsync(request.PreviousDoseId.Value);
+                    var previousDose = await _unitOfWork.VaccineDoseInfoRepository.GetByIdAsync(request.PreviousDoseId.Value);
                     if (previousDose == null || previousDose.VaccineTypeId != request.VaccineTypeId)
                     {
                         return ApiResult<VaccineDoseInfoResponseDTO>.Failure(
@@ -144,7 +142,7 @@ namespace Services.Implementations
         {
             try
             {
-                var existingDoseInfo = await _vaccineDoseInfoRepository.GetVaccineDoseInfoByIdAsync(id);
+                var existingDoseInfo = await _unitOfWork.VaccineDoseInfoRepository.GetVaccineDoseInfoByIdAsync(id);
                 if (existingDoseInfo == null)
                 {
                     return ApiResult<VaccineDoseInfoResponseDTO>.Failure(
@@ -154,7 +152,7 @@ namespace Services.Implementations
                 // Validate dose number if changed
                 if (request.DoseNumber.HasValue && request.DoseNumber.Value != existingDoseInfo.DoseNumber)
                 {
-                    var isDoseNumberExists = await _vaccineDoseInfoRepository.IsDoseNumberExistsAsync(
+                    var isDoseNumberExists = await _unitOfWork.VaccineDoseInfoRepository.IsDoseNumberExistsAsync(
                         existingDoseInfo.VaccineTypeId, request.DoseNumber.Value, id);
                     if (isDoseNumberExists)
                     {
@@ -190,7 +188,7 @@ namespace Services.Implementations
 
             try
             {
-                var doseInfos = await _vaccineDoseInfoRepository.GetVaccineDoseInfosByIdsAsync(ids, includeDeleted: isPermanent);
+                var doseInfos = await _unitOfWork.VaccineDoseInfoRepository.GetVaccineDoseInfosByIdsAsync(ids, includeDeleted: isPermanent);
                 var foundIds = doseInfos.Select(d => d.Id).ToHashSet();
 
                 foreach (var id in ids)
@@ -212,7 +210,7 @@ namespace Services.Implementations
                         var doseInfo = doseInfos.First(d => d.Id == id);
 
                         // Check if this is the only dose for the vaccine type
-                        var totalDoses = await _vaccineDoseInfoRepository.GetDoseInfosByVaccineTypeAsync(doseInfo.VaccineTypeId);
+                        var totalDoses = await _unitOfWork.VaccineDoseInfoRepository.GetDoseInfosByVaccineTypeAsync(doseInfo.VaccineTypeId);
                         if (totalDoses.Count == 1 && totalDoses.First().Id == id)
                         {
                             result.Errors.Add(new BatchOperationErrorDTO
@@ -226,7 +224,7 @@ namespace Services.Implementations
                         }
 
                         // Check if other doses depend on this dose
-                        var nextDoses = await _vaccineDoseInfoRepository.GetNextDosesAsync(id);
+                        var nextDoses = await _unitOfWork.VaccineDoseInfoRepository.GetNextDosesAsync(id);
                         if (nextDoses.Any())
                         {
                             result.Errors.Add(new BatchOperationErrorDTO
@@ -241,7 +239,7 @@ namespace Services.Implementations
 
                         if (isPermanent)
                         {
-                            await _vaccineDoseInfoRepository.DeleteAsync(doseInfo.Id);
+                            await _unitOfWork.VaccineDoseInfoRepository.DeleteAsync(doseInfo.Id);
                         }
                         else
                         {
@@ -281,7 +279,7 @@ namespace Services.Implementations
         {
             try
             {
-                var doseInfos = await _vaccineDoseInfoRepository.GetDoseInfosByVaccineTypeAsync(vaccineTypeId);
+                var doseInfos = await _unitOfWork.VaccineDoseInfoRepository.GetDoseInfosByVaccineTypeAsync(vaccineTypeId);
                 var response = doseInfos.Select(VaccineDoseInfoMapper.MapToResponseDTO).ToList();
 
                 return ApiResult<List<VaccineDoseInfoResponseDTO>>.Success(
@@ -299,7 +297,7 @@ namespace Services.Implementations
             try
             {
                 var nextDoseNumber = currentDoseNumber + 1;
-                var nextDose = await _vaccineDoseInfoRepository.GetDoseInfoByVaccineTypeAndDoseNumberAsync(
+                var nextDose = await _unitOfWork.VaccineDoseInfoRepository.GetDoseInfoByVaccineTypeAndDoseNumberAsync(
                     vaccineTypeId, nextDoseNumber);
 
                 if (nextDose == null)

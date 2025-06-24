@@ -33,3 +33,5 @@ global using DTOs.VaccinationCampaignDTOs.Response;
 global using Repositories.Interfaces;
 global using DTOs.VaccinationScheduleDTOs.Request;
 global using DTOs.VaccinationScheduleDTOs.Response;
+global using DTOs.HealthEventDTOs.Request;
+global using DTOs.HealthEventDTOs.Response;

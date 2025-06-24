@@ -4,9 +4,9 @@ namespace Services.Implementations
 {
     public class VaccinationScheduleService : BaseService<VaccinationSchedule, Guid>, IVaccinationScheduleService
     {
-        private readonly IVaccinationScheduleRepository _scheduleRepository;
         private readonly ILogger<VaccinationScheduleService> _logger;
-        private readonly ISessionStudentService _SessionStudentService; 
+        private readonly ISessionStudentService _SessionStudentService;
+
         public VaccinationScheduleService(
             IVaccinationScheduleRepository scheduleRepository,
             ICurrentUserService currentUserService,
@@ -16,7 +16,6 @@ namespace Services.Implementations
             ISessionStudentService sessionStudentService)
             : base(scheduleRepository, currentUserService, unitOfWork, currentTime)
         {
-            _scheduleRepository = scheduleRepository;
             _logger = logger;
             _SessionStudentService = sessionStudentService;
         }
@@ -34,7 +33,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSchedulesAsync(
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesAsync(
                     campaignId,
                     startDate,
                     endDate,
@@ -95,7 +94,7 @@ namespace Services.Implementations
                     }
 
                     // Check for conflicts
-                    var hasConflict = await _scheduleRepository.IsScheduleConflictAsync(request.CampaignId, request.ScheduledAt);
+                    var hasConflict = await _unitOfWork.VaccinationScheduleRepository.IsScheduleConflictAsync(request.CampaignId, request.ScheduledAt);
                     if (hasConflict)
                     {
                         return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
@@ -115,7 +114,7 @@ namespace Services.Implementations
 
                     // Add students to schedule
                     var currentUserId = GetCurrentUserIdOrThrow();
-                    var addStudentsResult = await _scheduleRepository.AddStudentsToScheduleAsync(
+                    var addStudentsResult = await _unitOfWork.VaccinationScheduleRepository.AddStudentsToScheduleAsync(
                         createdSchedule.Id, request.StudentIds, currentUserId);
 
                     if (!addStudentsResult)
@@ -126,7 +125,7 @@ namespace Services.Implementations
                             new InvalidOperationException("Không thể thêm học sinh vào lịch tiêm"));
                     }
 
-                    var scheduleWithDetails = await _scheduleRepository.GetScheduleWithDetailsAsync(createdSchedule.Id);
+                    var scheduleWithDetails = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsAsync(createdSchedule.Id);
                     var response = VaccinationScheduleMapper.MapToDetailResponseDTO(scheduleWithDetails!);
                     await _SessionStudentService.SendVaccinationNotificationEmailToParents(request.StudentIds, vaccinationType.Name, scheduleWithDetails);
                     _logger.LogInformation("Tạo lịch tiêm thành công: {ScheduleId}", createdSchedule.Id);
@@ -146,7 +145,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var schedule = await _scheduleRepository.GetScheduleWithDetailsAsync(id);
+                    var schedule = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsAsync(id);
                     if (schedule == null)
                     {
                         return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
@@ -174,7 +173,7 @@ namespace Services.Implementations
 
                     if (request.ScheduledAt.HasValue)
                     {
-                        var hasConflict = await _scheduleRepository.IsScheduleConflictAsync(
+                        var hasConflict = await _unitOfWork.VaccinationScheduleRepository.IsScheduleConflictAsync(
                             schedule.CampaignId, request.ScheduledAt.Value, id);
                         if (hasConflict)
                         {
@@ -193,18 +192,18 @@ namespace Services.Implementations
 
                         if (studentsToRemove.Any())
                         {
-                            await _scheduleRepository.RemoveStudentsFromScheduleAsync(id, studentsToRemove);
+                            await _unitOfWork.VaccinationScheduleRepository.RemoveStudentsFromScheduleAsync(id, studentsToRemove);
                         }
 
                         if (studentsToAdd.Any())
                         {
                             var currentUserId = GetCurrentUserIdOrThrow();
-                            await _scheduleRepository.AddStudentsToScheduleAsync(id, studentsToAdd, currentUserId);
+                            await _unitOfWork.VaccinationScheduleRepository.AddStudentsToScheduleAsync(id, studentsToAdd, currentUserId);
                         }
                     }
 
                     var updatedSchedule = await UpdateAsync(schedule);
-                    var scheduleWithDetails = await _scheduleRepository.GetScheduleWithDetailsAsync(updatedSchedule.Id);
+                    var scheduleWithDetails = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsAsync(updatedSchedule.Id);
                     var response = VaccinationScheduleMapper.MapToDetailResponseDTO(scheduleWithDetails!);
 
                     _logger.LogInformation("Cập nhật lịch tiêm thành công: {ScheduleId}", id);
@@ -222,7 +221,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedule = await _scheduleRepository.GetScheduleWithDetailsAsync(id);
+                var schedule = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsAsync(id);
                 if (schedule == null)
                 {
                     return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
@@ -244,7 +243,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSchedulesByCampaignAsync(
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByCampaignAsync(
                     campaignId, pageNumber, pageSize, searchTerm);
 
                 var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
@@ -263,7 +262,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSchedulesByDateRangeAsync(
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByDateRangeAsync(
                     startDate, endDate, pageNumber, pageSize, searchTerm);
 
                 var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
@@ -287,7 +286,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+                    var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
                     if (schedule == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -301,7 +300,7 @@ namespace Services.Implementations
                     }
 
                     var currentUserId = GetCurrentUserIdOrThrow();
-                    var result = await _scheduleRepository.AddStudentsToScheduleAsync(scheduleId, studentIds, currentUserId);
+                    var result = await _unitOfWork.VaccinationScheduleRepository.AddStudentsToScheduleAsync(scheduleId, studentIds, currentUserId);
 
                     if (result)
                     {
@@ -325,7 +324,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+                    var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
                     if (schedule == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -338,7 +337,7 @@ namespace Services.Implementations
                             new InvalidOperationException("Không thể xóa học sinh khỏi lịch tiêm đã hoàn thành"));
                     }
 
-                    var result = await _scheduleRepository.RemoveStudentsFromScheduleAsync(scheduleId, studentIds);
+                    var result = await _unitOfWork.VaccinationScheduleRepository.RemoveStudentsFromScheduleAsync(scheduleId, studentIds);
 
                     if (result)
                     {
@@ -366,7 +365,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+                    var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
                     if (schedule == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -381,7 +380,7 @@ namespace Services.Implementations
                     }
 
                     var currentUserId = GetCurrentUserIdOrThrow();
-                    var result = await _scheduleRepository.UpdateScheduleStatusAsync(scheduleId, newStatus, currentUserId);
+                    var result = await _unitOfWork.VaccinationScheduleRepository.UpdateScheduleStatusAsync(scheduleId, newStatus, currentUserId);
 
                     if (result)
                     {
@@ -410,7 +409,7 @@ namespace Services.Implementations
 
                 try
                 {
-                    var schedules = await _scheduleRepository.GetSchedulesByIdsAsync(request.ScheduleIds);
+                    var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByIdsAsync(request.ScheduleIds);
                     var foundIds = schedules.Select(s => s.Id).ToHashSet();
 
                     foreach (var scheduleId in request.ScheduleIds)
@@ -444,7 +443,7 @@ namespace Services.Implementations
                             }
 
                             var currentUserId = GetCurrentUserIdOrThrow();
-                            var updateResult = await _scheduleRepository.UpdateScheduleStatusAsync(scheduleId, request.NewStatus, currentUserId);
+                            var updateResult = await _unitOfWork.VaccinationScheduleRepository.UpdateScheduleStatusAsync(scheduleId, request.NewStatus, currentUserId);
 
                             if (updateResult)
                             {
@@ -500,7 +499,7 @@ namespace Services.Implementations
 
                 try
                 {
-                    var schedules = await _scheduleRepository.GetSchedulesByIdsAsync(ids, includeDeleted: isPermanent);
+                    var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByIdsAsync(ids, includeDeleted: isPermanent);
                     var foundIds = schedules.Select(s => s.Id).ToHashSet();
 
                     foreach (var id in ids)
@@ -523,7 +522,7 @@ namespace Services.Implementations
 
                             if (isPermanent)
                             {
-                                var canDelete = await _scheduleRepository.CanDeleteScheduleAsync(id);
+                                var canDelete = await _unitOfWork.VaccinationScheduleRepository.CanDeleteScheduleAsync(id);
                                 if (!canDelete)
                                 {
                                     result.Errors.Add(new BatchOperationErrorDTO
@@ -536,7 +535,7 @@ namespace Services.Implementations
                                     continue;
                                 }
 
-                                await _repository.DeleteAsync(id);
+                                await _unitOfWork.VaccinationScheduleRepository.DeleteAsync(id);
                             }
                             else
                             {
@@ -580,7 +579,7 @@ namespace Services.Implementations
 
                 try
                 {
-                    var schedules = await _scheduleRepository.GetSchedulesByIdsAsync(ids, includeDeleted: true);
+                    var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByIdsAsync(ids, includeDeleted: true);
                     var foundIds = schedules.Select(s => s.Id).ToHashSet();
 
                     foreach (var id in ids)
@@ -614,7 +613,7 @@ namespace Services.Implementations
                             }
 
                             var currentUserId = GetCurrentUserIdOrThrow();
-                            var restoreResult = await _scheduleRepository.RestoreScheduleAsync(id, currentUserId);
+                            var restoreResult = await _unitOfWork.VaccinationScheduleRepository.RestoreScheduleAsync(id, currentUserId);
 
                             if (restoreResult)
                             {
@@ -664,7 +663,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSoftDeletedSchedulesAsync(
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSoftDeletedSchedulesAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
@@ -686,7 +685,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSchedulesByStatusAsync(ScheduleStatus.Pending);
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByStatusAsync(ScheduleStatus.Pending);
                 var response = schedules.Select(VaccinationScheduleMapper.MapToResponseDTO).ToList();
 
                 return ApiResult<List<VaccinationScheduleResponseDTO>>.Success(
@@ -703,7 +702,7 @@ namespace Services.Implementations
         {
             try
             {
-                var schedules = await _scheduleRepository.GetSchedulesByStatusAsync(ScheduleStatus.InProgress);
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesByStatusAsync(ScheduleStatus.InProgress);
                 var response = schedules.Select(VaccinationScheduleMapper.MapToResponseDTO).ToList();
 
                 return ApiResult<List<VaccinationScheduleResponseDTO>>.Success(
