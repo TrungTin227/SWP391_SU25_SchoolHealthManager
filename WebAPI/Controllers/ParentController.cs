@@ -171,5 +171,20 @@ namespace WebAPI.Controllers
             }
             return Ok(result);
         }
+
+        [HttpPost("accept-delivery")]
+        public async Task<IActionResult> AcceptDelivery(Guid parentMedicationDeliveryid, Guid receiverId)
+        {
+            if (parentMedicationDeliveryid == Guid.Empty || receiverId == Guid.Empty)
+            {
+                return BadRequest(new { Message = "Parent Medication Delivery ID and Received By are required" });
+            }
+            var result = await _ParentMedicationDeliveryService.AcptDelivery(parentMedicationDeliveryid, receiverId);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
     }
 }

@@ -18,8 +18,8 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Request
         [Required(ErrorMessage = "ID phụ huynh là bắt buộc")]
         public Guid ParentId { get; set; }
 
-        [Required(ErrorMessage = "ID người nhận là bắt buộc")]
-        public Guid ReceivedBy { get; set; }
+        //[Required(ErrorMessage = "ID người nhận là bắt buộc")]
+        //public Guid ReceivedBy { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "Số lượng thuốc giao phải lớn hơn 0")]
         public int QuantityDelivered { get; set; }

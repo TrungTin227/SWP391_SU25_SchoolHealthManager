@@ -8,7 +8,7 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/parent/vaccinations")]
-    [Authorize(Roles = "Parent")]
+    //[Authorize(Roles = "Parent")]
     public class ParentVaccinationController : ControllerBase
     {
         private readonly IParentVaccinationService _parentVaccinationService;

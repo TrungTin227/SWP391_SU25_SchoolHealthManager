@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DTOs.ParentMedicationDeliveryDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Respond;
 using DTOs.StudentDTOs.Response;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,23 @@ namespace Repositories.Implementations
 
         public ParentMedicationDeliveryRepository(SchoolHealthManagerDbContext context) : base(context)
         {
+        }
+
+        public async Task<CreateParentMedicationDeliveryRequestDTO> CreateParentMedicationDeliveryRequestDTO(CreateParentMedicationDeliveryRequestDTO request)
+        {
+            var parentmedicationDelivery = new ParentMedicationDelivery
+            {
+                StudentId = request.StudentId,
+                ParentId = request.ParentId,
+                QuantityDelivered = request.QuantityDelivered,
+                ReceivedBy = request.ParentId, // Sửa: Thêm trường ReceivedBy
+                DeliveredAt = request.DeliveredAt,
+                Notes = request.Notes,
+                Status = request.Status
+            };
+            await _context.AddAsync(parentmedicationDelivery);
+            await _context.SaveChangesAsync();
+            return request;
         }
 
         public async Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryByParentIdDTO(Guid id)

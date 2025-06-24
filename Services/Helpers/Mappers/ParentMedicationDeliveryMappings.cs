@@ -16,7 +16,6 @@ namespace Services.Helpers.Mapers
             {
                 StudentId = request.StudentId,
                 ParentId = request.ParentId,
-                ReceivedBy = request.ReceivedBy,
                 QuantityDelivered = request.QuantityDelivered,
                 DeliveredAt = request.DeliveredAt,
                 Notes = request.Notes,
