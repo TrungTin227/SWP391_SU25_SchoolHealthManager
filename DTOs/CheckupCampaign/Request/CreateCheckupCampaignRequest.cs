@@ -18,12 +18,5 @@ namespace DTOs.CheckupCampaign.Request
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
-
-        // Tạo lịch cho các học sinh
-        public List<Guid> StudentIds { get; set; } = new();
-
-        // Hoặc tạo cho cả lớp/khối
-        public List<string> Grades { get; set; } = new();
-        public List<string> Sections { get; set; } = new();
     }
 }

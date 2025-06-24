@@ -126,12 +126,6 @@ namespace Services.Implementations
 
                     var createdCampaign = await CreateAsync(campaign);
 
-                    // Create schedules for students
-                    if (request.StudentIds.Any() || request.Grades.Any() || request.Sections.Any())
-                    {
-                        await CreateSchedulesForCampaign(createdCampaign.Id, request);
-                    }
-
                     var response = await MapToResponseDTO(createdCampaign);
 
                     _logger.LogInformation("Chiến dịch khám định kỳ được tạo thành công: {CampaignId}", createdCampaign.Id);
@@ -610,60 +604,6 @@ namespace Services.Implementations
         }
 
         #region Private Methods
-
-        private async Task CreateSchedulesForCampaign(Guid campaignId, CreateCheckupCampaignRequest request)
-        {
-            var studentIds = new HashSet<Guid>();
-
-            // Add specific student IDs
-            foreach (var studentId in request.StudentIds)
-            {
-                studentIds.Add(studentId);
-            }
-
-            // Add students by grade/section
-            if (request.Grades.Any() || request.Sections.Any())
-            {
-                var students = await _unitOfWork.StudentRepository.GetStudentsByGradeAndSectionAsync(
-                    request.Grades, request.Sections);
-
-                foreach (var student in students)
-                {
-                    studentIds.Add(student.Id);
-                }
-            }
-
-            // Create schedules
-            var schedules = new List<CheckupSchedule>();
-            var baseScheduledTime = request.ScheduledDate.Date.AddHours(8); // Start at 8 AM
-            var intervalMinutes = 15; // 15 minutes per student
-            var currentTime = baseScheduledTime;
-
-            foreach (var studentId in studentIds)
-            {
-                var schedule = new CheckupSchedule
-                {
-                    Id = Guid.NewGuid(),
-                    CampaignId = campaignId,
-                    StudentId = studentId,
-                    NotifiedAt = _currentTime.GetVietnamTime(),
-                    ScheduledAt = currentTime,
-                    ParentConsentStatus = CheckupScheduleStatus.Pending,
-                    CreatedAt = _currentTime.GetVietnamTime(),
-                    UpdatedAt = _currentTime.GetVietnamTime(),
-                    CreatedBy = _currentUserService.GetUserId() ?? Guid.Empty,
-                    UpdatedBy = _currentUserService.GetUserId() ?? Guid.Empty
-                };
-
-                schedules.Add(schedule);
-                currentTime = currentTime.AddMinutes(intervalMinutes);
-            }
-
-            if (schedules.Any())
-            {
-                await _unitOfWork.CheckupScheduleRepository.BatchCreateSchedulesAsync(schedules);
-            }
-        }
 
         private async Task<CheckupCampaignResponseDTO> MapToResponseDTO(CheckupCampaign campaign)
         {
