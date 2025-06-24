@@ -7,13 +7,16 @@ namespace WebAPI.Controllers
     [Route("api/[controller]")]
     public class HealthEventController : ControllerBase
     {
+        private readonly IHealthEventWithCounselingService _counselingService;
         private readonly IHealthEventService _healthEventService;
         private readonly ILogger<HealthEventController> _logger;
 
         public HealthEventController(
             IHealthEventService healthEventService,
+            IHealthEventWithCounselingService counselingService,
             ILogger<HealthEventController> logger)
         {
+            _counselingService  = counselingService;
             _healthEventService = healthEventService;
             _logger = logger;
         }
@@ -161,6 +164,42 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpPost("create-with-counseling")]
+        public async Task<IActionResult> CreateWithCounseling([FromBody] HealthEventCreateWithCounselingRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _counselingService.CreateWithCounselingAsync(request);
+            if (result == null)
+                return BadRequest(new { Message = "Tạo thất bại." });
+
+            return Ok(result);
+        }
+
+        [HttpGet("get-by-id-with-counseling/{id}")]
+        public async Task<IActionResult> GetByIdWithCounseling(Guid id)
+        {
+            var result = await _counselingService.GetByIdWithCounselingAsync(id);
+            if (result == null)
+                return NotFound(new { Message = "Không tìm thấy sự kiện." });
+
+            return Ok(result);
+        }
+
+        [HttpGet("get-by-student-id/{studentId}")]
+        public async Task<IActionResult> GetByStudentId(Guid studentId)
+        {
+            var result = await _counselingService.GetByStudentIdAsync(studentId);
+            return Ok(result);
+        }
+
+        [HttpGet("get-by-student-id-with-counseling/{studentId}")]
+        public async Task<IActionResult> GetByStudentIdWithCounseling(Guid studentId)
+        {
+            var result = await _counselingService.GetByStudentIdWithCounselingAsync(studentId);
+            return Ok(result);
+        }
         #endregion
     }
 }
