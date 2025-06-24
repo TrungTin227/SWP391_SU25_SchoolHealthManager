@@ -5,14 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using DTOs.HealthEventDTOs.Request;
 using DTOs.HealthEventDTOs.Response;
+using Repositories.Interfaces;
 
 namespace Services.Implementations
 {
     public class HealthEventWithCounselingService : IHealthEventWithCounselingService
     {
-        private readonly IHealthEventWithCounselingService _repository;
+        private readonly IHealthEventWithCounselingRepository _repository;
 
-        public HealthEventWithCounselingService(IHealthEventWithCounselingService repository)
+        public HealthEventWithCounselingService(IHealthEventWithCounselingRepository repository)
         {
             _repository = repository;
         }
