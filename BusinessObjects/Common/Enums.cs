@@ -65,5 +65,20 @@
         Moderate = 2,      // Vừa phải
         Severe = 3         // Nặng
     }
-    
+    public enum CheckupCampaignStatus
+    {
+        Planning = 0,           // Đang lên kế hoạch
+        Scheduled = 1,          // Đã lên lịch
+        InProgress = 2,         // Đang thực hiện
+        Completed = 3,          // Hoàn thành
+        Cancelled = 4           // Đã hủy
+    }
+
+    public enum CheckupRecordStatus
+    {
+        Pending = 0,            // Chờ khám
+        Completed = 1,          // Đã khám xong
+        RequiresFollowUp = 2,   // Cần tái khám
+        Referred = 3            // Chuyển tuyến
+    }
 }
