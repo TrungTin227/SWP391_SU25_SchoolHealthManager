@@ -5,19 +5,15 @@ namespace Services.Implementations
 {
     public class MedicalSupplyLotService : BaseService<MedicalSupplyLot, Guid>, IMedicalSupplyLotService
     {
-        private readonly IMedicalSupplyLotRepository _medicalSupplyLotRepository;
-        private readonly IMedicalSupplyRepository _medicalSupplyRepository;
         private readonly ILogger<MedicalSupplyLotService> _logger;
 
         public MedicalSupplyLotService(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            ILogger<MedicalSupplyLotService> logger,
-            ICurrentTime currentTime)
+            ICurrentTime currentTime,
+            ILogger<MedicalSupplyLotService> logger)
             : base(unitOfWork.MedicalSupplyLotRepository, currentUserService, unitOfWork, currentTime)
         {
-            _medicalSupplyLotRepository = unitOfWork.MedicalSupplyLotRepository;
-            _medicalSupplyRepository = unitOfWork.MedicalSupplyRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -29,7 +25,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _medicalSupplyLotRepository.GetMedicalSupplyLotsAsync(
+                var lots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsAsync(
                     pageNumber, pageSize, searchTerm, medicalSupplyId, isExpired, includeDeleted);
 
                 var dtos = lots.Select(MedicalSupplyLotMapper.ToResponseDTO);
@@ -49,7 +45,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lot = await _medicalSupplyLotRepository.GetLotWithSupplyAsync(id);
+                var lot = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(id);
                 if (lot == null)
                     return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception("Không tìm thấy lô vật tư y tế"));
 
@@ -78,7 +74,7 @@ namespace Services.Implementations
 
                     await UpdateSupplyCurrentStockAsync(request.MedicalSupplyId);
 
-                    var lot = await _medicalSupplyLotRepository.GetLotWithSupplyAsync(created.Id)
+                    var lot = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(created.Id)
                               ?? throw new Exception("Không thể lấy lô vừa tạo");
                     var dto = MedicalSupplyLotMapper.ToResponseDTO(lot);
 
@@ -99,7 +95,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var lot = await _medicalSupplyLotRepository.GetByIdAsync(id);
+                    var lot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(id);
                     if (lot == null)
                         return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception("Không tìm thấy lô vật tư y tế"));
 
@@ -114,7 +110,7 @@ namespace Services.Implementations
                     // Update stock for the affected supply
                     await UpdateSupplyCurrentStockAsync(oldSupplyId);
 
-                    var updated = await _medicalSupplyLotRepository.GetLotWithSupplyAsync(id)
+                    var updated = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(id)
                                    ?? throw new Exception("Không thể lấy lô đã cập nhật");
                     var dto = MedicalSupplyLotMapper.ToResponseDTO(updated);
 
@@ -159,7 +155,7 @@ namespace Services.Implementations
                     if (isPermanent)
                     {
                         // Permanent delete - get all lots (including deleted ones)
-                        var allLots = await _medicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
+                        var allLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
                         var existingIds = allLots.Select(l => l.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -179,7 +175,7 @@ namespace Services.Implementations
                             // Store affected supply IDs before deletion
                             var affectedSupplyIds = allLots.Select(l => l.MedicalSupplyId).Distinct().ToList();
 
-                            var deletedCount = await _medicalSupplyLotRepository.PermanentDeleteLotsAsync(existingIds);
+                            var deletedCount = await _unitOfWork.MedicalSupplyLotRepository.PermanentDeleteLotsAsync(existingIds);
 
                             if (deletedCount > 0)
                             {
@@ -197,7 +193,7 @@ namespace Services.Implementations
                     else
                     {
                         // Soft delete - only get non-deleted lots
-                        var existingLots = await _medicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: false);
+                        var existingLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: false);
                         var existingIds = existingLots.Select(l => l.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -215,7 +211,7 @@ namespace Services.Implementations
                         if (existingIds.Any())
                         {
                             var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _medicalSupplyLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
+                            var deletedCount = await _unitOfWork.MedicalSupplyLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
 
                             if (deletedCount > 0)
                             {
@@ -264,7 +260,7 @@ namespace Services.Implementations
                         TotalRequested = ids.Count
                     };
 
-                    var deletedLots = await _medicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
+                    var deletedLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
                     var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
                     var notDeletedIds = ids.Except(deletedLotIds).ToList();
 
@@ -286,7 +282,7 @@ namespace Services.Implementations
                     if (deletedLotIds.Any())
                     {
                         var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                        var restoredCount = await _medicalSupplyLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
+                        var restoredCount = await _unitOfWork.MedicalSupplyLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
 
                         if (restoredCount > 0)
                         {
@@ -325,7 +321,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _medicalSupplyLotRepository.GetSoftDeletedLotsAsync(
+                var lots = await _unitOfWork.MedicalSupplyLotRepository.GetSoftDeletedLotsAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var lotDTOs = lots.Select(MedicalSupplyLotMapper.ToResponseDTO).ToList();
@@ -349,7 +345,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _medicalSupplyLotRepository.GetExpiringLotsAsync(daysBeforeExpiry);
+                var lots = await _unitOfWork.MedicalSupplyLotRepository.GetExpiringLotsAsync(daysBeforeExpiry);
                 var lotDTOs = lots.Select(MedicalSupplyLotMapper.ToResponseDTO).ToList();
 
                 return ApiResult<List<MedicalSupplyLotResponseDTO>>.Success(
@@ -366,7 +362,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _medicalSupplyLotRepository.GetExpiredLotsAsync();
+                var lots = await _unitOfWork.MedicalSupplyLotRepository.GetExpiredLotsAsync();
                 var lotDTOs = lots.Select(MedicalSupplyLotMapper.ToResponseDTO).ToList();
 
                 return ApiResult<List<MedicalSupplyLotResponseDTO>>.Success(
@@ -383,7 +379,7 @@ namespace Services.Implementations
         {
             try
             {
-                var lots = await _medicalSupplyLotRepository.GetLotsByMedicalSupplyIdAsync(medicalSupplyId);
+                var lots = await _unitOfWork.MedicalSupplyLotRepository.GetLotsByMedicalSupplyIdAsync(medicalSupplyId);
                 var lotDTOs = lots.Select(MedicalSupplyLotMapper.ToResponseDTO).ToList();
 
                 return ApiResult<List<MedicalSupplyLotResponseDTO>>.Success(
@@ -400,7 +396,7 @@ namespace Services.Implementations
         {
             try
             {
-                var quantity = await _medicalSupplyLotRepository.GetAvailableQuantityAsync(medicalSupplyId);
+                var quantity = await _unitOfWork.MedicalSupplyLotRepository.GetAvailableQuantityAsync(medicalSupplyId);
                 return ApiResult<int>.Success(quantity, "Lấy số lượng khả dụng thành công");
             }
             catch (Exception ex)
@@ -422,7 +418,7 @@ namespace Services.Implementations
                             new Exception("Số lượng không được âm"));
                     }
 
-                    var lot = await _medicalSupplyLotRepository.GetByIdAsync(lotId);
+                    var lot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(lotId);
                     if (lot == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -430,7 +426,7 @@ namespace Services.Implementations
                     }
 
                     var supplyId = lot.MedicalSupplyId;
-                    var success = await _medicalSupplyLotRepository.UpdateQuantityAsync(lotId, newQuantity);
+                    var success = await _unitOfWork.MedicalSupplyLotRepository.UpdateQuantityAsync(lotId, newQuantity);
                     if (!success)
                     {
                         return ApiResult<bool>.Failure(
@@ -475,13 +471,13 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateCreateRequestAsync(CreateMedicalSupplyLotRequest request)
         {
-            var supply = await _medicalSupplyRepository.GetByIdAsync(request.MedicalSupplyId);
+            var supply = await _unitOfWork.MedicalSupplyRepository.GetByIdAsync(request.MedicalSupplyId);
             if (supply == null)
             {
                 return (false, "Không tìm thấy vật tư y tế");
             }
 
-            var lotNumberExists = await _medicalSupplyLotRepository.LotNumberExistsAsync(request.LotNumber);
+            var lotNumberExists = await _unitOfWork.MedicalSupplyLotRepository.LotNumberExistsAsync(request.LotNumber);
             if (lotNumberExists)
             {
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
@@ -512,7 +508,7 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateUpdateRequestAsync(UpdateMedicalSupplyLotRequest request, Guid excludeId)
         {
-            var lotNumberExists = await _medicalSupplyLotRepository.LotNumberExistsAsync(request.LotNumber, excludeId);
+            var lotNumberExists = await _unitOfWork.MedicalSupplyLotRepository.LotNumberExistsAsync(request.LotNumber, excludeId);
             if (lotNumberExists)
             {
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
@@ -540,8 +536,8 @@ namespace Services.Implementations
         {
             try
             {
-                var currentStock = await _medicalSupplyLotRepository.CalculateCurrentStockForSupplyAsync(medicalSupplyId);
-                await _medicalSupplyRepository.UpdateCurrentStockAsync(medicalSupplyId, currentStock);
+                var currentStock = await _unitOfWork.MedicalSupplyLotRepository.CalculateCurrentStockForSupplyAsync(medicalSupplyId);
+                await _unitOfWork.MedicalSupplyRepository.UpdateCurrentStockAsync(medicalSupplyId, currentStock);
                 // Note: SaveChanges is handled by the transaction extension
             }
             catch (Exception ex)

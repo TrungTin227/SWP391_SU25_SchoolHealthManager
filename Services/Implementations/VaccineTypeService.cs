@@ -1,13 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
-using Services.Helpers.Mappers;
 
 namespace Services.Implementations
 {
     public class VaccineTypeService : BaseService<VaccinationType, Guid>, IVaccineTypeService
     {
-        private readonly IVaccineTypeRepository _vaccineTypeRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<VaccineTypeService> _logger;
 
         public VaccineTypeService(
@@ -17,7 +14,7 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(unitOfWork.VaccineTypeRepository, currentUserService, unitOfWork, currentTime)
         {
-            _vaccineTypeRepository = unitOfWork.VaccineTypeRepository;
+            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -28,7 +25,7 @@ namespace Services.Implementations
         {
             try
             {
-                var pagedVaccineTypes = await _vaccineTypeRepository.GetVaccineTypesAsync(
+                var pagedVaccineTypes = await _unitOfWork.VaccineTypeRepository.GetVaccineTypesAsync(
                     pageNumber, pageSize, searchTerm, isActive);
 
                 var responseItems = pagedVaccineTypes.Select(VaccineTypeMapper.MapToResponseDTO).ToList();
@@ -49,7 +46,7 @@ namespace Services.Implementations
         {
             try
             {
-                var vaccineType = await _vaccineTypeRepository.GetVaccineTypeByIdAsync(id);
+                var vaccineType = await _unitOfWork.VaccineTypeRepository.GetVaccineTypeByIdAsync(id);
                 if (vaccineType == null)
                 {
                     return ApiResult<VaccineTypeResponseDTO>.Failure(
@@ -70,7 +67,7 @@ namespace Services.Implementations
         {
             try
             {
-                var vaccineType = await _vaccineTypeRepository.GetVaccineTypeWithDetailsAsync(id);
+                var vaccineType = await _unitOfWork.VaccineTypeRepository.GetVaccineTypeWithDetailsAsync(id);
                 if (vaccineType == null)
                 {
                     return ApiResult<VaccineTypeDetailResponseDTO>.Failure(
@@ -92,7 +89,7 @@ namespace Services.Implementations
             try
             {
                 // Validate unique code
-                var existingVaccine = await _vaccineTypeRepository.GetByCodeAsync(request.Code);
+                var existingVaccine = await _unitOfWork.VaccineTypeRepository.GetByCodeAsync(request.Code);
                 if (existingVaccine != null)
                 {
                     return ApiResult<VaccineTypeResponseDTO>.Failure(
@@ -108,7 +105,7 @@ namespace Services.Implementations
                     VaccineTypeId = vaccineType.Id,
                     DoseNumber = 1,
                     RecommendedAgeMonths = request.RecommendedAgeMonths,
-                    MinIntervalDays = request.MinIntervalDays, // ✅ FIX: Sử dụng từ request
+                    MinIntervalDays = request.MinIntervalDays,
                     PreviousDoseId = null
                 };
 
@@ -131,7 +128,7 @@ namespace Services.Implementations
         {
             try
             {
-                var existingVaccine = await _vaccineTypeRepository.GetByIdAsync(id);
+                var existingVaccine = await _unitOfWork.VaccineTypeRepository.GetByIdAsync(id);
                 if (existingVaccine == null)
                 {
                     return ApiResult<VaccineTypeResponseDTO>.Failure(
@@ -141,7 +138,7 @@ namespace Services.Implementations
                 // Validate unique code if changed
                 if (!string.IsNullOrEmpty(request.Code) && request.Code != existingVaccine.Code)
                 {
-                    var codeExists = await _vaccineTypeRepository.GetByCodeAsync(request.Code);
+                    var codeExists = await _unitOfWork.VaccineTypeRepository.GetByCodeAsync(request.Code);
                     if (codeExists != null)
                     {
                         return ApiResult<VaccineTypeResponseDTO>.Failure(
@@ -176,7 +173,7 @@ namespace Services.Implementations
 
             try
             {
-                var vaccineTypes = await _vaccineTypeRepository.GetVaccineTypesByIdsAsync(ids, includeDeleted: isPermanent);
+                var vaccineTypes = await _unitOfWork.VaccineTypeRepository.GetVaccineTypesByIdsAsync(ids, includeDeleted: isPermanent);
                 var foundIds = vaccineTypes.Select(v => v.Id).ToHashSet();
 
                 foreach (var id in ids)
@@ -212,7 +209,7 @@ namespace Services.Implementations
                                 continue;
                             }
 
-                            await _repository.DeleteAsync(vaccine.Id);
+                            await _unitOfWork.VaccineTypeRepository.DeleteAsync(vaccine.Id);
                         }
                         else
                         {
@@ -234,6 +231,8 @@ namespace Services.Implementations
                     }
                 }
 
+                await _unitOfWork.SaveChangesAsync();
+
                 result.Message = GenerateBatchOperationMessage(isPermanent ? "xóa vĩnh viễn" : "xóa", result);
                 return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
             }
@@ -253,7 +252,7 @@ namespace Services.Implementations
 
             try
             {
-                var vaccineTypes = await _vaccineTypeRepository.GetVaccineTypesByIdsAsync(ids, includeDeleted: true);
+                var vaccineTypes = await _unitOfWork.VaccineTypeRepository.GetVaccineTypesByIdsAsync(ids, includeDeleted: true);
                 var foundIds = vaccineTypes.Select(v => v.Id).ToHashSet();
 
                 foreach (var id in ids)
@@ -286,7 +285,7 @@ namespace Services.Implementations
                             continue;
                         }
 
-                        // ✅ FIX: Restore manually
+                        // Restore manually
                         vaccine.IsDeleted = false;
                         vaccine.DeletedAt = null;
                         vaccine.DeletedBy = null;
@@ -308,6 +307,8 @@ namespace Services.Implementations
                     }
                 }
 
+                await _unitOfWork.SaveChangesAsync();
+
                 result.Message = GenerateBatchOperationMessage("khôi phục", result);
                 return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
             }
@@ -327,7 +328,7 @@ namespace Services.Implementations
         {
             try
             {
-                var pagedVaccineTypes = await _vaccineTypeRepository.GetSoftDeletedVaccineTypesAsync(
+                var pagedVaccineTypes = await _unitOfWork.VaccineTypeRepository.GetSoftDeletedVaccineTypesAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var responseItems = pagedVaccineTypes.Select(VaccineTypeMapper.MapToResponseDTO).ToList();
@@ -352,7 +353,7 @@ namespace Services.Implementations
         {
             try
             {
-                var activeVaccines = await _vaccineTypeRepository.GetActiveVaccineTypesAsync();
+                var activeVaccines = await _unitOfWork.VaccineTypeRepository.GetActiveVaccineTypesAsync();
                 var response = activeVaccines.Select(VaccineTypeMapper.MapToResponseDTO).ToList();
 
                 return ApiResult<List<VaccineTypeResponseDTO>>.Success(
@@ -369,7 +370,7 @@ namespace Services.Implementations
         {
             try
             {
-                var vaccine = await _vaccineTypeRepository.GetByIdAsync(id);
+                var vaccine = await _unitOfWork.VaccineTypeRepository.GetByIdAsync(id);
                 if (vaccine == null)
                 {
                     return ApiResult<VaccineTypeResponseDTO>.Failure(

@@ -20,6 +20,8 @@
         IVaccinationCampaignRepository VaccinationCampaignRepository { get; }
         IVaccinationScheduleRepository VaccinationScheduleRepository { get; }
         IParentVaccinationRepository ParentVaccinationRepository { get; }
+        ICheckupCampaignRepository CheckupCampaignRepository { get; }
+        ICheckupScheduleRepository CheckupScheduleRepository { get; }
 
     }
 }

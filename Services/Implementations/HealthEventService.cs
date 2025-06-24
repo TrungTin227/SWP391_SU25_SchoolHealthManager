@@ -1,8 +1,4 @@
-﻿using DTOs.HealthEventDTOs.Request;
-using DTOs.HealthEventDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
 using Services.Mappers;
 using System.Data;
 
@@ -10,24 +6,16 @@ namespace Services.Implementations
 {
     public class HealthEventService : BaseService<HealthEvent, Guid>, IHealthEventService
     {
-        private readonly IHealthEventRepository _healthEventRepository;
-        private readonly IMedicationLotRepository _medicationLotRepository;
-        private readonly IMedicalSupplyLotRepository _medicalSupplyLotRepository;
         private readonly ILogger<HealthEventService> _logger;
-        private readonly ICurrentTime _currentTime;
 
         public HealthEventService(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            ILogger<HealthEventService> logger,
-            ICurrentTime currentTime)
+            ICurrentTime currentTime,
+            ILogger<HealthEventService> logger)
             : base(unitOfWork.HealthEventRepository, currentUserService, unitOfWork, currentTime)
         {
-            _healthEventRepository = unitOfWork.HealthEventRepository;
-            _medicationLotRepository = unitOfWork.MedicationLotRepository;
-            _medicalSupplyLotRepository = unitOfWork.MedicalSupplyLotRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _currentTime = currentTime ?? throw new ArgumentNullException(nameof(currentTime));
         }
 
         #region Basic CRUD Operations
@@ -39,7 +27,7 @@ namespace Services.Implementations
         {
             try
             {
-                var events = await _healthEventRepository.GetHealthEventsAsync(
+                var events = await _unitOfWork.HealthEventRepository.GetHealthEventsAsync(
                     pageNumber, pageSize, searchTerm, status, eventType, studentId, fromDate, toDate);
 
                 var result = events.ToPagedResponseDTO();
@@ -58,7 +46,7 @@ namespace Services.Implementations
         {
             try
             {
-                var healthEvent = await _healthEventRepository.GetHealthEventWithDetailsAsync(id);
+                var healthEvent = await _unitOfWork.HealthEventRepository.GetHealthEventWithDetailsAsync(id);
                 if (healthEvent == null)
                 {
                     return ApiResult<HealthEventDetailResponseDTO>.Failure(
@@ -121,7 +109,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var healthEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     if (healthEvent == null)
                     {
                         return ApiResult<HealthEventResponseDTO>.Failure(
@@ -171,13 +159,13 @@ namespace Services.Implementations
                     if (hasAnyTreatment && healthEvent.EventStatus == EventStatus.Pending)
                     {
                         // Có điều trị và đang Pending -> chuyển sang InProgress
-                        await _healthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.InProgress, currentUserId);
+                        await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.InProgress, currentUserId);
                     }
 
                     await _unitOfWork.SaveChangesAsync();
 
                     // Lấy lại dữ liệu để trả về
-                    var updatedEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
 
                     var statusMessage = hasAnyTreatment && updatedEvent!.EventStatus == EventStatus.InProgress
@@ -203,7 +191,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var healthEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     if (healthEvent == null)
                     {
                         return ApiResult<HealthEventResponseDTO>.Failure(
@@ -219,7 +207,7 @@ namespace Services.Implementations
 
                     // Cập nhật trạng thái sang Resolved
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _healthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.Resolved, currentUserId);
+                    await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.Resolved, currentUserId);
 
                     // Nếu có ghi chú hoàn thành, cập nhật vào description
                     if (!string.IsNullOrWhiteSpace(request.CompletionNotes))
@@ -231,7 +219,7 @@ namespace Services.Implementations
                     await _unitOfWork.SaveChangesAsync();
 
                     // Lấy lại dữ liệu để trả về
-                    var updatedEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
 
                     _logger.LogInformation("Health event {EventId} resolved successfully", request.HealthEventId);
@@ -275,7 +263,7 @@ namespace Services.Implementations
 
                     if (isPermanent)
                     {
-                        var allEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
+                        var allEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
                         var existingIds = allEvents.Select(e => e.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -283,7 +271,7 @@ namespace Services.Implementations
 
                         if (existingIds.Any())
                         {
-                            var deletedCount = await _healthEventRepository.PermanentDeleteHealthEventsAsync(existingIds);
+                            var deletedCount = await _unitOfWork.HealthEventRepository.PermanentDeleteHealthEventsAsync(existingIds);
 
                             if (deletedCount > 0)
                             {
@@ -294,7 +282,7 @@ namespace Services.Implementations
                     }
                     else
                     {
-                        var existingEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: false);
+                        var existingEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: false);
                         var existingIds = existingEvents.Select(e => e.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -303,7 +291,7 @@ namespace Services.Implementations
                         if (existingIds.Any())
                         {
                             var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _healthEventRepository.SoftDeleteHealthEventsAsync(existingIds, currentUserId);
+                            var deletedCount = await _unitOfWork.HealthEventRepository.SoftDeleteHealthEventsAsync(existingIds, currentUserId);
 
                             if (deletedCount > 0)
                             {
@@ -346,7 +334,7 @@ namespace Services.Implementations
                         TotalRequested = ids.Count
                     };
 
-                    var deletedEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
+                    var deletedEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
                     var deletedEventIds = deletedEvents.Where(e => e.IsDeleted).Select(e => e.Id).ToList();
                     var notDeletedIds = ids.Except(deletedEventIds).ToList();
 
@@ -368,7 +356,7 @@ namespace Services.Implementations
                     if (deletedEventIds.Any())
                     {
                         var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                        var restoredCount = await _healthEventRepository.RestoreHealthEventsAsync(deletedEventIds, currentUserId);
+                        var restoredCount = await _unitOfWork.HealthEventRepository.RestoreHealthEventsAsync(deletedEventIds, currentUserId);
 
                         if (restoredCount > 0)
                         {
@@ -399,7 +387,7 @@ namespace Services.Implementations
         {
             try
             {
-                var events = await _healthEventRepository.GetSoftDeletedEventsAsync(
+                var events = await _unitOfWork.HealthEventRepository.GetSoftDeletedEventsAsync(
                     pageNumber, pageSize, searchTerm);
 
                 var result = events.ToPagedResponseDTO();
@@ -422,8 +410,8 @@ namespace Services.Implementations
         {
             try
             {
-                var statusStats = await _healthEventRepository.GetEventStatusStatisticsAsync(fromDate, toDate);
-                var typeStats = await _healthEventRepository.GetEventTypeStatisticsAsync(fromDate, toDate);
+                var statusStats = await _unitOfWork.HealthEventRepository.GetEventStatusStatisticsAsync(fromDate, toDate);
+                var typeStats = await _unitOfWork.HealthEventRepository.GetEventTypeStatisticsAsync(fromDate, toDate);
 
                 var statistics = new HealthEventStatisticsResponseDTO
                 {
@@ -470,7 +458,7 @@ namespace Services.Implementations
                 }
 
                 var vaccinationRecord = await _unitOfWork.GetRepository<VaccinationRecord, Guid>()
-           .GetByIdAsync(request.VaccinationRecordId.Value);
+                    .GetByIdAsync(request.VaccinationRecordId.Value);
                 if (vaccinationRecord == null)
                 {
                     return (false, "Không tìm thấy bản ghi tiêm chủng");
@@ -494,7 +482,7 @@ namespace Services.Implementations
         {
             foreach (var medication in medications)
             {
-                var medicationLot = await _medicationLotRepository.GetByIdAsync(medication.MedicationLotId);
+                var medicationLot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(medication.MedicationLotId);
                 if (medicationLot == null || medicationLot.IsDeleted)
                 {
                     return (false, $"Không tìm thấy lô thuốc với ID: {medication.MedicationLotId}");
@@ -528,7 +516,7 @@ namespace Services.Implementations
 
             foreach (var supply in supplies)
             {
-                var medicalSupplyLot = await _medicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
+                var medicalSupplyLot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
                 if (medicalSupplyLot == null || medicalSupplyLot.IsDeleted)
                 {
                     return (false, $"Không tìm thấy lô vật tư y tế với ID: {supply.MedicalSupplyLotId}");
@@ -568,7 +556,7 @@ namespace Services.Implementations
                 await _unitOfWork.GetRepository<EventMedication, Guid>().AddAsync(eventMedication);
 
                 // Cập nhật số lượng thuốc
-                var medicationLot = await _medicationLotRepository.GetByIdAsync(medication.MedicationLotId);
+                var medicationLot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(medication.MedicationLotId);
                 if (medicationLot != null)
                 {
                     medicationLot.Quantity -= medication.Quantity;
@@ -583,7 +571,7 @@ namespace Services.Implementations
         {
             // Lấy NurseProfile của current user
             var nurseProfiles = await _unitOfWork.GetRepository<NurseProfile, Guid>()
-    .GetAllAsync(np => np.UserId == currentUserId);
+                .GetAllAsync(np => np.UserId == currentUserId);
             var nurseProfile = nurseProfiles.FirstOrDefault();
 
             if (nurseProfile == null)
@@ -610,7 +598,7 @@ namespace Services.Implementations
                 await _unitOfWork.GetRepository<SupplyUsage, Guid>().AddAsync(supplyUsage);
 
                 // Cập nhật số lượng vật tư
-                var medicalSupplyLot = await _medicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
+                var medicalSupplyLot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
                 if (medicalSupplyLot != null)
                 {
                     medicalSupplyLot.Quantity -= supply.QuantityUsed;

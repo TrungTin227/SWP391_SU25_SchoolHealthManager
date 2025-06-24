@@ -28,7 +28,6 @@
         Respiratory
     }
     public enum LotStatus { Available, LowStock, Expired, OutOfStock }
-    public enum CheckupScheduleStatus { NotConfirmed, Confirmed }
     public enum VisionLevel { Normal, Mild, Moderate, Severe }
     public enum HearingLevel { Normal, Mild, Moderate, Severe }
     public enum ReportType { HealthEvent, Vaccination, Checkup, Supply, Monthly, Annual }
@@ -80,5 +79,13 @@
         Completed = 1,          // Đã khám xong
         RequiresFollowUp = 2,   // Cần tái khám
         Referred = 3            // Chuyển tuyến
+    }
+    public enum CheckupScheduleStatus
+    {
+        Pending = 0,        // Chờ phụ huynh đồng ý
+        Approved = 1,       // Phụ huynh đã đồng ý
+        Declined = 2,       // Phụ huynh từ chối
+        Completed = 3,      // Đã khám xong
+        NoShow = 4          // Không đến khám
     }
 }
