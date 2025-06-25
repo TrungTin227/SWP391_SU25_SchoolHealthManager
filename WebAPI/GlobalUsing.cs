@@ -25,3 +25,4 @@ global using DTOs.MedicalSupplyLotDTOs.Request;
 global using DTOs.VaccinationScheduleDTOs.Request;
 global using DTOs.HealthEventDTOs.Request;
 global using DTOs.VaccinationCampaignDTOs.Request;
+global using DTOs.CheckupSchedule.Request;

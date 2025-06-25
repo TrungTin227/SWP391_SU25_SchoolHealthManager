@@ -1,5 +1,4 @@
-﻿using LinqKit;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace Repositories.Implementations
@@ -153,7 +152,7 @@ namespace Repositories.Implementations
         private Expression<Func<VaccinationCampaign, bool>> BuildCampaignPredicate(
             string? searchTerm, VaccinationCampaignStatus? status, DateTime? startDate, DateTime? endDate)
         {
-            var predicate = PredicateBuilder.New<VaccinationCampaign>(c => !c.IsDeleted);
+            var predicate = LinqKit.PredicateBuilder.New<VaccinationCampaign>(c => !c.IsDeleted);
 
             if (!string.IsNullOrEmpty(searchTerm))
             {

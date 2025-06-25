@@ -35,3 +35,5 @@ global using DTOs.VaccinationScheduleDTOs.Request;
 global using DTOs.VaccinationScheduleDTOs.Response;
 global using DTOs.HealthEventDTOs.Request;
 global using DTOs.HealthEventDTOs.Response;
+global using DTOs.CheckupSchedule.Request;
+global using DTOs.CheckupSchedule.Response;
