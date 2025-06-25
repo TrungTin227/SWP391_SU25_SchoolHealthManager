@@ -1,5 +1,4 @@
-﻿using DTOs.VaccinationCampaignDTOs.Response;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Repositories.Implementations
@@ -394,6 +393,25 @@ namespace Repositories.Implementations
                 .AnyAsync(vr => vr.ScheduleId == id);
 
             return !hasRecords;
+        }
+        public async Task<bool> HasStudentScheduleConflictAsync(Guid studentId, DateTime scheduledAt, Guid? excludeScheduleId = null)
+        {
+            var timeWindow = TimeSpan.FromMinutes(60); // 1 hour buffer for vaccination
+            var startTime = scheduledAt.Subtract(timeWindow);
+            var endTime = scheduledAt.Add(timeWindow);
+
+            var query = _context.VaccinationSchedules
+                .Where(vs => !vs.IsDeleted &&
+                           vs.ScheduledAt >= startTime &&
+                           vs.ScheduledAt <= endTime &&
+                           vs.SessionStudents.Any(ss => ss.StudentId == studentId && !ss.IsDeleted));
+
+            if (excludeScheduleId.HasValue)
+            {
+                query = query.Where(vs => vs.Id != excludeScheduleId.Value);
+            }
+
+            return await query.AnyAsync();
         }
     }
 }

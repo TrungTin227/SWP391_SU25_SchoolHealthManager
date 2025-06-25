@@ -22,8 +22,9 @@
 
         public virtual async Task<TEntity> CreateAsync(TEntity entity)
         {
-            // Service handle audit fields
+            // Service handle audit fields for main entity and related entities
             SetAuditFieldsForCreate(entity);
+            SetAuditFieldsForNavigationProperties(entity, isCreate: true);
 
             var result = await _repository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
@@ -32,8 +33,9 @@
 
         public virtual async Task<TEntity> UpdateAsync(TEntity entity)
         {
-            // Service handle audit fields
+            // Service handle audit fields for main entity and related entities
             SetAuditFieldsForUpdate(entity);
+            SetAuditFieldsForNavigationProperties(entity, isCreate: false);
 
             var result = await _repository.UpdateAsync(entity);
             await _unitOfWork.SaveChangesAsync();
@@ -98,6 +100,74 @@
             {
                 auditableEntity.UpdatedAt = now;
                 auditableEntity.UpdatedBy = currentUserId;
+            }
+        }
+
+        // Xử lý audit fields cho navigation properties
+        private void SetAuditFieldsForNavigationProperties(TEntity entity, bool isCreate)
+        {
+            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+            var now = _currentTime.GetVietnamTime();
+
+            var properties = entity.GetType().GetProperties();
+
+            foreach (var property in properties)
+            {
+                // Handle collection navigation properties
+                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(property.PropertyType)
+                    && property.PropertyType.IsGenericType
+                    && property.PropertyType != typeof(string))
+                {
+                    var collection = property.GetValue(entity) as System.Collections.IEnumerable;
+                    if (collection != null)
+                    {
+                        foreach (var item in collection)
+                        {
+                            SetAuditFieldsForRelatedEntity(item, currentUserId, now, isCreate);
+                        }
+                    }
+                }
+                // Handle single navigation properties
+                else if (property.PropertyType.IsClass
+                        && property.PropertyType != typeof(string)
+                        && !property.PropertyType.IsPrimitive)
+                {
+                    var relatedEntity = property.GetValue(entity);
+                    if (relatedEntity != null)
+                    {
+                        SetAuditFieldsForRelatedEntity(relatedEntity, currentUserId, now, isCreate);
+                    }
+                }
+            }
+        }
+
+        private void SetAuditFieldsForRelatedEntity(object relatedEntity, Guid currentUserId, DateTime now, bool isCreate)
+        {
+            if (IsInheritedFromBaseEntity(relatedEntity.GetType()))
+            {
+                if (isCreate)
+                {
+                    SetProperty(relatedEntity, "CreatedAt", now);
+                    SetProperty(relatedEntity, "UpdatedAt", now);
+                    SetProperty(relatedEntity, "CreatedBy", currentUserId);
+                    SetProperty(relatedEntity, "UpdatedBy", currentUserId);
+
+                    // Auto-generate Id nếu là Guid và empty
+                    var idProperty = relatedEntity.GetType().GetProperty("Id");
+                    if (idProperty?.PropertyType == typeof(Guid))
+                    {
+                        var id = (Guid)idProperty.GetValue(relatedEntity);
+                        if (id == Guid.Empty)
+                        {
+                            SetProperty(relatedEntity, "Id", Guid.NewGuid());
+                        }
+                    }
+                }
+                else
+                {
+                    SetProperty(relatedEntity, "UpdatedAt", now);
+                    SetProperty(relatedEntity, "UpdatedBy", currentUserId);
+                }
             }
         }
 

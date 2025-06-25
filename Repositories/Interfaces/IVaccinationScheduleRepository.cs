@@ -47,5 +47,6 @@
         Task<bool> IsScheduleConflictAsync(Guid campaignId, DateTime scheduledAt, Guid? excludeScheduleId = null);
 
         Task<bool> CanDeleteScheduleAsync(Guid id);
+        Task<bool> HasStudentScheduleConflictAsync(Guid studentId, DateTime scheduledAt, Guid? excludeScheduleId = null);
     }
 }
