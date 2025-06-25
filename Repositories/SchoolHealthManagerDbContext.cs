@@ -40,6 +40,7 @@ namespace Repositories
         public DbSet<VaccinationSchedule> VaccinationSchedules { get; set; }
         public DbSet<VaccinationRecord> VaccinationRecords { get; set; }
         public DbSet<VaccineDoseInfo> VaccineDoseInfos { get; set; }
+        public DbSet<SessionStudent> SessionStudents { get; set; }
         #endregion
 
         #region Medical Supply Management
@@ -69,151 +70,7 @@ namespace Repositories
             ConfigureSupportServices(builder);
             ConfigureIndexes(builder);
             ConfigurePrecisionAndConstraints(builder);
-            // --- Bắt đầu: Thêm cấu hình convert enum -> string cho Medication.Category ---
-            builder.Entity<Medication>()
-                .Property(m => m.Category)
-                .HasConversion(new EnumToStringConverter<MedicationCategory>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // (Tuỳ chọn) Nếu bạn cũng muốn chuyển enum MedicationStatus thành string:
-            builder.Entity<Medication>()
-                .Property(m => m.Status)
-                .HasConversion(new EnumToStringConverter<MedicationStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-            // 1. CheckupSchedule
-            builder.Entity<CheckupSchedule>()
-                .Property(e => e.Status)
-                .HasConversion(new EnumToStringConverter<CheckupScheduleStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 2. HealthEvent
-            builder.Entity<HealthEvent>()
-                .Property(e => e.EventCategory)
-                .HasConversion(new EnumToStringConverter<EventCategory>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<HealthEvent>()
-                .Property(e => e.EventType)
-                .HasConversion(new EnumToStringConverter<EventType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<HealthEvent>()
-                .Property(e => e.EventStatus)
-                .HasConversion(new EnumToStringConverter<EventStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 3. HealthProfile
-            builder.Entity<HealthProfile>()
-                .Property(e => e.Vision)
-                .HasConversion(new EnumToStringConverter<VisionLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<HealthProfile>()
-                .Property(e => e.Hearing)
-                .HasConversion(new EnumToStringConverter<HearingLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 4. CheckupRecord
-            builder.Entity<CheckupRecord>()
-                .Property(e => e.VisionLeft)
-                .HasConversion(new EnumToStringConverter<VisionLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<CheckupRecord>()
-                .Property(e => e.VisionRight)
-                .HasConversion(new EnumToStringConverter<VisionLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<CheckupRecord>()
-                .Property(e => e.Hearing)
-                .HasConversion(new EnumToStringConverter<HearingLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 5. CounselingAppointment
-            builder.Entity<CounselingAppointment>()
-                .Property(e => e.Status)
-                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 6. FileAttachment
-            builder.Entity<FileAttachment>()
-                .Property(e => e.ReferenceType)
-                .HasConversion(new EnumToStringConverter<ReferenceType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<FileAttachment>()
-                .Property(e => e.FileType)
-                .HasConversion(new EnumToStringConverter<FileType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 7. Notification
-            builder.Entity<Notification>()
-                .Property(e => e.Type)
-                .HasConversion(new EnumToStringConverter<NotificationType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<Notification>()
-                .Property(e => e.Status)
-                .HasConversion(new EnumToStringConverter<NotificationStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 8. Parent
-            builder.Entity<Parent>()
-                .Property(e => e.Relationship)
-                .HasConversion(new EnumToStringConverter<Relationship>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 9. ParentMedicationDelivery
-            builder.Entity<ParentMedicationDelivery>()
-                .Property(e => e.Status)
-                .HasConversion(new EnumToStringConverter<StatusMedicationDelivery>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 10. Report
-            builder.Entity<Report>()
-                .Property(e => e.ReportType)
-                .HasConversion(new EnumToStringConverter<ReportType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 11. User
-            builder.Entity<User>()
-                .Property(e => e.Gender)
-                .HasConversion(new EnumToStringConverter<Gender>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            // 12. VaccinationSchedule
-            builder.Entity<VaccinationSchedule>()
-                .Property(e => e.ScheduleType)
-                .HasConversion(new EnumToStringConverter<ScheduleType>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<VaccinationSchedule>()
-                .Property(e => e.ScheduleStatus)
-                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-            // --- Kết thúc convert enum -> string ---
+            ConfigureEnumConversions(builder);
         }
 
         #region Identity Configuration
@@ -274,17 +131,18 @@ namespace Repositories
                       .WithMany(s => s.HealthEvents)
                       .HasForeignKey(he => he.StudentId)
                       .OnDelete(DeleteBehavior.Cascade);
-                //Relationship với User (ReportedUser)
+
+                // Relationship với User (ReportedUser)
                 entity.HasOne(he => he.ReportedUser)
                        .WithMany()
                        .HasForeignKey(he => he.ReportedUserId)
-                       .OnDelete(DeleteBehavior.NoAction);  // Không xóa User khi xóa HealthEvent
+                       .OnDelete(DeleteBehavior.NoAction);
 
-                //Relationship với VaccinationRecord (nếu có)
+                // Relationship với VaccinationRecord (nếu có)
                 entity.HasOne(he => he.VaccinationRecord)
                       .WithMany()
                       .HasForeignKey(he => he.VaccinationRecordId)
-                      .OnDelete(DeleteBehavior.NoAction); // Set null khi xóa VaccinationRecord
+                      .OnDelete(DeleteBehavior.NoAction);
             });
 
             // CheckupRecord relationships
@@ -319,25 +177,119 @@ namespace Repositories
                       .HasForeignKey(e => e.StudentId)
                       .OnDelete(DeleteBehavior.NoAction);
             });
+
+            builder.Entity<MedicationLot>(entity =>
+            {
+                // Relationship với Medication (nullable)
+                entity.HasOne(ml => ml.Medication)
+                      .WithMany(m => m.Lots)
+                      .HasForeignKey(ml => ml.MedicationId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                // Relationship với VaccinationType (nullable)
+                entity.HasOne(ml => ml.VaccineType)
+                      .WithMany(vt => vt.MedicationLots)
+                      .HasForeignKey(ml => ml.VaccineTypeId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
         }
         #endregion
 
         #region Vaccination Management Configuration
         private static void ConfigureVaccinationManagement(ModelBuilder builder)
         {
-            // VaccineDoseInfo composite key
+            // VaccineDoseInfo configuration
             builder.Entity<VaccineDoseInfo>(entity =>
             {
-                entity.HasKey(v => new { v.VaccineTypeId, v.DoseNumber });
+                entity.HasKey(v => v.Id);
+
+                // Relationship với VaccinationType (Many-to-One)
+                entity.HasOne(v => v.VaccineType)
+                      .WithMany(vt => vt.VaccineDoseInfos)
+                      .HasForeignKey(v => v.VaccineTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Self-reference relationship (Many-to-One)
+                entity.HasOne(v => v.PreviousDose)
+                      .WithMany(v => v.NextDoses)
+                      .HasForeignKey(v => v.PreviousDoseId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Unique constraint
+                entity.HasIndex(v => new { v.VaccineTypeId, v.DoseNumber })
+                      .IsUnique()
+                      .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId_DoseNumber_Unique");
             });
 
-            // VaccinationRecord relationships
+            // SessionStudent configuration
+            builder.Entity<SessionStudent>(entity =>
+            {
+                entity.HasKey(ss => ss.Id);
+
+                // Relationship với VaccinationSchedule
+                entity.HasOne(ss => ss.VaccinationSchedule)
+                      .WithMany(vs => vs.SessionStudents)
+                      .HasForeignKey(ss => ss.VaccinationScheduleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Relationship với Student
+                entity.HasOne(ss => ss.Student)
+                      .WithMany(s => s.SessionStudents)
+                      .HasForeignKey(ss => ss.StudentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Unique constraint
+                entity.HasIndex(ss => new { ss.VaccinationScheduleId, ss.StudentId })
+                      .IsUnique()
+                      .HasDatabaseName("IX_SessionStudents_ScheduleId_StudentId_Unique");
+            });
+
             builder.Entity<VaccinationRecord>(entity =>
             {
+                // Direct relationship với Student (CASCADE)
                 entity.HasOne(vr => vr.Student)
                       .WithMany(s => s.VaccinationRecords)
                       .HasForeignKey(vr => vr.StudentId)
                       .OnDelete(DeleteBehavior.Cascade);
+              
+                entity.HasOne(vr => vr.SessionStudent)
+                      .WithMany(ss => ss.VaccinationRecords)
+                      .HasForeignKey(vr => vr.SessionStudentId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(vr => vr.Schedule)
+                      .WithMany(vs => vs.Records)
+                      .HasForeignKey(vr => vr.ScheduleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(vr => vr.VaccineLot)
+                      .WithMany(ml => ml.VaccinationRecords)
+                      .HasForeignKey(vr => vr.VaccineLotId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(vr => vr.VaccinatedBy)
+                      .WithMany()
+                      .HasForeignKey(vr => vr.VaccinatedById)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(vr => vr.VaccineType)
+                      .WithMany()
+                      .HasForeignKey(vr => vr.VaccineTypeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // VaccinationSchedule configuration
+            builder.Entity<VaccinationSchedule>(entity =>
+            {
+                entity.HasOne(vs => vs.Campaign)
+                      .WithMany(vc => vc.Schedules)
+                      .HasForeignKey(vs => vs.CampaignId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(vs => vs.VaccinationType)
+                      .WithMany(vt => vt.Schedules)
+                      .HasForeignKey(vs => vs.VaccinationTypeId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
         #endregion
@@ -408,17 +360,17 @@ namespace Repositories
         #region Index Configuration
         private static void ConfigureIndexes(ModelBuilder builder)
         {
-            // Unique indexes
+            // Student indexes
             builder.Entity<Student>()
                    .HasIndex(s => s.StudentCode)
                    .IsUnique()
                    .HasDatabaseName("IX_Students_StudentCode_Unique");
 
-            // Performance indexes
             builder.Entity<Student>()
                    .HasIndex(s => s.ParentUserId)
                    .HasDatabaseName("IX_Students_ParentUserId");
 
+            // Health indexes
             builder.Entity<HealthProfile>()
                    .HasIndex(hp => hp.StudentId)
                    .HasDatabaseName("IX_HealthProfiles_StudentId");
@@ -427,9 +379,70 @@ namespace Repositories
                    .HasIndex(he => he.StudentId)
                    .HasDatabaseName("IX_HealthEvents_StudentId");
 
-            builder.Entity<VaccinationRecord>()
-                   .HasIndex(vr => vr.StudentId)
-                   .HasDatabaseName("IX_VaccinationRecords_StudentId");
+            // SessionStudent indexes
+            builder.Entity<SessionStudent>(entity =>
+            {
+                entity.HasIndex(ss => ss.VaccinationScheduleId)
+                      .HasDatabaseName("IX_SessionStudents_VaccinationScheduleId");
+
+                entity.HasIndex(ss => ss.StudentId)
+                      .HasDatabaseName("IX_SessionStudents_StudentId");
+            });
+
+            // VaccinationSchedule indexes
+            builder.Entity<VaccinationSchedule>(entity =>
+            {
+                entity.HasIndex(vs => vs.CampaignId)
+                      .HasDatabaseName("IX_VaccinationSchedules_CampaignId");
+
+                entity.HasIndex(vs => vs.VaccinationTypeId)
+                      .HasDatabaseName("IX_VaccinationSchedules_VaccinationTypeId");
+            });
+
+            // VaccinationRecord indexes
+            builder.Entity<VaccinationRecord>(entity =>
+            {
+                entity.HasIndex(vr => vr.StudentId)
+                      .HasDatabaseName("IX_VaccinationRecords_StudentId");
+
+                entity.HasIndex(vr => vr.ScheduleId)
+                      .HasDatabaseName("IX_VaccinationRecords_ScheduleId");
+
+                entity.HasIndex(vr => vr.SessionStudentId)
+                      .HasDatabaseName("IX_VaccinationRecords_SessionStudentId");
+
+                entity.HasIndex(vr => vr.VaccineLotId)
+                      .HasDatabaseName("IX_VaccinationRecords_VaccineLotId");
+
+                entity.HasIndex(vr => vr.VaccinatedById)
+                      .HasDatabaseName("IX_VaccinationRecords_VaccinatedById");
+
+                entity.HasIndex(vr => vr.VaccineTypeId)
+                      .HasDatabaseName("IX_VaccinationRecords_VaccineTypeId");
+            });
+
+            // MedicationLot indexes
+            builder.Entity<MedicationLot>(entity =>
+            {
+                entity.HasIndex(ml => ml.MedicationId)
+                      .HasDatabaseName("IX_MedicationLots_MedicationId");
+
+                entity.HasIndex(ml => ml.VaccineTypeId)
+                      .HasDatabaseName("IX_MedicationLots_VaccineTypeId");
+
+                entity.HasIndex(ml => ml.LotNumber)
+                      .HasDatabaseName("IX_MedicationLots_LotNumber");
+            });
+
+            // VaccineDoseInfo indexes
+            builder.Entity<VaccineDoseInfo>(entity =>
+            {
+                entity.HasIndex(v => v.VaccineTypeId)
+                      .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId");
+
+                entity.HasIndex(v => v.PreviousDoseId)
+                      .HasDatabaseName("IX_VaccineDoseInfos_PreviousDoseId");
+            });
 
             // CounselingAppointment indexes
             builder.Entity<CounselingAppointment>(entity =>
@@ -467,9 +480,192 @@ namespace Repositories
                 entity.Property(e => e.BloodPressureDiastolic)
                       .HasPrecision(3, 0);
             });
+        }
+        #endregion
 
-            // Add other precision and constraint configurations as needed
-            // Example: String length constraints, decimal precision, etc.
+        #region Enum Conversions Configuration
+        private static void ConfigureEnumConversions(ModelBuilder builder)
+        {
+            // Medication enums
+            builder.Entity<Medication>()
+                .Property(m => m.Category)
+                .HasConversion(new EnumToStringConverter<MedicationCategory>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<Medication>()
+                .Property(m => m.Status)
+                .HasConversion(new EnumToStringConverter<MedicationStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // MedicationLot enum
+            builder.Entity<MedicationLot>()
+                .Property(e => e.Type)
+                .HasConversion(new EnumToStringConverter<LotType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // CheckupSchedule enum
+            builder.Entity<CheckupSchedule>()
+                .Property(e => e.ParentConsentStatus)
+                .HasConversion(new EnumToStringConverter<CheckupScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // HealthEvent enums
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventCategory)
+                .HasConversion(new EnumToStringConverter<EventCategory>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventType)
+                .HasConversion(new EnumToStringConverter<EventType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthEvent>()
+                .Property(e => e.EventStatus)
+                .HasConversion(new EnumToStringConverter<EventStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // HealthProfile enums
+            builder.Entity<HealthProfile>()
+                .Property(e => e.Vision)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<HealthProfile>()
+                .Property(e => e.Hearing)
+                .HasConversion(new EnumToStringConverter<HearingLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // CheckupRecord enums
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.VisionLeft)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.VisionRight)
+                .HasConversion(new EnumToStringConverter<VisionLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<CheckupRecord>()
+                .Property(e => e.Hearing)
+                .HasConversion(new EnumToStringConverter<HearingLevel>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // CounselingAppointment enum
+            builder.Entity<CounselingAppointment>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // FileAttachment enums
+            builder.Entity<FileAttachment>()
+                .Property(e => e.ReferenceType)
+                .HasConversion(new EnumToStringConverter<ReferenceType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<FileAttachment>()
+                .Property(e => e.FileType)
+                .HasConversion(new EnumToStringConverter<FileType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // Notification enums
+            builder.Entity<Notification>()
+                .Property(e => e.Type)
+                .HasConversion(new EnumToStringConverter<NotificationType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<Notification>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<NotificationStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // Parent enum
+            builder.Entity<Parent>()
+                .Property(e => e.Relationship)
+                .HasConversion(new EnumToStringConverter<Relationship>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // ParentMedicationDelivery enum
+            builder.Entity<ParentMedicationDelivery>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<StatusMedicationDelivery>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // Report enum
+            builder.Entity<Report>()
+                .Property(e => e.ReportType)
+                .HasConversion(new EnumToStringConverter<ReportType>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // User enum
+            builder.Entity<User>()
+                .Property(e => e.Gender)
+                .HasConversion(new EnumToStringConverter<Gender>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // VaccinationSchedule enum
+            builder.Entity<VaccinationSchedule>()
+                .Property(e => e.ScheduleStatus)
+                .HasConversion(new EnumToStringConverter<ScheduleStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // SessionStudent enums
+            builder.Entity<SessionStudent>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<SessionStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            builder.Entity<SessionStudent>()
+                .Property(e => e.ConsentStatus)
+                .HasConversion(new EnumToStringConverter<ParentConsentStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            // VaccinationCampaign enum
+            builder.Entity<VaccinationCampaign>()
+                .Property(e => e.Status)
+                .HasConversion(new EnumToStringConverter<VaccinationCampaignStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<VaccinationRecord>()
+                .Property(vr => vr.ReactionSeverity)
+                .HasConversion(new EnumToStringConverter<VaccinationReactionSeverity>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<CheckupCampaign>()
+                .Property(vr => vr.Status)
+                .HasConversion(new EnumToStringConverter<CheckupCampaignStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<CheckupRecord>()
+                .Property(vr => vr.Status)
+                .HasConversion(new EnumToStringConverter<CheckupRecordStatus>())
+                .HasMaxLength(50)
+                .IsUnicode(true);
         }
         #endregion
     }

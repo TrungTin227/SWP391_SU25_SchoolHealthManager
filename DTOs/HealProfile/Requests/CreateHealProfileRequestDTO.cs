@@ -12,10 +12,8 @@ namespace DTOs.HealProfile.Requests
     public class CreateHealProfileRequestDTO
     {
         [Required(ErrorMessage = "Mã học sinh là bắt buộc")]
-        public Guid StudentId { get; set; }
+        public string StudentCode { get; set; }
 
-        [Required(ErrorMessage = "Mã phụ huynh là bắt buộc")]
-        public Guid ParentId { get; set; }
         public string? Allergies { get; set; }
         public string? ChronicConditions { get; set; }
         public string? TreatmentHistory { get; set; }

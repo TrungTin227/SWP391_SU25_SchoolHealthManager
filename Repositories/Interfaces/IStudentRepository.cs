@@ -22,6 +22,16 @@ namespace Repositories.Interfaces
 
         Task<List<GetAllStudentDTO>> GetStudentsByParentIdAsync(Guid id);
 
+        Task<List<Student>> GetStudentsByGradeAndSectionAsync(List<string> grades, List<string> sections);
+        Task<List<GetAllStudentDTO>> GetStudentsDTOByGradeAndSectionAsync(List<string> grades, List<string> sections);
 
+        // Method hỗ trợ thêm cho scheduling
+        Task<List<Student>> GetStudentsByIdsAsync(List<Guid> studentIds);
+        Task<List<GetAllStudentDTO>> GetStudentsDTOByIdsAsync(List<Guid> studentIds);
+
+        // Method để lấy danh sách Grade và Section có sẵn
+        Task<List<string>> GetAvailableGradesAsync();
+        Task<List<string>> GetAvailableSectionsAsync();
+        Task<Dictionary<string, List<string>>> GetGradeSectionMappingAsync();
     }
 }

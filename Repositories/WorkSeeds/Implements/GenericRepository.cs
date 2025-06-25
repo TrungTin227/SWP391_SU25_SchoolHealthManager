@@ -234,5 +234,13 @@ namespace Repositories.WorkSeeds.Implements
         {
             return _dbSet.AsQueryable();
         }
+
+        public async Task<List<TEntity>> GetByIdsAsync(List<TKey> ids)
+        {
+            return await _dbSet
+                .Where(e => ids.Contains(EF.Property<TKey>(e, "Id")))
+                .ToListAsync();
+        }
+
     }
 }

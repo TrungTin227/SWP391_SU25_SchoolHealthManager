@@ -1,15 +1,9 @@
-﻿using DTOs.MedicationDTOs.Request;
-using DTOs.MedicationDTOs.Response;
-using DTOs.MedicationLotDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
 {
     public class MedicationService : BaseService<Medication, Guid>, IMedicationService
     {
-        private readonly IMedicationRepository _medicationRepository;
         private readonly ILogger<MedicationService> _logger;
 
         public MedicationService(
@@ -20,11 +14,11 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(medicationRepository, currentUserService, unitOfWork, currentTime)
         {
-            _medicationRepository = medicationRepository;
             _logger = logger;
         }
 
         #region Public API Methods
+
         /// <summary>
         /// Lấy danh sách thuốc theo phân trang, có thể lọc theo searchTerm, category và includeDeleted.
         /// </summary>
@@ -46,57 +40,27 @@ namespace Services.Implementations
                     currentUserId, DateTime.UtcNow, pageNumber, pageSize, searchTerm, category, includeDeleted);
 
                 // Validate input parameters
-                if (pageNumber < 1)
+                var validationResult = ValidatePagingParameters(pageNumber, pageSize);
+                if (!validationResult.IsValid)
                 {
-                    _logger.LogWarning("Invalid pageNumber: {PageNumber} by user {UserId}", pageNumber, currentUserId);
                     return ApiResult<PagedList<MedicationResponse>>.Failure(
-                        new ArgumentException("Số trang phải lớn hơn 0"));
-                }
-
-                if (pageSize < 1 || pageSize > 100)
-                {
-                    _logger.LogWarning("Invalid pageSize: {PageSize} by user {UserId}", pageSize, currentUserId);
-                    return ApiResult<PagedList<MedicationResponse>>.Failure(
-                        new ArgumentException("Kích thước trang phải từ 1 đến 100"));
+                        new ArgumentException(validationResult.ErrorMessage));
                 }
 
                 // Normalize search term
-                var normalizedSearchTerm = string.IsNullOrWhiteSpace(searchTerm)
-                    ? null
-                    : searchTerm.Trim().ToLowerInvariant();
+                var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
 
-                // Get medications from repository based on includeDeleted flag
-                PagedList<Medication> medicationsPaged;
-
-                if (includeDeleted)
-                {
-                    _logger.LogInformation("Fetching medications including deleted ones for user {UserId}", currentUserId);
-                    medicationsPaged = await _medicationRepository.GetAllMedicationsIncludingDeletedAsync(
-                        pageNumber, pageSize, normalizedSearchTerm, category);
-                }
-                else
-                {
-                    _logger.LogInformation("Fetching active medications only for user {UserId}", currentUserId);
-                    medicationsPaged = await _medicationRepository.GetMedicationsAsync(
-                        pageNumber, pageSize, normalizedSearchTerm, category);
-                }
+                // Get medications from repository
+                var medicationsPaged = await GetMedicationsFromRepository(
+                    pageNumber, pageSize, normalizedSearchTerm, category, includeDeleted);
 
                 // Check if any medications found
                 if (medicationsPaged == null || !medicationsPaged.Any())
                 {
-                    _logger.LogInformation(
-                        "No medications found with criteria - User: {UserId}, Search: '{SearchTerm}', Category: {Category}, " +
-                        "IncludeDeleted: {IncludeDeleted}",
-                        currentUserId, normalizedSearchTerm, category, includeDeleted);
-
-                    var emptyResult = new PagedList<MedicationResponse>(
-                        new List<MedicationResponse>(), 0, pageNumber, pageSize);
-
-                    return ApiResult<PagedList<MedicationResponse>>.Success(
-                        emptyResult, "Không tìm thấy thuốc nào phù hợp với tiêu chí tìm kiếm");
+                    return CreateEmptyResult(pageNumber, pageSize, normalizedSearchTerm, category, includeDeleted);
                 }
 
-                // Map to response DTOs
+                // Map to response DTOs using batch loading
                 var medicationResponses = await MapToMedicationResponsesAsync(medicationsPaged);
 
                 // Create paged result
@@ -106,192 +70,24 @@ namespace Services.Implementations
                     pageNumber,
                     pageSize);
 
-                // Generate success message
+                // Generate success message and log metrics
                 var message = GenerateGetMedicationsSuccessMessage(pagedResult, normalizedSearchTerm, category, includeDeleted);
-
-                // Log success metrics
-                stopwatch.Stop();
-                _logger.LogInformation(
-                    "GetMedicationsAsync completed successfully - User: {UserId}, Duration: {Duration}ms, " +
-                    "TotalCount: {TotalCount}, PageCount: {PageCount}, CurrentPage: {CurrentPage}",
-                    currentUserId, stopwatch.ElapsedMilliseconds, pagedResult.MetaData.TotalCount,
-                    pagedResult.MetaData.TotalPages, pagedResult.MetaData.CurrentPage);
+                LogSuccessMetrics(stopwatch, pagedResult, currentUserId);
 
                 return ApiResult<PagedList<MedicationResponse>>.Success(pagedResult, message);
             }
             catch (ArgumentException argEx)
             {
-                stopwatch.Stop();
-                _logger.LogWarning(argEx,
-                    "Invalid argument in GetMedicationsAsync by user {UserId} - Duration: {Duration}ms",
-                    currentUserId, stopwatch.ElapsedMilliseconds);
+                LogWarning(stopwatch, argEx, currentUserId);
                 return ApiResult<PagedList<MedicationResponse>>.Failure(argEx);
             }
             catch (Exception ex)
             {
-                stopwatch.Stop();
-                _logger.LogError(ex,
-                    "Error occurred while getting medications by user {UserId} - Duration: {Duration}ms, " +
-                    "Parameters: PageNumber={PageNumber}, PageSize={PageSize}, SearchTerm='{SearchTerm}', " +
-                    "Category={Category}, IncludeDeleted={IncludeDeleted}",
-                    currentUserId, stopwatch.ElapsedMilliseconds, pageNumber, pageSize,
-                    searchTerm, category, includeDeleted);
-
+                LogError(stopwatch, ex, currentUserId, pageNumber, pageSize, searchTerm, category, includeDeleted);
                 return ApiResult<PagedList<MedicationResponse>>.Failure(
                     new Exception("Đã xảy ra lỗi khi lấy danh sách thuốc. Vui lòng thử lại sau."));
             }
         }
-
-        /// <summary>
-        /// Xóa thuốc (hỗ trợ xóa 1 hoặc nhiều, soft delete hoặc permanent).
-        /// </summary>
-        public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationsAsync(List<Guid> medicationIds, bool isPermanent = false)
-        {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var result = new BatchOperationResultDTO
-                    {
-                        TotalRequested = medicationIds.Count
-                    };
-
-                    foreach (var id in medicationIds)
-                    {
-                        try
-                        {
-                            bool success;
-
-                            if (isPermanent)
-                            {
-                                success = await _medicationRepository.PermanentDeleteWithLotsAsync(id);
-                            }
-                            else
-                            {
-                                success = await _medicationRepository.SoftDeleteWithLotsAsync(id, currentUserId);
-                            }
-
-                            if (success)
-                            {
-                                result.SuccessCount++;
-                                result.SuccessIds.Add(id.ToString());
-                            }
-                            else
-                            {
-                                result.FailureCount++;
-                                result.Errors.Add(new BatchOperationErrorDTO
-                                {
-                                    Id = id.ToString(),
-                                    Error = "NotFound",
-                                    Details = "Không tìm thấy thuốc hoặc thuốc đã bị xóa"
-                                });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            result.FailureCount++;
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = id.ToString(),
-                                Error = "Exception",
-                                Details = ex.Message
-                            });
-
-                            _logger.LogError(ex, "Error deleting medication {MedicationId}", id);
-                        }
-                    }
-
-                    await _unitOfWork.SaveChangesAsync();
-
-                    var actionType = isPermanent ? "xóa vĩnh viễn" : "xóa";
-                    result.Message = GenerateBatchOperationMessage(result, actionType);
-
-                    _logger.LogInformation("Medications {ActionType}: Success={SuccessCount}, Failed={FailedCount} by user: {UserId}",
-                        actionType, result.SuccessCount, result.FailureCount, currentUserId);
-
-                    return result.SuccessCount > 0
-                        ? ApiResult<BatchOperationResultDTO>.Success(result, result.Message)
-                        : ApiResult<BatchOperationResultDTO>.Failure(new Exception(result.Message));
-                }
-                catch (Exception ex)
-                {
-                    var actionType = isPermanent ? "permanently deleting" : "soft deleting";
-                    _logger.LogError(ex, "Error occurred while {ActionType} medications", actionType);
-                    return ApiResult<BatchOperationResultDTO>.Failure(new Exception($"Đã xảy ra lỗi khi xóa thuốc"));
-                }
-            });
-        }
-        /// <summary>
-        /// Khôi phục thuốc đã bị soft delete (hỗ trợ 1 hoặc nhiều).
-        /// </summary>
-        public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationsAsync(List<Guid> medicationIds)
-        {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var result = new BatchOperationResultDTO
-                    {
-                        TotalRequested = medicationIds.Count
-                    };
-
-                    foreach (var id in medicationIds)
-                    {
-                        try
-                        {
-                            var success = await _medicationRepository.RestoreWithLotsAsync(id, currentUserId);
-
-                            if (success)
-                            {
-                                result.SuccessCount++;
-                                result.SuccessIds.Add(id.ToString());
-                            }
-                            else
-                            {
-                                result.FailureCount++;
-                                result.Errors.Add(new BatchOperationErrorDTO
-                                {
-                                    Id = id.ToString(),
-                                    Error = "NotFound",
-                                    Details = "Không tìm thấy thuốc đã bị xóa"
-                                });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            result.FailureCount++;
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = id.ToString(),
-                                Error = "Exception",
-                                Details = ex.Message
-                            });
-
-                            _logger.LogError(ex, "Error restoring medication {MedicationId}", id);
-                        }
-                    }
-
-                    await _unitOfWork.SaveChangesAsync();
-
-                    result.Message = GenerateBatchOperationMessage(result, "khôi phục");
-
-                    _logger.LogInformation("Medications restored: Success={SuccessCount}, Failed={FailedCount} by user: {UserId}",
-                        result.SuccessCount, result.FailureCount, currentUserId);
-
-                    return result.SuccessCount > 0
-                        ? ApiResult<BatchOperationResultDTO>.Success(result, result.Message)
-                        : ApiResult<BatchOperationResultDTO>.Failure(new Exception(result.Message));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error occurred while restoring medications");
-                    return ApiResult<BatchOperationResultDTO>.Failure(new Exception("Đã xảy ra lỗi khi khôi phục thuốc"));
-                }
-            });
-        }
-
 
         /// <summary>
         /// Lấy thông tin chi tiết thuốc theo Id.
@@ -300,21 +96,62 @@ namespace Services.Implementations
         {
             try
             {
-                var medication = await _medicationRepository
-                    .GetByIdAsync(id, m => m.Lots);
+                if (id == Guid.Empty)
+                {
+                    return ApiResult<MedicationResponse>.Failure(
+                        new ArgumentException("ID thuốc không hợp lệ"));
+                }
+
+                var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
 
                 if (medication == null || medication.IsDeleted)
                 {
-                    return ApiResult<MedicationResponse>.Failure(new Exception("Không tìm thấy thuốc"));
+                    return ApiResult<MedicationResponse>.Failure(
+                        new Exception("Không tìm thấy thuốc"));
                 }
 
-                var response = await MapToMedicationResponseAsync(medication);
+                var response = await MapSingleMedicationToResponseAsync(medication);
                 return ApiResult<MedicationResponse>.Success(response, "Lấy thông tin thuốc thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting medication by id: {MedicationId}", id);
-                return ApiResult<MedicationResponse>.Failure(new Exception("Đã xảy ra lỗi khi lấy thông tin thuốc"));
+                return ApiResult<MedicationResponse>.Failure(
+                    new Exception("Đã xảy ra lỗi khi lấy thông tin thuốc"));
+            }
+        }
+
+        /// <summary>
+        /// Lấy thông tin chi tiết thuốc kèm thông tin lô.
+        /// </summary>
+        public async Task<ApiResult<MedicationDetailResponse>> GetMedicationDetailByIdAsync(Guid id)
+        {
+            try
+            {
+                if (id == Guid.Empty)
+                {
+                    return ApiResult<MedicationDetailResponse>.Failure(
+                        new ArgumentException("ID thuốc không hợp lệ"));
+                }
+
+                var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
+
+                if (medication == null || medication.IsDeleted)
+                {
+                    return ApiResult<MedicationDetailResponse>.Failure(
+                        new Exception("Không tìm thấy thuốc"));
+                }
+
+                var lots = await _unitOfWork.MedicationLotRepository.GetLotsByMedicationIdAsync(id);
+                var response = MapToMedicationDetailResponse(medication, lots);
+
+                return ApiResult<MedicationDetailResponse>.Success(response, "Lấy thông tin chi tiết thuốc thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting medication detail by id: {MedicationId}", id);
+                return ApiResult<MedicationDetailResponse>.Failure(
+                    new Exception("Đã xảy ra lỗi khi lấy thông tin chi tiết thuốc"));
             }
         }
 
@@ -327,27 +164,29 @@ namespace Services.Implementations
             {
                 try
                 {
-                    // Kiểm tra trùng tên
-                    if (await _medicationRepository.MedicationNameExistsAsync(request.Name))
+                    // Validate request
+                    var validationResult = await ValidateCreateRequestAsync(request);
+                    if (!validationResult.IsValid)
                     {
-                        return ApiResult<MedicationResponse>.Failure(new Exception("Tên thuốc đã tồn tại"));
+                        return ApiResult<MedicationResponse>.Failure(
+                            new Exception(validationResult.ErrorMessage));
                     }
 
-                    // Tạo entity
+                    // Create entity and save
                     var medication = MapToMedicationEntity(request);
-
-                    // Sử dụng method từ BaseService để handle audit fields
                     var createdMedication = await CreateAsync(medication);
 
-                    var response = await MapToMedicationResponseAsync(createdMedication);
-                    _logger.LogInformation("Medication created successfully: {MedicationId}", createdMedication.Id);
+                    // Map to response
+                    var response = await MapSingleMedicationToResponseAsync(createdMedication);
 
+                    _logger.LogInformation("Medication created successfully: {MedicationId}", createdMedication.Id);
                     return ApiResult<MedicationResponse>.Success(response, "Tạo thuốc thành công");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error occurred while creating medication");
-                    return ApiResult<MedicationResponse>.Failure(new Exception("Đã xảy ra lỗi khi tạo thuốc"));
+                    return ApiResult<MedicationResponse>.Failure(
+                        new Exception("Đã xảy ra lỗi khi tạo thuốc"));
                 }
             });
         }
@@ -356,77 +195,122 @@ namespace Services.Implementations
         /// Cập nhật thông tin thuốc theo Id.
         /// </summary>
         public async Task<ApiResult<MedicationResponse>> UpdateMedicationAsync(
-            Guid id,
-            UpdateMedicationRequest request)
+            Guid id, UpdateMedicationRequest request)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
                 try
                 {
-                    var medication = await _medicationRepository
-                        .GetByIdAsync(id, m => m.Lots);
+                    if (id == Guid.Empty)
+                    {
+                        return ApiResult<MedicationResponse>.Failure(
+                            new ArgumentException("ID thuốc không hợp lệ"));
+                    }
+
+                    var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(id, m => m.Lots);
 
                     if (medication == null || medication.IsDeleted)
                     {
-                        return ApiResult<MedicationResponse>.Failure(new Exception("Không tìm thấy thuốc"));
+                        return ApiResult<MedicationResponse>.Failure(
+                            new Exception("Không tìm thấy thuốc"));
                     }
 
-                    // Kiểm tra trùng tên nếu có thay đổi
-                    if (!string.IsNullOrWhiteSpace(request.Name) && request.Name != medication.Name)
+                    // Validate update request
+                    var validationResult = await ValidateUpdateRequestAsync(request, id);
+                    if (!validationResult.IsValid)
                     {
-                        bool existed = await _medicationRepository
-                            .MedicationNameExistsAsync(request.Name, id);
-
-                        if (existed)
-                        {
-                            return ApiResult<MedicationResponse>.Failure(new Exception("Tên thuốc đã tồn tại"));
-                        }
+                        return ApiResult<MedicationResponse>.Failure(
+                            new Exception(validationResult.ErrorMessage));
                     }
 
-                    // Update entity properties
+                    // Update entity
                     UpdateMedicationEntity(medication, request);
-
-                    // Sử dụng method từ BaseService để handle audit fields
                     var updatedMedication = await UpdateAsync(medication);
 
-                    var response = await MapToMedicationResponseAsync(updatedMedication);
-                    _logger.LogInformation("Medication updated successfully: {MedicationId}", id);
+                    // Map to response
+                    var response = await MapSingleMedicationToResponseAsync(updatedMedication);
 
+                    _logger.LogInformation("Medication updated successfully: {MedicationId}", id);
                     return ApiResult<MedicationResponse>.Success(response, "Cập nhật thuốc thành công");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error occurred while updating medication: {MedicationId}", id);
-                    return ApiResult<MedicationResponse>.Failure(new Exception("Đã xảy ra lỗi khi cập nhật thuốc"));
+                    return ApiResult<MedicationResponse>.Failure(
+                        new Exception("Đã xảy ra lỗi khi cập nhật thuốc"));
                 }
             });
         }
 
         /// <summary>
-        /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
+        /// Xóa thuốc (hỗ trợ xóa 1 hoặc nhiều, soft delete hoặc permanent).
         /// </summary>
-        public async Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30)
+        public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationsAsync(List<Guid> medicationIds, bool isPermanent = false)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
                 try
                 {
-                    var deletedCount = await _medicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
+                    var validationResult = ValidateBatchOperationIds(medicationIds);
+                    if (!validationResult.IsValid)
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException(validationResult.ErrorMessage));
+                    }
 
+                    var result = await ExecuteBatchDeleteOperation(medicationIds, isPermanent);
                     await _unitOfWork.SaveChangesAsync();
 
-                    _logger.LogInformation("Cleaned up {Count} expired medications older than {Days} days", deletedCount, daysToExpire);
+                    var actionType = isPermanent ? "xóa vĩnh viễn" : "xóa";
+                    result.Message = GenerateBatchOperationMessage(result, actionType);
 
-                    var message = deletedCount > 0
-                        ? $"Đã xóa vĩnh viễn {deletedCount} thuốc hết hạn"
-                        : "Không có thuốc hết hạn nào để xóa";
+                    LogBatchOperationResult(actionType, result);
 
-                    return ApiResult<string>.Success(message, message);
+                    return result.SuccessCount > 0
+                        ? ApiResult<BatchOperationResultDTO>.Success(result, result.Message)
+                        : ApiResult<BatchOperationResultDTO>.Failure(new Exception(result.Message));
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while cleaning up expired medications");
-                    return ApiResult<string>.Failure(new Exception("Đã xảy ra lỗi khi dọn dẹp thuốc hết hạn"));
+                    var actionType = isPermanent ? "permanently deleting" : "soft deleting";
+                    _logger.LogError(ex, "Error occurred while {ActionType} medications", actionType);
+                    return ApiResult<BatchOperationResultDTO>.Failure(
+                        new Exception("Đã xảy ra lỗi khi xóa thuốc"));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Khôi phục thuốc đã bị soft delete (hỗ trợ 1 hoặc nhiều).
+        /// </summary>
+        public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationsAsync(List<Guid> medicationIds)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var validationResult = ValidateBatchOperationIds(medicationIds);
+                    if (!validationResult.IsValid)
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException(validationResult.ErrorMessage));
+                    }
+
+                    var result = await ExecuteBatchRestoreOperation(medicationIds);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    result.Message = GenerateBatchOperationMessage(result, "khôi phục");
+                    LogBatchOperationResult("khôi phục", result);
+
+                    return result.SuccessCount > 0
+                        ? ApiResult<BatchOperationResultDTO>.Success(result, result.Message)
+                        : ApiResult<BatchOperationResultDTO>.Failure(new Exception(result.Message));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while restoring medications");
+                    return ApiResult<BatchOperationResultDTO>.Failure(
+                        new Exception("Đã xảy ra lỗi khi khôi phục thuốc"));
                 }
             });
         }
@@ -438,79 +322,214 @@ namespace Services.Implementations
         {
             try
             {
-                var medications = await _medicationRepository
-                    .GetActiveMedicationsAsync();
-
+                var medications = await _unitOfWork.MedicationRepository.GetActiveMedicationsAsync();
                 var responses = await MapToMedicationResponsesAsync(medications);
 
-                return ApiResult<List<MedicationResponse>>.Success(responses, "Lấy danh sách thuốc đang hoạt động thành công");
+                return ApiResult<List<MedicationResponse>>.Success(
+                    responses, "Lấy danh sách thuốc đang hoạt động thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting active medications");
-                return ApiResult<List<MedicationResponse>>.Failure(new Exception("Đã xảy ra lỗi khi lấy danh sách thuốc đang hoạt động"));
+                return ApiResult<List<MedicationResponse>>.Failure(
+                    new Exception("Đã xảy ra lỗi khi lấy danh sách thuốc đang hoạt động"));
             }
         }
 
-        // Thêm vào MedicationService class
-        public async Task<ApiResult<MedicationDetailResponse>> GetMedicationDetailByIdAsync(Guid id)
+        /// <summary>
+        /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
+        /// </summary>
+        public async Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30)
         {
-            try
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                // Lấy thông tin thuốc với include lots
-                var medication = await _medicationRepository
-                    .GetByIdAsync(id, m => m.Lots);
-
-                if (medication == null || medication.IsDeleted)
+                try
                 {
-                    return ApiResult<MedicationDetailResponse>.Failure(new Exception("Không tìm thấy thuốc"));
-                }
-
-                // Lấy danh sách lô thuốc chi tiết
-                var lots = await _unitOfWork.MedicationLotRepository
-                    .GetLotsByMedicationIdAsync(id);
-
-                // Map thông tin thuốc
-                var response = new MedicationDetailResponse
-                {
-                    Id = medication.Id,
-                    Name = medication.Name,
-                    Unit = medication.Unit,
-                    DosageForm = medication.DosageForm,
-                    Category = medication.Category.ToString(),
-                    Status = medication.Status.ToString(),
-                    CreatedAt = medication.CreatedAt,
-                    UpdatedAt = medication.UpdatedAt,
-                    TotalLots = lots.Count,
-                    TotalQuantity = lots.Sum(l => l.Quantity),
-
-                    // Map danh sách lô thuốc
-                    Lots = lots.Select(lot => new MedicationLotDetailResponse
+                    if (daysToExpire <= 0)
                     {
-                        Id = lot.Id,
-                        LotNumber = lot.LotNumber,
-                        ExpiryDate = lot.ExpiryDate,
-                        Quantity = lot.Quantity,
-                        StorageLocation = lot.StorageLocation,
-                        CreatedAt = lot.CreatedAt,
-                        UpdatedAt = lot.UpdatedAt
-                    }).OrderBy(l => l.ExpiryDate).ToList()
-                };
+                        return ApiResult<string>.Failure(
+                            new ArgumentException("Số ngày hết hạn phải lớn hơn 0"));
+                    }
 
-                return ApiResult<MedicationDetailResponse>.Success(response, "Lấy thông tin chi tiết thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while getting medication detail by id: {MedicationId}", id);
-                return ApiResult<MedicationDetailResponse>.Failure(new Exception("Đã xảy ra lỗi khi lấy thông tin chi tiết thuốc"));
-            }
+                    var deletedCount = await _unitOfWork.MedicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    var message = deletedCount > 0
+                        ? $"Đã xóa vĩnh viễn {deletedCount} thuốc hết hạn"
+                        : "Không có thuốc nào cần xóa";
+
+                    _logger.LogInformation("Cleanup expired medications completed: {DeletedCount} medications deleted", deletedCount);
+                    return ApiResult<string>.Success(message, message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while cleaning up expired medications");
+                    return ApiResult<string>.Failure(
+                        new Exception("Đã xảy ra lỗi khi dọn dẹp thuốc hết hạn"));
+                }
+            });
         }
 
         #endregion
 
         #region Private Helper Methods
+
+        #region Validation Methods
+
+        private static (bool IsValid, string ErrorMessage) ValidatePagingParameters(int pageNumber, int pageSize)
+        {
+            if (pageNumber < 1)
+                return (false, "Số trang phải lớn hơn 0");
+
+            if (pageSize < 1 || pageSize > 100)
+                return (false, "Kích thước trang phải từ 1 đến 100");
+
+            return (true, string.Empty);
+        }
+
+        private static (bool IsValid, string ErrorMessage) ValidateBatchOperationIds(List<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+                return (false, "Danh sách ID không được rỗng");
+
+            if (ids.Any(id => id == Guid.Empty))
+                return (false, "Danh sách chứa ID không hợp lệ");
+
+            if (ids.Count > 100)
+                return (false, "Không thể xử lý quá 100 thuốc cùng lúc");
+
+            return (true, string.Empty);
+        }
+
+        private async Task<(bool IsValid, string ErrorMessage)> ValidateCreateRequestAsync(CreateMedicationRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return (false, "Tên thuốc không được để trống");
+
+            if (await _unitOfWork.MedicationRepository.MedicationNameExistsAsync(request.Name))
+                return (false, "Tên thuốc đã tồn tại");
+
+            return (true, string.Empty);
+        }
+
+        private async Task<(bool IsValid, string ErrorMessage)> ValidateUpdateRequestAsync(UpdateMedicationRequest request, Guid excludeId)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return (false, "Tên thuốc không được để trống");
+
+            if (await _unitOfWork.MedicationRepository.MedicationNameExistsAsync(request.Name, excludeId))
+                return (false, "Tên thuốc đã tồn tại");
+
+            return (true, string.Empty);
+        }
+
+        #endregion
+
+        #region Repository Access Methods
+
+        private async Task<PagedList<Medication>> GetMedicationsFromRepository(
+            int pageNumber, int pageSize, string? searchTerm, MedicationCategory? category, bool includeDeleted)
+        {
+            if (includeDeleted)
+            {
+                _logger.LogInformation("Fetching medications including deleted ones");
+                return await _unitOfWork.MedicationRepository.GetAllMedicationsIncludingDeletedAsync(
+                    pageNumber, pageSize, searchTerm, category);
+            }
+            else
+            {
+                _logger.LogInformation("Fetching active medications only");
+                return await _unitOfWork.MedicationRepository.GetMedicationsAsync(
+                    pageNumber, pageSize, searchTerm, category);
+            }
+        }
+
+        #endregion
+
+        #region Batch Operations
+
+        private async Task<BatchOperationResultDTO> ExecuteBatchDeleteOperation(List<Guid> medicationIds, bool isPermanent)
+        {
+            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+            var result = new BatchOperationResultDTO { TotalRequested = medicationIds.Count };
+
+            foreach (var id in medicationIds)
+            {
+                try
+                {
+                    bool success = isPermanent
+                        ? await _unitOfWork.MedicationRepository.PermanentDeleteWithLotsAsync(id)
+                        : await _unitOfWork.MedicationRepository.SoftDeleteWithLotsAsync(id, currentUserId);
+
+                    if (success)
+                    {
+                        result.SuccessCount++;
+                        result.SuccessIds.Add(id.ToString());
+                    }
+                    else
+                    {
+                        AddBatchOperationError(result, id, "NotFound", "Không tìm thấy thuốc hoặc thuốc đã bị xóa");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddBatchOperationError(result, id, "Exception", ex.Message);
+                    _logger.LogError(ex, "Error deleting medication {MedicationId}", id);
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<BatchOperationResultDTO> ExecuteBatchRestoreOperation(List<Guid> medicationIds)
+        {
+            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+            var result = new BatchOperationResultDTO { TotalRequested = medicationIds.Count };
+
+            foreach (var id in medicationIds)
+            {
+                try
+                {
+                    var success = await _unitOfWork.MedicationRepository.RestoreWithLotsAsync(id, currentUserId);
+
+                    if (success)
+                    {
+                        result.SuccessCount++;
+                        result.SuccessIds.Add(id.ToString());
+                    }
+                    else
+                    {
+                        AddBatchOperationError(result, id, "NotFound", "Không tìm thấy thuốc đã bị xóa");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddBatchOperationError(result, id, "Exception", ex.Message);
+                    _logger.LogError(ex, "Error restoring medication {MedicationId}", id);
+                }
+            }
+
+            return result;
+        }
+
+        private static void AddBatchOperationError(BatchOperationResultDTO result, Guid id, string error, string details)
+        {
+            result.FailureCount++;
+            result.Errors.Add(new BatchOperationErrorDTO
+            {
+                Id = id.ToString(),
+                Error = error,
+                Details = details
+            });
+        }
+
+        #endregion
+
+        #region Mapping Methods - OPTIMIZED BATCH LOADING
+
         /// <summary>
-        /// Map collection of Medication entities to MedicationResponses with optimized performance.
+        /// Map collection of Medication entities to MedicationResponses using batch loading approach.
+        /// This method eliminates DbContext concurrency issues by loading all required data upfront.
         /// </summary>
         private async Task<List<MedicationResponse>> MapToMedicationResponsesAsync(IEnumerable<Medication> medications)
         {
@@ -523,55 +542,33 @@ namespace Services.Implementations
                     return new List<MedicationResponse>();
                 }
 
-                var responses = new List<MedicationResponse>();
                 var currentUserId = _currentUserService.GetUserId();
 
                 _logger.LogDebug("Mapping {Count} medications to responses for user {UserId}",
                     medicationList.Count, currentUserId);
 
-                // Process medications in batches for better performance with large datasets
-                const int batchSize = 20;
-                var totalBatches = (int)Math.Ceiling((double)medicationList.Count / batchSize);
+                // 🎯 STEP 1: Batch load all required data in single queries
+                var medicationIds = medicationList.Select(m => m.Id).ToList();
 
-                for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
+                var totalQuantities = await GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
+                var lotCounts = await GetLotCountsByMedicationIdsAsync(medicationIds);
+
+                // 🎯 STEP 2: Map synchronously using pre-loaded data
+                var responses = medicationList.Select(medication =>
                 {
-                    var batch = medicationList
-                        .Skip(batchIndex * batchSize)
-                        .Take(batchSize)
-                        .ToList();
-
-                    var batchTasks = batch.Select(async medication =>
+                    try
                     {
-                        try
-                        {
-                            return await MapToMedicationResponseAsync(medication);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error mapping medication {MedicationId} to response", medication.Id);
-                            // Return a basic response even if detailed mapping fails
-                            return new MedicationResponse
-                            {
-                                Id = medication.Id,
-                                Name = medication.Name,
-                                Unit = medication.Unit ?? "N/A",
-                                DosageForm = medication.DosageForm ?? "N/A",
-                                Category = medication.Category,
-                                Status = medication.Status,
-                                CreatedAt = medication.CreatedAt,
-                                UpdatedAt = medication.UpdatedAt,
-                                TotalLots = 0,
-                                TotalQuantity = 0
-                            };
-                        }
-                    });
+                        var totalQuantity = totalQuantities.GetValueOrDefault(medication.Id, 0);
+                        var totalLots = lotCounts.GetValueOrDefault(medication.Id, 0);
 
-                    var batchResponses = await Task.WhenAll(batchTasks);
-                    responses.AddRange(batchResponses);
-
-                    _logger.LogDebug("Completed batch {BatchIndex}/{TotalBatches} for user {UserId}",
-                        batchIndex + 1, totalBatches, currentUserId);
-                }
+                        return MapToMedicationResponse(medication, totalQuantity, totalLots);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error mapping medication {MedicationId} to response", medication.Id);
+                        return CreateFallbackMedicationResponse(medication);
+                    }
+                }).ToList();
 
                 _logger.LogDebug("Successfully mapped {Count} medications to responses for user {UserId}",
                     responses.Count, currentUserId);
@@ -584,6 +581,187 @@ namespace Services.Implementations
                     _currentUserService.GetUserId());
                 throw new Exception("Lỗi xử lý dữ liệu thuốc", ex);
             }
+        }
+
+        /// <summary>
+        /// Map single medication to response (for GetById scenarios)
+        /// </summary>
+        private async Task<MedicationResponse> MapSingleMedicationToResponseAsync(Medication medication)
+        {
+            try
+            {
+                var totalQuantity = await _unitOfWork.MedicationRepository.GetTotalQuantityByMedicationIdAsync(medication.Id);
+                var totalLots = medication.Lots?.Count ?? 0;
+
+                return MapToMedicationResponse(medication, totalQuantity, totalLots);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error mapping single medication {MedicationId} to response", medication.Id);
+                return CreateFallbackMedicationResponse(medication);
+            }
+        }
+
+        /// <summary>
+        /// Batch load total quantities for multiple medications
+        /// </summary>
+        private async Task<Dictionary<Guid, int>> GetTotalQuantitiesByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            try
+            {
+                return await _unitOfWork.MedicationRepository.GetTotalQuantitiesByMedicationIdsAsync(medicationIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting total quantities for medications");
+                return new Dictionary<Guid, int>();
+            }
+        }
+
+        /// <summary>
+        /// Batch load lot counts for multiple medications
+        /// </summary>
+        private async Task<Dictionary<Guid, int>> GetLotCountsByMedicationIdsAsync(List<Guid> medicationIds)
+        {
+            try
+            {
+                return await _unitOfWork.MedicationRepository.GetLotCountsByMedicationIdsAsync(medicationIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting lot counts for medications");
+                return new Dictionary<Guid, int>();
+            }
+        }
+
+        /// <summary>
+        /// Core mapping method - synchronous, no database calls
+        /// </summary>
+        private static MedicationResponse MapToMedicationResponse(Medication medication, int totalQuantity, int totalLots)
+        {
+            return new MedicationResponse
+            {
+                Id = medication.Id,
+                Name = medication.Name,
+                Unit = medication.Unit ?? "N/A",
+                DosageForm = medication.DosageForm ?? "N/A",
+                Category = medication.Category,
+                Status = medication.Status,
+                CreatedAt = medication.CreatedAt,
+                UpdatedAt = medication.UpdatedAt,
+                TotalLots = totalLots,
+                TotalQuantity = totalQuantity
+            };
+        }
+
+        /// <summary>
+        /// Create fallback response when mapping fails
+        /// </summary>
+        private static MedicationResponse CreateFallbackMedicationResponse(Medication medication)
+        {
+            return new MedicationResponse
+            {
+                Id = medication.Id,
+                Name = medication.Name,
+                Unit = medication.Unit ?? "N/A",
+                DosageForm = medication.DosageForm ?? "N/A",
+                Category = medication.Category,
+                Status = medication.Status,
+                CreatedAt = medication.CreatedAt,
+                UpdatedAt = medication.UpdatedAt,
+                TotalLots = 0,
+                TotalQuantity = 0
+            };
+        }
+
+        /// <summary>
+        /// Map medication with lots to detailed response
+        /// </summary>
+        private static MedicationDetailResponse MapToMedicationDetailResponse(Medication medication, List<MedicationLot> lots)
+        {
+            return new MedicationDetailResponse
+            {
+                Id = medication.Id,
+                Name = medication.Name,
+                Unit = medication.Unit,
+                DosageForm = medication.DosageForm,
+                Category = medication.Category.ToString(),
+                Status = medication.Status.ToString(),
+                CreatedAt = medication.CreatedAt,
+                UpdatedAt = medication.UpdatedAt,
+                TotalLots = lots.Count,
+                TotalQuantity = lots.Sum(l => l.Quantity),
+                Lots = lots.Select(lot => new MedicationLotDetailResponse
+                {
+                    Id = lot.Id,
+                    LotNumber = lot.LotNumber,
+                    ExpiryDate = lot.ExpiryDate,
+                    Quantity = lot.Quantity,
+                    StorageLocation = lot.StorageLocation,
+                    CreatedAt = lot.CreatedAt,
+                    UpdatedAt = lot.UpdatedAt
+                }).OrderBy(l => l.ExpiryDate).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Map CreateRequest to Entity
+        /// </summary>
+        private static Medication MapToMedicationEntity(CreateMedicationRequest request)
+        {
+            return new Medication
+            {
+                Name = request.Name,
+                Unit = request.Unit,
+                DosageForm = request.DosageForm,
+                Category = request.Category,
+                Status = request.Status,
+                IsDeleted = false
+            };
+        }
+
+        /// <summary>
+        /// Update entity from UpdateRequest
+        /// </summary>
+        private static void UpdateMedicationEntity(Medication medication, UpdateMedicationRequest request)
+        {
+            if (!string.IsNullOrWhiteSpace(request.Name))
+                medication.Name = request.Name;
+
+            if (!string.IsNullOrWhiteSpace(request.Unit))
+                medication.Unit = request.Unit;
+
+            if (!string.IsNullOrWhiteSpace(request.DosageForm))
+                medication.DosageForm = request.DosageForm;
+
+            if (request.Category.HasValue)
+                medication.Category = request.Category.Value;
+
+            if (request.Status.HasValue)
+                medication.Status = request.Status.Value;
+        }
+
+        #endregion
+
+        #region Utility Methods
+
+        private static string? NormalizeSearchTerm(string? searchTerm)
+        {
+            return string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim().ToLowerInvariant();
+        }
+
+        private ApiResult<PagedList<MedicationResponse>> CreateEmptyResult(
+            int pageNumber, int pageSize, string? searchTerm, MedicationCategory? category, bool includeDeleted)
+        {
+            _logger.LogInformation(
+                "No medications found with criteria - Search: '{SearchTerm}', Category: {Category}, IncludeDeleted: {IncludeDeleted}",
+                searchTerm, category, includeDeleted);
+
+            var emptyResult = new PagedList<MedicationResponse>(
+                new List<MedicationResponse>(), 0, pageNumber, pageSize);
+
+            return ApiResult<PagedList<MedicationResponse>>.Success(
+                emptyResult, "Không tìm thấy thuốc nào phù hợp với tiêu chí tìm kiếm");
         }
 
         private static string GenerateBatchOperationMessage(BatchOperationResultDTO result, string actionType)
@@ -604,69 +782,7 @@ namespace Services.Implementations
 
             return $"Hoàn thành việc {actionType} thuốc";
         }
-        /// <summary>
-        /// Map CreateMedicationRequest to Medication entity.
-        /// </summary>
-        private static Medication MapToMedicationEntity(CreateMedicationRequest request)
-        {
-            return new Medication
-            {
-                Name = request.Name,
-                Unit = request.Unit,
-                DosageForm = request.DosageForm,
-                Category = request.Category,
-                Status = request.Status,
-                IsDeleted = false
-            };
-        }
 
-        /// <summary>
-        /// Update Medication entity với UpdateMedicationRequest.
-        /// </summary>
-        private static void UpdateMedicationEntity(Medication medication, UpdateMedicationRequest request)
-        {
-            if (!string.IsNullOrWhiteSpace(request.Name))
-                medication.Name = request.Name;
-
-            if (!string.IsNullOrWhiteSpace(request.Unit))
-                medication.Unit = request.Unit;
-
-            if (!string.IsNullOrWhiteSpace(request.DosageForm))
-                medication.DosageForm = request.DosageForm;
-
-            if (request.Category.HasValue)
-                medication.Category = request.Category.Value;
-
-            if (request.Status.HasValue)
-                medication.Status = request.Status.Value;
-        }
-
-        /// <summary>
-        /// Map Medication entity to MedicationResponse.
-        /// </summary>
-        private async Task<MedicationResponse> MapToMedicationResponseAsync(Medication medication)
-        {
-            int totalQuantity = await _medicationRepository
-                .GetTotalQuantityByMedicationIdAsync(medication.Id);
-
-            return new MedicationResponse
-            {
-                Id = medication.Id,
-                Name = medication.Name,
-                Unit = medication.Unit,
-                DosageForm = medication.DosageForm,
-                Category = medication.Category,
-                Status = medication.Status,
-                CreatedAt = medication.CreatedAt,
-                UpdatedAt = medication.UpdatedAt,
-                TotalLots = medication.Lots?.Count ?? 0,
-                TotalQuantity = totalQuantity
-            };
-        }
-
-        /// <summary>
-        /// Tạo thông báo thành công cho việc lấy danh sách thuốc.
-        /// </summary>
         private static string GenerateGetMedicationsSuccessMessage(
             PagedList<MedicationResponse> pagedResult,
             string? searchTerm,
@@ -684,7 +800,6 @@ namespace Services.Implementations
                 baseMessage += $" (trang {currentPage}/{totalPages})";
             }
 
-            // Thêm thông tin về điều kiện tìm kiếm
             var conditions = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -710,9 +825,6 @@ namespace Services.Implementations
             return baseMessage;
         }
 
-        /// <summary>
-        /// Lấy tên hiển thị cho danh mục thuốc.
-        /// </summary>
         private static string GetCategoryDisplayName(MedicationCategory category)
         {
             return category switch
@@ -730,6 +842,51 @@ namespace Services.Implementations
                 _ => category.ToString()
             };
         }
+
+        #endregion
+
+        #region Logging Methods
+
+        private void LogSuccessMetrics(System.Diagnostics.Stopwatch stopwatch,
+            PagedList<MedicationResponse> pagedResult, Guid? currentUserId)
+        {
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "GetMedicationsAsync completed successfully - User: {UserId}, Duration: {Duration}ms, " +
+                "TotalCount: {TotalCount}, PageCount: {PageCount}, CurrentPage: {CurrentPage}",
+                currentUserId, stopwatch.ElapsedMilliseconds, pagedResult.MetaData.TotalCount,
+                pagedResult.MetaData.TotalPages, pagedResult.MetaData.CurrentPage);
+        }
+
+        private void LogWarning(System.Diagnostics.Stopwatch stopwatch, ArgumentException argEx, Guid? currentUserId)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(argEx,
+                "Invalid argument in GetMedicationsAsync by user {UserId} - Duration: {Duration}ms",
+                currentUserId, stopwatch.ElapsedMilliseconds);
+        }
+
+        private void LogError(System.Diagnostics.Stopwatch stopwatch, Exception ex, Guid? currentUserId,
+            int pageNumber, int pageSize, string? searchTerm, MedicationCategory? category, bool includeDeleted)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex,
+                "Error occurred while getting medications by user {UserId} - Duration: {Duration}ms, " +
+                "Parameters: PageNumber={PageNumber}, PageSize={PageSize}, SearchTerm='{SearchTerm}', " +
+                "Category={Category}, IncludeDeleted={IncludeDeleted}",
+                currentUserId, stopwatch.ElapsedMilliseconds, pageNumber, pageSize,
+                searchTerm, category, includeDeleted);
+        }
+
+        private void LogBatchOperationResult(string actionType, BatchOperationResultDTO result)
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            _logger.LogInformation("Medications {ActionType}: Success={SuccessCount}, Failed={FailedCount} by user: {UserId}",
+                actionType, result.SuccessCount, result.FailureCount, currentUserId);
+        }
+
+        #endregion
+
         #endregion
     }
 }

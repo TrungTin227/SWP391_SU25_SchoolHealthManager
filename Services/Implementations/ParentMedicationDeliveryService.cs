@@ -29,6 +29,27 @@ namespace Services.Implementations
             _dbContext = dbContext;
         }
 
+        public async Task<ApiResult<bool>> AcptDelivery(Guid parentMedicationDeliveryid, Guid receiverId )
+        {
+            try
+            {
+                if (parentMedicationDeliveryid == Guid.Empty || receiverId == Guid.Empty)
+                    return ApiResult<bool>.Failure(new Exception("ID đơn giao thuốc phụ huynh hoặc người nhận không hợp lệ."));
+                if (await _unitOfWork.UserRepository.GetByIdAsync(receiverId ) == null)
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy người nhận với ID: " + receiverId ));
+                var parentMedicationDelivery = await _unitOfWork.ParentMedicationDeliveryRepository.GetByIdAsync(parentMedicationDeliveryid);   
+                if (parentMedicationDelivery == null)
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy đơn giao thuốc phụ huynh với ID: " + parentMedicationDeliveryid));
+                parentMedicationDelivery.ReceivedBy = receiverId ;
+                await _unitOfWork.SaveChangesAsync(); // gọi base service để cập nhật entity
+                return ApiResult<bool>.Success(true, "Xác nhận giao thuốc phụ huynh thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception("Xác nhận giao thuốc phụ huynh thất bại với exception: " + ex.Message));
+            }
+        }
+
         public async Task<ApiResult<CreateParentMedicationDeliveryRequestDTO>> CreateAsync(CreateParentMedicationDeliveryRequestDTO request)
         {
             try
@@ -36,20 +57,19 @@ namespace Services.Implementations
                 if (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId) == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
 
-                if (await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(request.ReceivedBy) == null)
-                    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy người nhận với ID: " + request.ReceivedBy));
+                //if (await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(request.ReceivedBy) == null)
+                //    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy người nhận với ID: " + request.ReceivedBy));
 
                 if (await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId) == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
 
-                var entity = ParentMedicationDeliveryMappings.ToParentMedicationDelivery(request);  // map DTO thành entity
-                await base.CreateAsync(entity); // gọi base service để tạo entity
+                await _unitOfWork.ParentMedicationDeliveryRepository.CreateParentMedicationDeliveryRequestDTO(request); // gọi base service để tạo entity
 
                 return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Success(request, "Tạo đơn thuốc phụ huynh giao thành công!!!"); // ví dụ
             }
             catch (Exception ex)
             {
-                return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Tạo đơn thuốc phụ huynh giao thất bại với exception: " + ex));
+                return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Tạo đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
             }
         }
 
@@ -66,7 +86,7 @@ namespace Services.Implementations
             }
             catch (Exception ex)
             {
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex));
+                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
             }
         }
 
@@ -84,7 +104,7 @@ namespace Services.Implementations
             }
             catch (Exception ex)
             {
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex));
+                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
             }
         }
 
@@ -122,7 +142,7 @@ namespace Services.Implementations
             }
             catch (Exception ex)
             {
-                return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Cập nhật đơn thuốc phụ huynh giao thất bại với exception: " + ex));
+                return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Cập nhật đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
             }
         }
     }

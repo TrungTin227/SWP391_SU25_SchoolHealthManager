@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using WebAPI.Middlewares;
 
 namespace WebAPI.Controllers
 {
@@ -123,20 +122,6 @@ namespace WebAPI.Controllers
             [FromQuery][Range(1, 365)] int daysToExpire = 30)
         {
             var result = await _medicationService.CleanupExpiredMedicationsAsync(daysToExpire);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        #endregion
-
-        #region Query Operations
-
-        /// <summary>
-        /// Lấy danh sách thuốc đang hoạt động
-        /// </summary>
-        [HttpGet("active")]
-        public async Task<IActionResult> GetActiveMedications()
-        {
-            var result = await _medicationService.GetActiveMedicationsAsync();
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

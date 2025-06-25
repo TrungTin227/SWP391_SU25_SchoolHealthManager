@@ -1,16 +1,29 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
-    //Nếu có nhiều mũi tiêm cho 1 loại vắc xin thì tạo bảng này
-    public class VaccineDoseInfo
+    public class VaccineDoseInfo : BaseEntity
     {
         [Key]
+        public Guid Id { get; set; }
+
+        // FK về loại vắc-xin
         public Guid VaccineTypeId { get; set; }
-        public int DoseNumber { get; set; }    // Liều 1, 2, 3…
+        [ForeignKey(nameof(VaccineTypeId))]
+        public virtual VaccinationType VaccineType { get; set; }
+
+        public int DoseNumber { get; set; }
         public int RecommendedAgeMonths { get; set; }
         public int MinIntervalDays { get; set; }
-        public VaccinationType VaccineType { get; set; }
-        public ICollection<VaccineDoseInfo> NextDoseInfos { get; set; } // các lần liều tiếp theo
+
+        // Tự tham chiếu: mũi trước
+        public Guid? PreviousDoseId { get; set; }
+        [ForeignKey(nameof(PreviousDoseId))]
+        public virtual VaccineDoseInfo PreviousDose { get; set; }
+
+        // Các mũi kế tiếp
+        public virtual ICollection<VaccineDoseInfo> NextDoses { get; set; }
+            = new List<VaccineDoseInfo>();
     }
 }

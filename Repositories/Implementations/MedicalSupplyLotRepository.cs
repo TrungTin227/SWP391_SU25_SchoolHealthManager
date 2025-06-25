@@ -21,14 +21,19 @@ namespace Repositories.Implementations
 
         public async Task<PagedList<MedicalSupplyLot>> GetMedicalSupplyLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicalSupplyId = null, bool? isExpired = null)
+            Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false)
         {
             try
             {
                 var query = _context.MedicalSupplyLots
                     .Include(msl => msl.MedicalSupply)
-                    .Where(msl => !msl.IsDeleted)
                     .AsQueryable();
+
+                // Apply deleted filter
+                if (!includeDeleted)
+                {
+                    query = query.Where(msl => !msl.IsDeleted);
+                }
 
                 // Apply search filter
                 if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -259,7 +264,7 @@ namespace Repositories.Implementations
                     return false;
 
                 lot.Quantity = newQuantity;
-                lot.UpdatedAt = DateTime.UtcNow;
+                lot.UpdatedAt = _currentTime.GetVietnamTime();
 
                 return await _context.SaveChangesAsync() > 0;
             }

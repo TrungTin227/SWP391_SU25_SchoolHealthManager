@@ -22,5 +22,7 @@
         Task<bool> PermanentDeleteWithLotsAsync(Guid id);
         Task<PagedList<Medication>> GetSoftDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null);
         Task<int> PermanentDeleteExpiredAsync(int daysToExpire = 30);
+        Task<Dictionary<Guid, int>> GetTotalQuantitiesByMedicationIdsAsync(List<Guid> medicationIds);
+        Task<Dictionary<Guid, int>> GetLotCountsByMedicationIdsAsync(List<Guid> medicationIds);
     }
 }

@@ -14,6 +14,7 @@ namespace Repositories.WorkSeeds.Implements
         private IUserRepository? _userRepository;
         private IHealProfileRepository? _healProfileRepository;
         private IStudentRepository? _studentRepository;
+        private ISessionStudentRepository? _sessionStudentRepository;
         private IParentRepository? _parentRepository;
         private IParentMedicationDeliveryRepository? _parentMedicationDeliveryRepository;
         private IMedicationRepository? _medicationRepository;
@@ -21,6 +22,14 @@ namespace Repositories.WorkSeeds.Implements
         private IMedicalSupplyRepository? _medicalSupplyRepository;
         private IMedicalSupplyLotRepository? _medicalSupplyLotRepository;
         private IHealthEventRepository? _healthEventRepository;
+        private IVaccineDoseInfoRepository? _vaccineDoseInfoRepository;
+        private IVaccineTypeRepository? _vaccineTypeRepository;
+        private IVaccineLotRepository? _vaccineLotRepository;
+        private IVaccinationCampaignRepository? _vaccinationCampaignRepository;
+        private IVaccinationScheduleRepository? _vaccinationScheduleRepository;
+        private IParentVaccinationRepository? _parentVaccinationRepository;
+        private ICheckupCampaignRepository? _checkupCampaignRepository;
+        private ICheckupScheduleRepository? _checkupScheduleRepository;
 
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
@@ -34,6 +43,8 @@ namespace Repositories.WorkSeeds.Implements
             _healProfileRepository ??= _repositoryFactory.GetCustomRepository<IHealProfileRepository>();
         public IStudentRepository StudentRepository =>
             _studentRepository ??= _repositoryFactory.GetCustomRepository<IStudentRepository>();
+        public ISessionStudentRepository SessionStudentRepository => 
+            _sessionStudentRepository ??= _repositoryFactory.GetCustomRepository<ISessionStudentRepository>();
         public IParentRepository ParentRepository =>
             _parentRepository ??= _repositoryFactory.GetCustomRepository<IParentRepository>();
         public IParentMedicationDeliveryRepository ParentMedicationDeliveryRepository => 
@@ -50,8 +61,22 @@ namespace Repositories.WorkSeeds.Implements
             _medicalSupplyLotRepository ??= _repositoryFactory.GetCustomRepository<IMedicalSupplyLotRepository>();
         public IHealthEventRepository HealthEventRepository =>
             _healthEventRepository ??= _repositoryFactory.GetCustomRepository<IHealthEventRepository>();
-
-
+        public IVaccineDoseInfoRepository VaccineDoseInfoRepository => 
+            _vaccineDoseInfoRepository ??= _repositoryFactory.GetCustomRepository<IVaccineDoseInfoRepository>();
+        public IVaccineTypeRepository VaccineTypeRepository => 
+            _vaccineTypeRepository ??= _repositoryFactory.GetCustomRepository<IVaccineTypeRepository>();
+        public IVaccineLotRepository VaccineLotRepository => 
+            _vaccineLotRepository ??= _repositoryFactory.GetCustomRepository<IVaccineLotRepository>();
+        public IVaccinationCampaignRepository VaccinationCampaignRepository => 
+            _vaccinationCampaignRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationCampaignRepository>();
+        public IVaccinationScheduleRepository VaccinationScheduleRepository => 
+            _vaccinationScheduleRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationScheduleRepository>();
+        public IParentVaccinationRepository ParentVaccinationRepository => 
+            _parentVaccinationRepository ??= _repositoryFactory.GetCustomRepository<IParentVaccinationRepository>();
+        public ICheckupCampaignRepository CheckupCampaignRepository => 
+            _checkupCampaignRepository ??= _repositoryFactory.GetCustomRepository<ICheckupCampaignRepository>();
+        public ICheckupScheduleRepository CheckupScheduleRepository => 
+            _checkupScheduleRepository ??= _repositoryFactory.GetCustomRepository<ICheckupScheduleRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {

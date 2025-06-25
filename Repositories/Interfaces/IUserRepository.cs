@@ -1,6 +1,6 @@
 ﻿namespace Repositories.Interfaces
 {
-    public interface IUserRepository
+    public interface IUserRepository : IGenericRepository<User, Guid>   
     {
         Task<PagedList<UserDetailsDTO>> GetUserDetailsAsync(int pageNumber, int pageSize);
         Task<bool> ExistsByEmailAsync(string email);

@@ -1,5 +1,4 @@
-﻿using DTOs.HealthEventDTOs.Request;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {

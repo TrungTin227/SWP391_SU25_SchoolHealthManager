@@ -1,7 +1,5 @@
-﻿using DTOs.MedicalSupplyLotDTOs.Request;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using WebAPI.Middlewares;
 
 namespace WebAPI.Controllers
 {
@@ -20,7 +18,7 @@ namespace WebAPI.Controllers
         #region Basic CRUD Operations
 
         /// <summary>
-        /// Lấy danh sách lô vật tư y tế theo phân trang với khả năng tìm kiếm và lọc
+        /// Lấy danh sách lô vật tư y tế theo phân trang với tìm kiếm, lọc theo supply, hết hạn và deleted
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetMedicalSupplyLots(
@@ -28,84 +26,166 @@ namespace WebAPI.Controllers
             [FromQuery][Range(1, 100)] int pageSize = 10,
             [FromQuery] string? searchTerm = null,
             [FromQuery] Guid? medicalSupplyId = null,
-            [FromQuery] bool? isExpired = null)
+            [FromQuery] bool? isExpired = null,
+            [FromQuery] bool includeDeleted = false)
         {
-            if (pageNumber < 1)
-                throw new ArgumentException("Số trang phải lớn hơn 0");
+            if (pageNumber < 1) return BadRequest("Số trang phải lớn hơn 0");
 
             var result = await _medicalSupplyLotService.GetMedicalSupplyLotsAsync(
-                pageNumber, pageSize, searchTerm, medicalSupplyId, isExpired);
+                pageNumber, pageSize, searchTerm, medicalSupplyId, isExpired, includeDeleted);
 
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
-        /// Lấy thông tin chi tiết lô vật tư y tế theo ID
+        /// Lấy chi tiết một lô theo ID
         /// </summary>
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetMedicalSupplyLotById(Guid id)
         {
-            if (id == Guid.Empty)
-                throw new ArgumentException("ID lô vật tư y tế không hợp lệ");
+            if (id == Guid.Empty) return BadRequest("ID lô vật tư y tế không hợp lệ");
 
             var result = await _medicalSupplyLotService.GetMedicalSupplyLotByIdAsync(id);
             return result.IsSuccess ? Ok(result) : NotFound(result);
         }
 
-        /// <summary>
-        /// Tạo mới một lô vật tư y tế
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> CreateMedicalSupplyLot([FromBody] CreateMedicalSupplyLotRequest request)
-        {
-            var result = await _medicalSupplyLotService.CreateMedicalSupplyLotAsync(request);
+        #endregion
 
-            return result.IsSuccess ? CreatedAtAction(
-                nameof(GetMedicalSupplyLotById),
-                new { id = result.Data?.Id },
-                result) : BadRequest(result);
-        }
+        #region Supply-specific Operations
 
         /// <summary>
-        /// Cập nhật thông tin lô vật tư y tế
+        /// Lấy lô của một supply, có thể kèm tổng quantity
         /// </summary>
-        [HttpPut("{id:guid}")]
-        public async Task<IActionResult> UpdateMedicalSupplyLot(Guid id, [FromBody] UpdateMedicalSupplyLotRequest request)
+        [HttpGet("by-supply/{medicalSupplyId:guid}")]
+        public async Task<IActionResult> GetLotsByMedicalSupplyId(
+            Guid medicalSupplyId,
+            [FromQuery] bool includeQuantitySummary = false)
         {
-            if (id == Guid.Empty)
-                throw new ArgumentException("ID lô vật tư y tế không hợp lệ");
+            if (medicalSupplyId == Guid.Empty)
+                return BadRequest("ID vật tư y tế không hợp lệ");
 
-            var result = await _medicalSupplyLotService.UpdateMedicalSupplyLotAsync(id, request);
+            if (includeQuantitySummary)
+            {
+                var lots = await _medicalSupplyLotService.GetLotsByMedicalSupplyIdAsync(medicalSupplyId);
+                var qty = await _medicalSupplyLotService.GetAvailableQuantityAsync(medicalSupplyId);
+
+                if (lots.IsSuccess && qty.IsSuccess)
+                {
+                    var data = new
+                    {
+                        Lots = lots.Data,
+                        AvailableQuantity = qty.Data
+                    };
+                    return Ok(ApiResult<object>.Success(data, "Thành công"));
+                }
+                return BadRequest(ApiResult<object>.Failure(new Exception("Không thể lấy dữ liệu")));
+            }
+
+            var result = await _medicalSupplyLotService.GetLotsByMedicalSupplyIdAsync(medicalSupplyId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
         #endregion
 
-        #region Unified Delete & Restore Operations
+        #region Expiry Operations
 
         /// <summary>
-        /// Xóa lô vật tư y tế (hỗ trợ cả xóa mềm và xóa vĩnh viễn, cả đơn lẻ và hàng loạt)
+        /// Lấy lô theo trạng thái expiry: expiring, expired, all
         /// </summary>
+        [HttpGet("expiry-status")]
+        public async Task<IActionResult> GetLotsByExpiryStatus(
+    [FromQuery] string status = "expiring",
+    [FromQuery][Range(1, 365)] int daysBeforeExpiry = 30)
+        {
+            var statusLower = status.ToLower();
+
+            if (statusLower == "expired")
+            {
+                var result = await _medicalSupplyLotService.GetExpiredLotsAsync();
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            else if (statusLower == "expiring")
+            {
+                var result = await _medicalSupplyLotService.GetExpiringLotsAsync(daysBeforeExpiry);
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            else if (statusLower == "all")
+            {
+                var result = await GetAllExpiryLots(daysBeforeExpiry);
+                return result.IsSuccess ? Ok(result) : BadRequest(result);
+            }
+            else
+            {
+                var errorResult = ApiResult<object>.Failure(new ArgumentException("Status phải là: expiring, expired hoặc all"));
+                return BadRequest(errorResult);
+            }
+        }
+
+        private async Task<ApiResult<object>> GetAllExpiryLots(int daysBeforeExpiry)
+        {
+            var expiring = await _medicalSupplyLotService.GetExpiringLotsAsync(daysBeforeExpiry);
+            var expired = await _medicalSupplyLotService.GetExpiredLotsAsync();
+
+            if (expiring.IsSuccess && expired.IsSuccess)
+            {
+                var data = new
+                {
+                    Expiring = expiring.Data,
+                    Expired = expired.Data
+                };
+                return ApiResult<object>.Success(data, "Thành công");
+            }
+
+            return ApiResult<object>.Failure(new Exception("Không thể lấy dữ liệu"));
+        }
+
+        #endregion
+
+        #region Create/Update/Delete
+
+        [HttpPost]
+        public async Task<IActionResult> CreateMedicalSupplyLot([FromBody] CreateMedicalSupplyLotRequest request)
+        {
+            var result = await _medicalSupplyLotService.CreateMedicalSupplyLotAsync(request);
+            return result.IsSuccess
+                ? CreatedAtAction(nameof(GetMedicalSupplyLotById), new { id = result.Data?.Id }, result)
+                : BadRequest(result);
+        }
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateMedicalSupplyLot(Guid id, [FromBody] UpdateMedicalSupplyLotRequest request)
+        {
+            if (id == Guid.Empty) return BadRequest("ID lô vật tư y tế không hợp lệ");
+
+            var result = await _medicalSupplyLotService.UpdateMedicalSupplyLotAsync(id, request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPatch("{id:guid}/quantity")]
+        public async Task<IActionResult> UpdateQuantity(Guid id, [FromBody] UpdateQuantityRequest request)
+        {
+            if (id == Guid.Empty) return BadRequest("ID lô vật tư y tế không hợp lệ");
+            if (request.Quantity < 0) return BadRequest("Số lượng không được âm");
+
+            var result = await _medicalSupplyLotService.UpdateQuantityAsync(id, request.Quantity);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         [HttpDelete]
         public async Task<IActionResult> DeleteMedicalSupplyLots([FromBody] DeleteMedicalSupplyLotsRequest request)
         {
-            // Validate request
-            ValidateBatchRequest(request, request.IsPermanent ? 50 : 100,
-                request.IsPermanent ? "xóa vĩnh viễn" : "xóa");
+            if (!ValidateBatchRequest(request?.Ids, request?.IsPermanent ?? false, "xóa", out var err))
+                return BadRequest(err);
 
-            // Execute unified delete operation
             var result = await _medicalSupplyLotService.DeleteMedicalSupplyLotsAsync(request.Ids, request.IsPermanent);
-
             return HandleBatchOperationResult(result);
         }
 
-        /// <summary>
-        /// Khôi phục lô vật tư y tế (hỗ trợ cả đơn lẻ và hàng loạt)
-        /// </summary>
         [HttpPost("restore")]
         public async Task<IActionResult> RestoreMedicalSupplyLots([FromBody] RestoreMedicalSupplyLotsRequest request)
         {
-            ValidateBatchRequest(request, 100, "khôi phục");
+            if (!ValidateBatchRequest(request?.Ids, false, "khôi phục", out var err))
+                return BadRequest(err);
 
             var result = await _medicalSupplyLotService.RestoreMedicalSupplyLotsAsync(request.Ids);
             return HandleBatchOperationResult(result);
@@ -113,133 +193,28 @@ namespace WebAPI.Controllers
 
         #endregion
 
-        #region Soft Delete Operations
+        #region Helpers
 
-        /// <summary>
-        /// Lấy danh sách lô vật tư y tế đã bị xóa mềm (Chỉ Admin)
-        /// </summary>
-        [HttpGet("deleted")]
-        public async Task<IActionResult> GetSoftDeletedMedicalSupplyLots(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery][Range(1, 100)] int pageSize = 10,
-            [FromQuery] string? searchTerm = null)
+        private static bool ValidateBatchRequest(List<Guid>? ids, bool isPermanent, string op, out string error)
         {
-            if (pageNumber < 1)
-                throw new ArgumentException("Số trang phải lớn hơn 0");
-
-            var result = await _medicalSupplyLotService.GetSoftDeletedLotsAsync(
-                pageNumber, pageSize, searchTerm);
-
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            error = string.Empty;
+            if (ids == null || !ids.Any()) { error = "Danh sách ID không được rỗng"; return false; }
+            var max = isPermanent ? 50 : 100;
+            if (ids.Count > max) { error = $"Không thể {op} quá {max} lô"; return false; }
+            if (ids.Any(id => id == Guid.Empty)) { error = "Danh sách chứa ID không hợp lệ"; return false; }
+            return true;
         }
 
-        #endregion
-
-        #region Business Logic Operations
-
-        /// <summary>
-        /// Lấy danh sách lô vật tư y tế sắp hết hạn
-        /// </summary>
-        [HttpGet("expiring")]
-        public async Task<IActionResult> GetExpiringMedicalSupplyLots(
-            [FromQuery][Range(1, 365)] int daysBeforeExpiry = 30)
-        {
-            var result = await _medicalSupplyLotService.GetExpiringLotsAsync(daysBeforeExpiry);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Lấy danh sách lô vật tư y tế đã hết hạn
-        /// </summary>
-        [HttpGet("expired")]
-        public async Task<IActionResult> GetExpiredMedicalSupplyLots()
-        {
-            var result = await _medicalSupplyLotService.GetExpiredLotsAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Lấy tất cả lô vật tư y tế của một vật tư cụ thể
-        /// </summary>
-        [HttpGet("by-supply/{medicalSupplyId:guid}")]
-        public async Task<IActionResult> GetLotsByMedicalSupplyId(Guid medicalSupplyId)
-        {
-            if (medicalSupplyId == Guid.Empty)
-                throw new ArgumentException("ID vật tư y tế không hợp lệ");
-
-            var result = await _medicalSupplyLotService.GetLotsByMedicalSupplyIdAsync(medicalSupplyId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Lấy số lượng có sẵn của một vật tư y tế cụ thể
-        /// </summary>
-        [HttpGet("available-quantity/{medicalSupplyId:guid}")]
-        public async Task<IActionResult> GetAvailableQuantity(Guid medicalSupplyId)
-        {
-            if (medicalSupplyId == Guid.Empty)
-                throw new ArgumentException("ID vật tư y tế không hợp lệ");
-
-            var result = await _medicalSupplyLotService.GetAvailableQuantityAsync(medicalSupplyId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Cập nhật số lượng cho lô vật tư y tế cụ thể
-        /// </summary>
-        [HttpPatch("{id:guid}/quantity")]
-        public async Task<IActionResult> UpdateQuantity(Guid id, [FromBody] UpdateQuantityRequest request)
-        {
-            ValidateQuantityUpdate(id, request.Quantity);
-
-            var result = await _medicalSupplyLotService.UpdateQuantityAsync(id, request.Quantity);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        #endregion
-
-        #region Private Helper Methods
-
-        /// <summary>
-        /// Validate batch operation request
-        /// </summary>
-        private static void ValidateBatchRequest(BatchIdsRequest request, int maxItems, string operation)
-        {
-            if (request?.Ids == null || !request.Ids.Any())
-                throw new ArgumentException("Danh sách ID không được rỗng");
-
-            if (request.Ids.Count > maxItems)
-                throw new ArgumentException($"Không thể {operation} quá {maxItems} lô vật tư y tế cùng lúc");
-
-            if (request.Ids.Any(id => id == Guid.Empty))
-                throw new ArgumentException("Danh sách chứa ID không hợp lệ");
-        }
-
-        /// <summary>
-        /// Handle batch operation result with appropriate status codes
-        /// </summary>
         private IActionResult HandleBatchOperationResult(dynamic result)
         {
-            if (result.Data is BatchOperationResultDTO batchResult)
-            {
-                return batchResult.IsCompleteSuccess ? Ok(result) :
-                       batchResult.IsPartialSuccess ? StatusCode(207, result) :
-                       BadRequest(result);
-            }
+            if (result.Data is BatchOperationResultDTO b)
+                return b.IsCompleteSuccess
+                    ? Ok(result)
+                    : b.IsPartialSuccess
+                        ? StatusCode(207, result)
+                        : BadRequest(result);
 
             return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-
-        /// <summary>
-        /// Validate quantity update parameters
-        /// </summary>
-        private static void ValidateQuantityUpdate(Guid id, int quantity)
-        {
-            if (id == Guid.Empty)
-                throw new ArgumentException("ID lô vật tư y tế không hợp lệ");
-
-            if (quantity < 0)
-                throw new ArgumentException("Số lượng không được âm");
         }
 
         #endregion

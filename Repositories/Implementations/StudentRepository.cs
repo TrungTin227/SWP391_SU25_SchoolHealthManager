@@ -29,6 +29,7 @@ namespace Repositories.Implementations
             await _context.Students.AddAsync(entity);
             return entity;
         }
+
         public async Task<bool> CheckIfStudentCodeExistsAsync(string code)
         {
             if (string.IsNullOrWhiteSpace(code))
@@ -135,7 +136,6 @@ namespace Repositories.Implementations
             return true;
         }
 
-
         public async Task<bool> UpdateStudentAsync(Student updateStudentRequestDTO)
         {
             if (updateStudentRequestDTO == null || updateStudentRequestDTO.Id == Guid.Empty)
@@ -172,5 +172,153 @@ namespace Repositories.Implementations
             return true;
         }
 
+        #region Methods for CheckupCampaign
+
+        public async Task<List<Student>> GetStudentsByGradeAndSectionAsync(List<string> grades, List<string> sections)
+        {
+            var query = _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted);
+
+            // Nếu có filter theo grade
+            if (grades != null && grades.Any())
+            {
+                query = query.Where(s => grades.Contains(s.Grade ?? ""));
+            }
+
+            // Nếu có filter theo section
+            if (sections != null && sections.Any())
+            {
+                query = query.Where(s => sections.Contains(s.Section ?? ""));
+            }
+
+            return await query
+                .OrderBy(s => s.Grade)
+                .ThenBy(s => s.Section)
+                .ThenBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .ToListAsync();
+        }
+
+        public async Task<List<GetAllStudentDTO>> GetStudentsDTOByGradeAndSectionAsync(List<string> grades, List<string> sections)
+        {
+            var query = _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted);
+
+            // Nếu có filter theo grade
+            if (grades != null && grades.Any())
+            {
+                query = query.Where(s => grades.Contains(s.Grade ?? ""));
+            }
+
+            // Nếu có filter theo section
+            if (sections != null && sections.Any())
+            {
+                query = query.Where(s => sections.Contains(s.Section ?? ""));
+            }
+
+            return await query
+                .OrderBy(s => s.Grade)
+                .ThenBy(s => s.Section)
+                .ThenBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .Select(s => new GetAllStudentDTO
+                {
+                    Id = s.Id,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Grade = s.Grade,
+                    Section = s.Section,
+                    Image = s.Image
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<Student>> GetStudentsByIdsAsync(List<Guid> studentIds)
+        {
+            if (studentIds == null || !studentIds.Any())
+                return new List<Student>();
+
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => studentIds.Contains(s.Id) && !s.IsDeleted)
+                .OrderBy(s => s.Grade)
+                .ThenBy(s => s.Section)
+                .ThenBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .ToListAsync();
+        }
+
+        public async Task<List<GetAllStudentDTO>> GetStudentsDTOByIdsAsync(List<Guid> studentIds)
+        {
+            if (studentIds == null || !studentIds.Any())
+                return new List<GetAllStudentDTO>();
+
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => studentIds.Contains(s.Id) && !s.IsDeleted)
+                .OrderBy(s => s.Grade)
+                .ThenBy(s => s.Section)
+                .ThenBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .Select(s => new GetAllStudentDTO
+                {
+                    Id = s.Id,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Grade = s.Grade,
+                    Section = s.Section,
+                    Image = s.Image
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAvailableGradesAsync()
+        {
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted && !string.IsNullOrEmpty(s.Grade))
+                .Select(s => s.Grade!)
+                .Distinct()
+                .OrderBy(g => g)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAvailableSectionsAsync()
+        {
+            return await _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted && !string.IsNullOrEmpty(s.Section))
+                .Select(s => s.Section!)
+                .Distinct()
+                .OrderBy(s => s)
+                .ToListAsync();
+        }
+
+        public async Task<Dictionary<string, List<string>>> GetGradeSectionMappingAsync()
+        {
+            var gradeSections = await _context.Students
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted &&
+                           !string.IsNullOrEmpty(s.Grade) &&
+                           !string.IsNullOrEmpty(s.Section))
+                .Select(s => new { Grade = s.Grade!, Section = s.Section! })
+                .Distinct()
+                .ToListAsync();
+
+            return gradeSections
+                .GroupBy(gs => gs.Grade)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => x.Section).OrderBy(s => s).ToList()
+                );
+        }
+
+        #endregion
     }
 }

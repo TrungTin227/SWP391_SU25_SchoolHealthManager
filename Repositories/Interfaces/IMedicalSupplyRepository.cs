@@ -4,11 +4,23 @@
     {
         #region Query Operations
         Task<PagedList<MedicalSupply>> GetMedicalSuppliesAsync(
-            int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            bool? isActive = null,
+            bool includeDeleted = false);
+
+        /// <summary>
+        /// Get supply entity by ID, with option to include deleted
+        /// </summary>
+        Task<MedicalSupply?> GetByIdAsync(Guid id, bool includeDeleted = false);
+
         Task<MedicalSupply?> GetSupplyWithLotsAsync(Guid id);
         Task<List<MedicalSupply>> GetMedicalSuppliesByIdsAsync(List<Guid> ids, bool includeDeleted = false);
         Task<PagedList<MedicalSupply>> GetSoftDeletedSuppliesAsync(
-            int pageNumber, int pageSize, string? searchTerm = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null);
         #endregion
 
         #region Business Logic Operations

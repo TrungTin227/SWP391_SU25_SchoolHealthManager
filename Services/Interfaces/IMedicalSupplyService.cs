@@ -4,7 +4,11 @@
     {
         #region Basic CRUD Operations
         Task<ApiResult<PagedList<MedicalSupplyResponseDTO>>> GetMedicalSuppliesAsync(
-            int pageNumber, int pageSize, string? searchTerm = null, bool? isActive = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            bool? isActive = null,
+            bool includeDeleted = false);
         Task<ApiResult<MedicalSupplyResponseDTO>> GetMedicalSupplyByIdAsync(Guid id);
         Task<ApiResult<MedicalSupplyDetailResponseDTO>> GetMedicalSupplyDetailByIdAsync(Guid id);
         Task<ApiResult<MedicalSupplyResponseDTO>> CreateMedicalSupplyAsync(CreateMedicalSupplyRequest request);
@@ -13,7 +17,9 @@
 
         #region Soft Delete Operations
         Task<ApiResult<PagedList<MedicalSupplyResponseDTO>>> GetSoftDeletedSuppliesAsync(
-            int pageNumber, int pageSize, string? searchTerm = null);
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null);
         #endregion
 
         #region Unified Delete & Restore Operations

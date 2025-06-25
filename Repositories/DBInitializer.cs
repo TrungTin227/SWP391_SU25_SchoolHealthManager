@@ -86,34 +86,127 @@ namespace Repositories
 
             var seedData = GetParentStudentSeedData();
 
-            foreach (var (email, parentFirst, parentLast, studentFirst, studentLast) in seedData)
+            foreach (var (email, parentFirst, parentLast, students) in seedData)
             {
-                await CreateParentWithStudent(context, userManager, email, parentFirst, parentLast, studentFirst, studentLast);
+                await CreateParentWithStudents(context, userManager, email, parentFirst, parentLast, students);
             }
 
             await context.SaveChangesAsync();
         }
 
-        private static List<(string Email, string ParentFirst, string ParentLast, string StudentFirst, string StudentLast)> GetParentStudentSeedData()
+        private static List<(string Email, string ParentFirst, string ParentLast, List<(string StudentFirst, string StudentLast, string Grade, string Section)> Students)> GetParentStudentSeedData()
         {
-            return new List<(string, string, string, string, string)>
+            return new List<(string, string, string, List<(string, string, string, string)>)>
+    {
+        // Grade 1 - 3 students with individual parents
+        ("parent.nguyen.anh@gmail.com", "Nguyen", "Van Anh",
+            new List<(string, string, string, string)>
             {
-                ("tinvtse@gmail.com", "Nguyen", "An", "Le", "Minh"),
-                ("parent2@gmail.com", "Tran", "Binh", "Pham", "Hoa")
-            };
+                ("Nguyen", "Minh An", "1", "1A")
+            }),
+
+        ("parent.tran.hoa@gmail.com", "Tran", "Thi Hoa",
+            new List<(string, string, string, string)>
+            {
+                ("Tran", "Minh Hoa", "1", "1B")
+            }),
+
+        ("parent.le.duc@gmail.com", "Le", "Van Duc",
+            new List<(string, string, string, string)>
+            {
+                ("Le", "Thanh Duc", "1", "1A")
+            }),
+
+        // Grade 2 - 3 students with individual parents
+        ("parent.pham.lan@gmail.com", "Pham", "Thi Lan",
+            new List<(string, string, string, string)>
+            {
+                ("Pham", "Minh Lan", "2", "2A")
+            }),
+
+        ("parent.vo.hung@gmail.com", "Vo", "Van Hung",
+            new List<(string, string, string, string)>
+            {
+                ("Vo", "Minh Hung", "2", "2B")
+            }),
+
+        ("parent.bui.mai@gmail.com", "Bui", "Thi Mai",
+            new List<(string, string, string, string)>
+            {
+                ("Bui", "Thanh Mai", "2", "2A")
+            }),
+
+        // Grade 3 - 3 students with individual parents
+        ("parent.hoang.nam@gmail.com", "Hoang", "Van Nam",
+            new List<(string, string, string, string)>
+            {
+                ("Hoang", "Minh Nam", "3", "3A")
+            }),
+
+        ("parent.dang.thu@gmail.com", "Dang", "Thi Thu",
+            new List<(string, string, string, string)>
+            {
+                ("Dang", "Thanh Thu", "3", "3B")
+            }),
+
+        ("parent.vu.long@gmail.com", "Vu", "Van Long",
+            new List<(string, string, string, string)>
+            {
+                ("Vu", "Minh Long", "3", "3A")
+            }),
+
+        // Grade 4 - 3 students with individual parents
+        ("parent.do.linh@gmail.com", "Do", "Thi Linh",
+            new List<(string, string, string, string)>
+            {
+                ("Do", "Thanh Linh", "4", "4A")
+            }),
+
+        ("parent.ngo.son@gmail.com", "Ngo", "Van Son",
+            new List<(string, string, string, string)>
+            {
+                ("Ngo", "Minh Son", "4", "4B")
+            }),
+
+        ("parent.ta.yen@gmail.com", "Ta", "Thi Yen",
+            new List<(string, string, string, string)>
+            {
+                ("Ta", "Thanh Yen", "4", "4A")
+            }),
+
+        // Grade 5 - 2 students with individual parents
+        ("parent.ly.khoa@gmail.com", "Ly", "Van Khoa",
+            new List<(string, string, string, string)>
+            {
+                ("Ly", "Minh Khoa", "5", "5A")
+            }),
+
+        ("parent.cao.nga@gmail.com", "Cao", "Thi Nga",
+            new List<(string, string, string, string)>
+            {
+                ("Cao", "Thanh Nga", "5", "5B")
+            }),
+
+        // 1 Parent with 2 children in different grades (Grade 1 and Grade 5)
+        ("parent.multi.children@gmail.com", "Truong", "Van Hai",
+            new List<(string, string, string, string)>
+            {
+                ("Truong", "Minh Tuan", "1", "1B"),
+                ("Truong", "Minh Chi", "5", "5A")
+            })
+    };
         }
 
-        private static async Task CreateParentWithStudent(
+        private static async Task CreateParentWithStudents(
             SchoolHealthManagerDbContext context,
             UserManager<User> userManager,
             string email,
             string parentFirst,
             string parentLast,
-            string studentFirst,
-            string studentLast)
+            List<(string StudentFirst, string StudentLast, string Grade, string Section)> students)
         {
             // Create Parent User
-            var parentUser = CreateUser(email, parentFirst, parentLast);
+            var parentUser = CreateParentUser(email, parentFirst, parentLast);
             const string parentPassword = "Parent@123";
 
             var userResult = await userManager.CreateAsync(parentUser, parentPassword);
@@ -130,16 +223,20 @@ namespace Repositories
             await context.Parents.AddAsync(parent);
             await context.SaveChangesAsync();
 
-            // Create Student
-            var student = CreateStudent(studentFirst, studentLast, parent.UserId);
-            await context.Students.AddAsync(student);
+            // Create Students for this parent
+            foreach (var (studentFirst, studentLast, grade, section) in students)
+            {
+                var student = CreateStudent(studentFirst, studentLast, parent.UserId, grade, section);
+                await context.Students.AddAsync(student);
+            }
 
-            Console.WriteLine($"Seeded Parent+Student for {email}");
+            var childrenInfo = string.Join(", ", students.Select(s => $"{s.StudentFirst} {s.StudentLast} (Grade {s.Grade})"));
+            Console.WriteLine($"Seeded Parent {email} with children: {childrenInfo}");
         }
 
         private static Parent CreateParent(Guid userId)
         {
-            var now = DateTime.UtcNow;
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
             return new Parent
             {
                 UserId = userId,
@@ -152,19 +249,59 @@ namespace Repositories
             };
         }
 
-        private static Student CreateStudent(string firstName, string lastName, Guid parentUserId)
+        private static Student CreateStudent(string firstName, string lastName, Guid parentUserId, string grade, string section)
         {
-            var now = DateTime.UtcNow;
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
+            var random = new Random();
+
+            // Generate age based on grade (Grade 1 = ~6-7 years, Grade 5 = ~10-11 years)
+            var baseAge = int.Parse(grade) + 5; // Grade 1 = 6 years, Grade 5 = 10 years
+            var ageVariation = random.Next(0, 2); // Add 0-1 years variation
+            var studentAge = baseAge + ageVariation;
+
             return new Student
             {
                 Id = Guid.NewGuid(),
-                StudentCode = $"HS{now:yyyyMMddHHmmss}",
+                StudentCode = GenerateStudentCode(grade, section),
                 FirstName = firstName,
                 LastName = lastName,
-                DateOfBirth = now.AddYears(-10),
-                Grade = "1",
-                Section = "1A",
+                DateOfBirth = now.AddYears(-studentAge).AddDays(random.Next(-180, 180)), // Random within the year
+                Grade = grade,
+                Section = section,
                 ParentUserId = parentUserId,
+                CreatedAt = now,
+                CreatedBy = SystemGuid,
+                UpdatedAt = now,
+                UpdatedBy = SystemGuid,
+                IsDeleted = false
+            };
+        }
+
+        private static string GenerateStudentCode(string grade, string section)
+        {
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
+            var random = new Random();
+            var randomNumber = random.Next(100, 999);
+
+            // Format: HS + Grade + Section + Year + RandomNumber
+            // Example: HS1A2025001, HS2B2025002
+            return $"HS{grade}{section.Replace(" ", "")}{now.Year}{randomNumber:D3}";
+        }
+
+        private static User CreateParentUser(string email, string firstName, string lastName)
+        {
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
+
+            return new User
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = firstName,
+                LastName = lastName,
+                Gender = Gender.Other, // Default value
+                IsFirstLogin = true,
                 CreatedAt = now,
                 CreatedBy = SystemGuid,
                 UpdatedAt = now,
@@ -192,10 +329,11 @@ namespace Repositories
         private static List<(string Email, string FirstName, string LastName, string Position, string Department)> GetNurseSeedData()
         {
             return new List<(string, string, string, string, string)>
-            {
-                ("nurse1@example.com", "Le", "Thi", "School Nurse", "Health Dept"),
-                ("nurse2@example.com", "Pham", "Hoa", "School Nurse", "Health Dept")
-            };
+    {
+        ("nurse1@example.com", "Le", "Thi Linh", "School Nurse", "Health Department"),
+        ("nurse2@example.com", "Pham", "Van Hoa", "Senior School Nurse", "Health Department"),
+        ("nurse3@example.com", "Nguyen", "Thi Mai", "Head Nurse", "Health Department")
+    };
         }
 
         private static async Task CreateNurseWithProfile(
@@ -207,7 +345,7 @@ namespace Repositories
             string position,
             string department)
         {
-            var nurseUser = CreateUser(email, first, last);
+            var nurseUser = CreateNurseUser(email, first, last);
             const string nursePassword = "Nurse@123";
 
             var nurseResult = await userManager.CreateAsync(nurseUser, nursePassword);
@@ -222,17 +360,39 @@ namespace Repositories
             var profile = CreateNurseProfile(nurseUser.Id, position, department);
             await context.NurseProfiles.AddAsync(profile);
 
-            Console.WriteLine($"Seeded School Nurse and StaffProfile for {email}");
+            Console.WriteLine($"Seeded School Nurse and Profile for {email} - {first} {last}");
         }
 
         private static NurseProfile CreateNurseProfile(Guid userId, string position, string department)
         {
-            var now = DateTime.UtcNow;
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
             return new NurseProfile
             {
                 UserId = userId,
                 Position = position,
                 Department = department,
+                CreatedAt = now,
+                CreatedBy = SystemGuid,
+                UpdatedAt = now,
+                UpdatedBy = SystemGuid,
+                IsDeleted = false
+            };
+        }
+
+        private static User CreateNurseUser(string email, string firstName, string lastName)
+        {
+            var now = new DateTime(2025, 6, 24, 12, 53, 29, DateTimeKind.Utc);
+
+            return new User
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = firstName,
+                LastName = lastName,
+                Gender = Gender.Other, // Default value
+                IsFirstLogin = true,
                 CreatedAt = now,
                 CreatedBy = SystemGuid,
                 UpdatedAt = now,

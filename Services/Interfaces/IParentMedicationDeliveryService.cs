@@ -19,5 +19,6 @@ namespace Services.Interfaces
         Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllParentMedicationDeliveryByParentIdAsync(Guid parentId);
         Task<ApiResult<GetParentMedicationDeliveryRespondDTO?>> GetByIdAsync(Guid id);
         Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllAsync();
+        Task<ApiResult<bool>> AcptDelivery(Guid parentMedicationDeliveryid, Guid receiverId);
     }
 }

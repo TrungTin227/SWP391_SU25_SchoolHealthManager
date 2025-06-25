@@ -1,8 +1,10 @@
-﻿using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Repositories.Implementations;
+using Repositories.Interfaces;
+using System.Text;
 
 
 namespace WebAPI.Extensions
@@ -91,6 +93,7 @@ namespace WebAPI.Extensions
             services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IStudentRepository, StudentRepository>();
+            services.AddScoped<ISessionStudentRepository, SessionStudentRepository>();
             services.AddScoped<IHealProfileRepository, HealProfileRepository>();
             services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IParentMedicationDeliveryRepository, ParentMedicationDeliveryRepository>();
@@ -101,9 +104,21 @@ namespace WebAPI.Extensions
             services.AddScoped<IMedicalSupplyRepository, MedicalSupplyRepository>();
             services.AddScoped<IHealthEventRepository, HealthEventRepository>();
             services.AddScoped<ICurrentTime, CurrentTime>();
+          
             services.AddScoped<INurseRepository, NurseRepository>();
             services.AddScoped<IVaccinationRecordRepository, VaccinationRecordRepository>();
             services.AddScoped<IHealthEventWithCounselingRepository, HealthEventWithCounselingRepository>();
+
+            services.AddScoped<IVaccineDoseInfoRepository, VaccineDoseInfoRepository>();
+            services.AddScoped<IVaccineTypeRepository, VaccineTypeRepository>();
+            services.AddScoped<IVaccineLotRepository, VaccineLotRepository>();
+            services.AddScoped<IVaccinationCampaignRepository, VaccinationCampaignRepository>();
+            services.AddScoped<IVaccinationScheduleRepository, VaccinationScheduleRepository>();
+            services.AddScoped<IParentVaccinationRepository, ParentVaccinationRepository>();
+            services.AddScoped<ICheckupCampaignRepository, CheckupCampaignRepository>();
+            services.AddScoped<ICheckupScheduleRepository, CheckupScheduleRepository>(); 
+
+
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ITokenService, TokenService>();
@@ -112,19 +127,33 @@ namespace WebAPI.Extensions
             services.AddScoped<IHealProfileService, HealProfileService>();
             services.AddScoped<IParentMedicationDeliveryService, ParentMedicationDeliveryService>();
             services.AddScoped<IStudentService, StudentService>();
+            services.AddScoped<ISessionStudentService, SessionStudentService>();
             services.AddScoped<IUserEmailService, UserEmailService>();
             services.AddScoped<IMedicationService, MedicationService>();
             services.AddScoped<IMedicationLotService, MedicationLotService>();
             services.AddScoped<IMedicalSupplyLotService, MedicalSupplyLotService>();
             services.AddScoped<IMedicalSupplyService, MedicalSupplyService>();
             services.AddScoped<IHealthEventService, HealthEventService>();
+
             services.AddScoped<INurseService, NurseService>();
             services.AddScoped<IVaccinationRecordService, VaccinationRecordService>();
             services.AddScoped<IHealthEventWithCounselingService, HealthEventWithCounselingService>();
+
+            services.AddScoped<IVaccineDoseInfoService, VaccineDoseInfoService>();
+            services.AddScoped<IVaccineTypeService, VaccineTypeService>();
+            services.AddScoped<IVaccineLotService, VaccineLotService>();
+            services.AddScoped<IVaccinationCampaignService, VaccinationCampaignService>();
+            services.AddScoped<IVaccinationScheduleService, VaccinationScheduleService>();
+            services.AddScoped<IParentVaccinationService, ParentVaccinationService>();
+            services.AddScoped<ICheckupCampaignService, CheckupCampaignService>();
+            services.AddScoped<ICheckupScheduleService, CheckupScheduleService>();
+
             // 5. Email + Quartz
-            services.AddEmailServices(opts =>
-                configuration.GetSection("EmailSettings").Bind(opts)
-            );
+            services.AddEmailServices(options =>
+            {
+                configuration.GetSection("EmailSettings").Bind(options);
+                options.SchoolName = "Trường Tiểu học Lê Văn Việt";
+            });
 
             // 6. Controllers
             services.AddControllers();

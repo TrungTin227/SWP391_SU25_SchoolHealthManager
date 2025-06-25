@@ -1,32 +1,21 @@
-﻿using DTOs.HealthEventDTOs.Request;
-using DTOs.HealthEventDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
+using Services.Mappers;
 using System.Data;
 
 namespace Services.Implementations
 {
     public class HealthEventService : BaseService<HealthEvent, Guid>, IHealthEventService
     {
-        private readonly IHealthEventRepository _healthEventRepository;
-        private readonly IMedicationLotRepository _medicationLotRepository;
-        private readonly IMedicalSupplyLotRepository _medicalSupplyLotRepository;
         private readonly ILogger<HealthEventService> _logger;
-        private readonly ICurrentTime _currentTime;
 
         public HealthEventService(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            ILogger<HealthEventService> logger,
-            ICurrentTime currentTime)
+            ICurrentTime currentTime,
+            ILogger<HealthEventService> logger)
             : base(unitOfWork.HealthEventRepository, currentUserService, unitOfWork, currentTime)
         {
-            _healthEventRepository = unitOfWork.HealthEventRepository;
-            _medicationLotRepository = unitOfWork.MedicationLotRepository;
-            _medicalSupplyLotRepository = unitOfWork.MedicalSupplyLotRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _currentTime = currentTime ?? throw new ArgumentNullException(nameof(currentTime));
         }
 
         #region Basic CRUD Operations
@@ -38,11 +27,10 @@ namespace Services.Implementations
         {
             try
             {
-                var events = await _healthEventRepository.GetHealthEventsAsync(
+                var events = await _unitOfWork.HealthEventRepository.GetHealthEventsAsync(
                     pageNumber, pageSize, searchTerm, status, eventType, studentId, fromDate, toDate);
 
-                var eventDTOs = events.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(events, eventDTOs);
+                var result = events.ToPagedResponseDTO();
 
                 return ApiResult<PagedList<HealthEventResponseDTO>>.Success(
                     result, "Lấy danh sách sự kiện y tế thành công");
@@ -58,14 +46,14 @@ namespace Services.Implementations
         {
             try
             {
-                var healthEvent = await _healthEventRepository.GetHealthEventWithDetailsAsync(id);
+                var healthEvent = await _unitOfWork.HealthEventRepository.GetHealthEventWithDetailsAsync(id);
                 if (healthEvent == null)
                 {
                     return ApiResult<HealthEventDetailResponseDTO>.Failure(
                         new Exception("Không tìm thấy sự kiện y tế"));
                 }
 
-                var detailDTO = MapToDetailResponseDTO(healthEvent);
+                var detailDTO = HealthEventMapper.MapToDetailResponseDTO(healthEvent);
                 return ApiResult<HealthEventDetailResponseDTO>.Success(
                     detailDTO, "Lấy thông tin chi tiết sự kiện y tế thành công");
             }
@@ -89,7 +77,7 @@ namespace Services.Implementations
                             new Exception(validationResult.Message));
                     }
 
-                    var healthEvent = MapFromCreateRequest(request);
+                    var healthEvent = HealthEventMapper.MapFromCreateRequest(request);
 
                     // Tự động set trạng thái là Pending
                     healthEvent.EventStatus = EventStatus.Pending;
@@ -97,7 +85,7 @@ namespace Services.Implementations
 
                     var createdEvent = await CreateAsync(healthEvent);
 
-                    var eventDTO = MapToResponseDTO(createdEvent);
+                    var eventDTO = HealthEventMapper.MapToResponseDTO(createdEvent);
 
                     _logger.LogInformation("Health event created with status Pending: {EventId}", createdEvent.Id);
 
@@ -121,7 +109,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var healthEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     if (healthEvent == null)
                     {
                         return ApiResult<HealthEventResponseDTO>.Failure(
@@ -171,14 +159,14 @@ namespace Services.Implementations
                     if (hasAnyTreatment && healthEvent.EventStatus == EventStatus.Pending)
                     {
                         // Có điều trị và đang Pending -> chuyển sang InProgress
-                        await _healthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.InProgress, currentUserId);
+                        await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.InProgress, currentUserId);
                     }
 
                     await _unitOfWork.SaveChangesAsync();
 
                     // Lấy lại dữ liệu để trả về
-                    var updatedEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
-                    var eventDTO = MapToResponseDTO(updatedEvent!);
+                    var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
 
                     var statusMessage = hasAnyTreatment && updatedEvent!.EventStatus == EventStatus.InProgress
                         ? "Thêm điều trị thành công và trạng thái được cập nhật thành InProgress"
@@ -203,7 +191,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var healthEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     if (healthEvent == null)
                     {
                         return ApiResult<HealthEventResponseDTO>.Failure(
@@ -219,7 +207,7 @@ namespace Services.Implementations
 
                     // Cập nhật trạng thái sang Resolved
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _healthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.Resolved, currentUserId);
+                    await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.Resolved, currentUserId);
 
                     // Nếu có ghi chú hoàn thành, cập nhật vào description
                     if (!string.IsNullOrWhiteSpace(request.CompletionNotes))
@@ -231,8 +219,8 @@ namespace Services.Implementations
                     await _unitOfWork.SaveChangesAsync();
 
                     // Lấy lại dữ liệu để trả về
-                    var updatedEvent = await _healthEventRepository.GetByIdAsync(request.HealthEventId);
-                    var eventDTO = MapToResponseDTO(updatedEvent!);
+                    var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
+                    var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
 
                     _logger.LogInformation("Health event {EventId} resolved successfully", request.HealthEventId);
 
@@ -275,7 +263,7 @@ namespace Services.Implementations
 
                     if (isPermanent)
                     {
-                        var allEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
+                        var allEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
                         var existingIds = allEvents.Select(e => e.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -283,7 +271,7 @@ namespace Services.Implementations
 
                         if (existingIds.Any())
                         {
-                            var deletedCount = await _healthEventRepository.PermanentDeleteHealthEventsAsync(existingIds);
+                            var deletedCount = await _unitOfWork.HealthEventRepository.PermanentDeleteHealthEventsAsync(existingIds);
 
                             if (deletedCount > 0)
                             {
@@ -294,7 +282,7 @@ namespace Services.Implementations
                     }
                     else
                     {
-                        var existingEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: false);
+                        var existingEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: false);
                         var existingIds = existingEvents.Select(e => e.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -303,7 +291,7 @@ namespace Services.Implementations
                         if (existingIds.Any())
                         {
                             var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _healthEventRepository.SoftDeleteHealthEventsAsync(existingIds, currentUserId);
+                            var deletedCount = await _unitOfWork.HealthEventRepository.SoftDeleteHealthEventsAsync(existingIds, currentUserId);
 
                             if (deletedCount > 0)
                             {
@@ -346,7 +334,7 @@ namespace Services.Implementations
                         TotalRequested = ids.Count
                     };
 
-                    var deletedEvents = await _healthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
+                    var deletedEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByIdsAsync(ids, includeDeleted: true);
                     var deletedEventIds = deletedEvents.Where(e => e.IsDeleted).Select(e => e.Id).ToList();
                     var notDeletedIds = ids.Except(deletedEventIds).ToList();
 
@@ -368,7 +356,7 @@ namespace Services.Implementations
                     if (deletedEventIds.Any())
                     {
                         var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                        var restoredCount = await _healthEventRepository.RestoreHealthEventsAsync(deletedEventIds, currentUserId);
+                        var restoredCount = await _unitOfWork.HealthEventRepository.RestoreHealthEventsAsync(deletedEventIds, currentUserId);
 
                         if (restoredCount > 0)
                         {
@@ -399,11 +387,10 @@ namespace Services.Implementations
         {
             try
             {
-                var events = await _healthEventRepository.GetSoftDeletedEventsAsync(
+                var events = await _unitOfWork.HealthEventRepository.GetSoftDeletedEventsAsync(
                     pageNumber, pageSize, searchTerm);
 
-                var eventDTOs = events.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(events, eventDTOs);
+                var result = events.ToPagedResponseDTO();
 
                 return ApiResult<PagedList<HealthEventResponseDTO>>.Success(
                     result, "Lấy danh sách sự kiện y tế đã xóa thành công");
@@ -423,8 +410,8 @@ namespace Services.Implementations
         {
             try
             {
-                var statusStats = await _healthEventRepository.GetEventStatusStatisticsAsync(fromDate, toDate);
-                var typeStats = await _healthEventRepository.GetEventTypeStatisticsAsync(fromDate, toDate);
+                var statusStats = await _unitOfWork.HealthEventRepository.GetEventStatusStatisticsAsync(fromDate, toDate);
+                var typeStats = await _unitOfWork.HealthEventRepository.GetEventTypeStatisticsAsync(fromDate, toDate);
 
                 var statistics = new HealthEventStatisticsResponseDTO
                 {
@@ -471,7 +458,7 @@ namespace Services.Implementations
                 }
 
                 var vaccinationRecord = await _unitOfWork.GetRepository<VaccinationRecord, Guid>()
-           .GetByIdAsync(request.VaccinationRecordId.Value);
+                    .GetByIdAsync(request.VaccinationRecordId.Value);
                 if (vaccinationRecord == null)
                 {
                     return (false, "Không tìm thấy bản ghi tiêm chủng");
@@ -490,11 +477,12 @@ namespace Services.Implementations
 
             return (true, "Valid");
         }
+
         private async Task<(bool IsSuccess, string Message)> ValidateEventMedicationsAsync(List<CreateEventMedicationRequest> medications)
         {
             foreach (var medication in medications)
             {
-                var medicationLot = await _medicationLotRepository.GetByIdAsync(medication.MedicationLotId);
+                var medicationLot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(medication.MedicationLotId);
                 if (medicationLot == null || medicationLot.IsDeleted)
                 {
                     return (false, $"Không tìm thấy lô thuốc với ID: {medication.MedicationLotId}");
@@ -517,7 +505,6 @@ namespace Services.Implementations
         private async Task<(bool IsSuccess, string Message)> ValidateSupplyUsagesAsync(List<CreateSupplyUsageRequest> supplies, Guid currentUserId)
         {
             // Kiểm tra current user có NurseProfile không
-            // You'll need a proper repository or method
             var nurseProfiles = await _unitOfWork.GetRepository<NurseProfile, Guid>()
                 .GetAllAsync(np => np.UserId == currentUserId);
             var nurseProfile = nurseProfiles.FirstOrDefault();
@@ -529,7 +516,7 @@ namespace Services.Implementations
 
             foreach (var supply in supplies)
             {
-                var medicalSupplyLot = await _medicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
+                var medicalSupplyLot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
                 if (medicalSupplyLot == null || medicalSupplyLot.IsDeleted)
                 {
                     return (false, $"Không tìm thấy lô vật tư y tế với ID: {supply.MedicalSupplyLotId}");
@@ -548,7 +535,6 @@ namespace Services.Implementations
 
             return (true, "Valid");
         }
-
 
         private async Task ProcessEventMedicationsAsync(Guid healthEventId, List<CreateEventMedicationRequest> medications,
             Guid currentUserId, DateTime vietnamTime)
@@ -570,7 +556,7 @@ namespace Services.Implementations
                 await _unitOfWork.GetRepository<EventMedication, Guid>().AddAsync(eventMedication);
 
                 // Cập nhật số lượng thuốc
-                var medicationLot = await _medicationLotRepository.GetByIdAsync(medication.MedicationLotId);
+                var medicationLot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(medication.MedicationLotId);
                 if (medicationLot != null)
                 {
                     medicationLot.Quantity -= medication.Quantity;
@@ -585,7 +571,7 @@ namespace Services.Implementations
         {
             // Lấy NurseProfile của current user
             var nurseProfiles = await _unitOfWork.GetRepository<NurseProfile, Guid>()
-    .GetAllAsync(np => np.UserId == currentUserId);
+                .GetAllAsync(np => np.UserId == currentUserId);
             var nurseProfile = nurseProfiles.FirstOrDefault();
 
             if (nurseProfile == null)
@@ -612,7 +598,7 @@ namespace Services.Implementations
                 await _unitOfWork.GetRepository<SupplyUsage, Guid>().AddAsync(supplyUsage);
 
                 // Cập nhật số lượng vật tư
-                var medicalSupplyLot = await _medicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
+                var medicalSupplyLot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(supply.MedicalSupplyLotId);
                 if (medicalSupplyLot != null)
                 {
                     medicalSupplyLot.Quantity -= supply.QuantityUsed;
@@ -620,37 +606,6 @@ namespace Services.Implementations
                     medicalSupplyLot.UpdatedBy = currentUserId;
                 }
             }
-        }
-
-        private async Task UpdateEventStatusBasedOnTreatmentAsync(Guid eventId, bool hasAnyTreatment, bool? isResolved, Guid currentUserId)
-        {
-            var healthEvent = await _healthEventRepository.GetByIdAsync(eventId);
-            if (healthEvent == null) return;
-
-            // Logic cập nhật trạng thái tự động
-            if (isResolved == true && healthEvent.EventStatus == EventStatus.InProgress)
-            {
-                // Chuyển sang Resolved
-                await _healthEventRepository.UpdateEventStatusAsync(eventId, EventStatus.Resolved, currentUserId);
-            }
-            else if (hasAnyTreatment && healthEvent.EventStatus == EventStatus.Pending)
-            {
-                // Có điều trị và đang Pending -> chuyển sang InProgress
-                await _healthEventRepository.UpdateEventStatusAsync(eventId, EventStatus.InProgress, currentUserId);
-            }
-        }
-
-        private static string GetStatusUpdateMessage(EventStatus currentStatus, bool hasAnyTreatment, bool? isResolved)
-        {
-            return currentStatus switch
-            {
-                EventStatus.Pending => "Cập nhật sự kiện y tế thành công (trạng thái: Pending)",
-                EventStatus.InProgress when hasAnyTreatment => "Thêm điều trị thành công và trạng thái được cập nhật thành InProgress",
-                EventStatus.InProgress => "Cập nhật sự kiện y tế thành công (trạng thái: InProgress)",
-                EventStatus.Resolved when isResolved == true => "Hoàn thành xử lý sự kiện y tế thành công (trạng thái: Resolved)",
-                EventStatus.Resolved => "Cập nhật sự kiện y tế thành công (trạng thái: Resolved)",
-                _ => "Cập nhật sự kiện y tế thành công"
-            };
         }
 
         private static (bool isValid, string message) ValidateBatchInput(List<Guid> ids, string operation)
@@ -699,101 +654,6 @@ namespace Services.Implementations
             {
                 return $"Không có sự kiện y tế nào được {operation}";
             }
-        }
-
-        private static HealthEvent MapFromCreateRequest(CreateHealthEventRequestDTO request)
-        {
-            return new HealthEvent
-            {
-                StudentId = request.StudentId,
-                EventCategory = request.EventCategory,
-                VaccinationRecordId = request.VaccinationRecordId,
-                EventType = request.EventType,
-                Description = request.Description,
-                OccurredAt = request.OccurredAt
-            };
-        }
-        private static HealthEventResponseDTO MapToResponseDTO(HealthEvent healthEvent)
-        {
-            return new HealthEventResponseDTO
-            {
-                Id = healthEvent.Id,
-                StudentId = healthEvent.StudentId,
-                StudentName = healthEvent.Student?.FullName ?? string.Empty,
-                EventCategory = healthEvent.EventCategory.ToString(),
-                VaccinationRecordId = healthEvent.VaccinationRecordId,
-                EventType = healthEvent.EventType.ToString(),
-                Description = healthEvent.Description,
-                OccurredAt = healthEvent.OccurredAt,
-                EventStatus = healthEvent.EventStatus.ToString(),
-                ReportedBy = healthEvent.ReportedUserId,
-                ReportedByName = healthEvent.ReportedUser?.FullName ?? string.Empty,
-                CreatedAt = healthEvent.CreatedAt,
-                UpdatedAt = healthEvent.UpdatedAt,
-                IsDeleted = healthEvent.IsDeleted,
-                TotalMedications = healthEvent.EventMedications?.Count ?? 0,
-                TotalSupplies = healthEvent.SupplyUsages?.Count ?? 0
-            };
-        }
-
-        private static HealthEventDetailResponseDTO MapToDetailResponseDTO(HealthEvent healthEvent)
-        {
-            var baseDto = MapToResponseDTO(healthEvent);
-
-            return new HealthEventDetailResponseDTO
-            {
-                Id = baseDto.Id,
-                StudentId = baseDto.StudentId,
-                StudentName = baseDto.StudentName,
-                EventCategory = baseDto.EventCategory,
-                VaccinationRecordId = baseDto.VaccinationRecordId,
-                EventType = baseDto.EventType,
-                Description = baseDto.Description,
-                OccurredAt = baseDto.OccurredAt,
-                EventStatus = baseDto.EventStatus,
-                ReportedBy = baseDto.ReportedBy,
-                ReportedByName = baseDto.ReportedByName,
-                CreatedAt = baseDto.CreatedAt,
-                UpdatedAt = baseDto.UpdatedAt,
-                IsDeleted = baseDto.IsDeleted,
-                TotalMedications = baseDto.TotalMedications,
-                TotalSupplies = baseDto.TotalSupplies,
-
-                Medications = healthEvent.EventMedications?.Select(em => new EventMedicationResponseDTO
-                {
-                    Id = em.Id,
-                    MedicationLotId = em.MedicationLotId,
-                    MedicationName = em.MedicationLot?.Medication?.Name ?? string.Empty,
-                    LotNumber = em.MedicationLot?.LotNumber ?? string.Empty,
-                    Quantity = em.Quantity,
-                    UsedAt = em.CreatedAt
-                }).ToList() ?? new List<EventMedicationResponseDTO>(),
-
-                Supplies = healthEvent.SupplyUsages?.Select(su => new SupplyUsageResponseDTO
-                {
-                    Id = su.Id,
-                    HealthEventId = su.HealthEventId,
-                    MedicalSupplyLotId = su.MedicalSupplyLotId,
-                    MedicalSupplyName = su.MedicalSupplyLot?.MedicalSupply?.Name ?? string.Empty,
-                    LotNumber = su.MedicalSupplyLot?.LotNumber ?? string.Empty,
-                    QuantityUsed = su.QuantityUsed,
-                    NurseProfileId = su.NurseProfileId,
-                    NurseName = su.UsedByNurse?.User?.FullName ?? string.Empty,
-                    Notes = su.Notes,
-                    CreatedAt = su.CreatedAt
-                }).ToList() ?? new List<SupplyUsageResponseDTO>()
-            };
-        }
-
-        private static PagedList<HealthEventResponseDTO> CreatePagedResult(
-            PagedList<HealthEvent> sourcePaged,
-            List<HealthEventResponseDTO> mappedItems)
-        {
-            return new PagedList<HealthEventResponseDTO>(
-                mappedItems,
-                sourcePaged.MetaData.TotalCount,
-                sourcePaged.MetaData.CurrentPage,
-                sourcePaged.MetaData.PageSize);
         }
 
         #endregion

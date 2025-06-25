@@ -12,12 +12,13 @@ namespace Services.Interfaces
     {
         public Task<ApiResult<List<HealProfileResponseDTO>>> GetAllHealProfilesAsync();
         public Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByIdAsync(Guid id);
-        public Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByStudentIdAsync(Guid studentId);
-        public Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByParentIdAsync(Guid parentId);
-        public Task<ApiResult<List<HealProfileResponseDTO>>> GetAllHealProfileByStudentIdAsync(Guid studentId);
+        public Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByStudentCodeAsync(string studentcode);
+        public Task<ApiResult<HealProfileResponseDTO>> GetNewestHealProfileByStudentCodeAsync(string studentcode);
 
+        public Task<ApiResult<HealProfileResponseDTO>> GetHealProfileByParentIdAsync(Guid parentId);
+        public Task<ApiResult<List<HealProfileResponseDTO>>> GetAllHealProfileByStudentCodeAsync(string studentcode);
         public Task<ApiResult<HealProfileResponseDTO>> CreateHealProfileAsync(CreateHealProfileRequestDTO request);
-        public Task<ApiResult<HealProfileResponseDTO>> UpdateHealProfileByIdAsync(Guid id, UpdateHealProfileRequestDTO request);
+        public Task<ApiResult<HealProfileResponseDTO>> UpdateHealProfileByStudentCodeAsync(string studentcode, UpdateHealProfileRequestDTO request);
         public Task<ApiResult<bool>> DeleteHealProfileAsync(Guid id);
         public Task<ApiResult<bool>> SoftDeleteHealProfileAsync(Guid id);
 

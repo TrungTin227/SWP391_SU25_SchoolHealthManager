@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BusinessObjects.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace BusinessObjects
 {
@@ -9,8 +10,11 @@ namespace BusinessObjects
         [MaxLength(200)]
         public string Name { get; set; }
         public string Description { get; set; }
+        public VaccinationCampaignStatus Status { get; set; } = VaccinationCampaignStatus.Pending;
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public ICollection<VaccinationSchedule> Schedules { get; set; }
+        public virtual ICollection<VaccinationSchedule> Schedules { get; set; }
+            = new List<VaccinationSchedule>();
     }
 }

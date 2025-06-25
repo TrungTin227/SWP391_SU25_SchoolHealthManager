@@ -1,14 +1,11 @@
-﻿using DTOs.MedicalSupplyLotDTOs.Request;
-using DTOs.MedicalSupplyLotDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IMedicalSupplyLotService
     {
         #region Basic CRUD Operations
         Task<ApiResult<PagedList<MedicalSupplyLotResponseDTO>>> GetMedicalSupplyLotsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicalSupplyId = null, bool? isExpired = null);
+            Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false);
         Task<ApiResult<MedicalSupplyLotResponseDTO>> GetMedicalSupplyLotByIdAsync(Guid id);
         Task<ApiResult<MedicalSupplyLotResponseDTO>> CreateMedicalSupplyLotAsync(CreateMedicalSupplyLotRequest request);
         Task<ApiResult<MedicalSupplyLotResponseDTO>> UpdateMedicalSupplyLotAsync(Guid id, UpdateMedicalSupplyLotRequest request);

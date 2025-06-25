@@ -1,16 +1,11 @@
-﻿using DTOs.MedicationLotDTOs.Request;
-using DTOs.MedicationLotDTOs.Response;
-using Microsoft.Extensions.Logging;
-using Repositories.Interfaces;
-using Services.Commons;
+﻿using Microsoft.Extensions.Logging;
+using Services.Mappers;
 using System.Data;
 
 namespace Services.Implementations
 {
     public class MedicationLotService : BaseService<MedicationLot, Guid>, IMedicationLotService
     {
-        private readonly IMedicationLotRepository _medicationLotRepository;
-        private readonly IMedicationRepository _medicationRepository;
         private readonly ILogger<MedicationLotService> _logger;
 
         public MedicationLotService(
@@ -20,24 +15,26 @@ namespace Services.Implementations
             ICurrentTime currentTime)
             : base(unitOfWork.MedicationLotRepository, currentUserService, unitOfWork, currentTime)
         {
-            _medicationLotRepository = unitOfWork.MedicationLotRepository;
-            _medicationRepository = unitOfWork.MedicationRepository;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         #region Basic CRUD Operations
 
         public async Task<ApiResult<PagedList<MedicationLotResponseDTO>>> GetMedicationLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicationId = null, bool? isExpired = null)
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            Guid? medicationId = null,
+            bool? isExpired = null,
+            int? daysBeforeExpiry = null,
+            bool includeDeleted = false)
         {
             try
             {
-                var lots = await _medicationLotRepository.GetMedicationLotsAsync(
-                    pageNumber, pageSize, searchTerm, medicationId, isExpired);
+                var lots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsAsync(
+                    pageNumber, pageSize, searchTerm, medicationId, isExpired, daysBeforeExpiry, includeDeleted);
 
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(lots, lotDTOs);
+                var result = MedicationLotMapper.MapToPagedResponseDTO(lots);
 
                 return ApiResult<PagedList<MedicationLotResponseDTO>>.Success(
                     result, "Lấy danh sách lô thuốc thành công");
@@ -53,14 +50,14 @@ namespace Services.Implementations
         {
             try
             {
-                var lot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
+                var lot = await _unitOfWork.MedicationLotRepository.GetLotWithMedicationAsync(id);
                 if (lot == null)
                 {
                     return ApiResult<MedicationLotResponseDTO>.Failure(
                         new Exception("Không tìm thấy lô thuốc"));
                 }
 
-                var lotDTO = MapToResponseDTO(lot);
+                var lotDTO = MedicationLotMapper.MapToResponseDTO(lot);
                 return ApiResult<MedicationLotResponseDTO>.Success(
                     lotDTO, "Lấy thông tin lô thuốc thành công");
             }
@@ -84,17 +81,17 @@ namespace Services.Implementations
                             new Exception(validationResult.Message));
                     }
 
-                    var lot = MapFromCreateRequest(request);
+                    var lot = MedicationLotMapper.MapFromCreateRequest(request);
                     var createdLot = await CreateAsync(lot);
 
-                    var lotWithMedication = await _medicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
+                    var lotWithMedication = await _unitOfWork.MedicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
                     if (lotWithMedication == null)
                     {
                         return ApiResult<MedicationLotResponseDTO>.Failure(
                             new Exception("Không thể lấy thông tin lô thuốc vừa tạo"));
                     }
 
-                    var lotDTO = MapToResponseDTO(lotWithMedication);
+                    var lotDTO = MedicationLotMapper.MapToResponseDTO(lotWithMedication);
                     return ApiResult<MedicationLotResponseDTO>.Success(
                         lotDTO, "Tạo lô thuốc thành công");
                 }
@@ -113,7 +110,7 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var lot = await _medicationLotRepository.GetByIdAsync(id);
+                    var lot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(id);
                     if (lot == null)
                     {
                         return ApiResult<MedicationLotResponseDTO>.Failure(
@@ -127,17 +124,17 @@ namespace Services.Implementations
                             new Exception(validationResult.Message));
                     }
 
-                    MapFromUpdateRequest(request, lot);
+                    MedicationLotMapper.MapFromUpdateRequest(request, lot);
                     await UpdateAsync(lot);
 
-                    var updatedLot = await _medicationLotRepository.GetLotWithMedicationAsync(id);
+                    var updatedLot = await _unitOfWork.MedicationLotRepository.GetLotWithMedicationAsync(id);
                     if (updatedLot == null)
                     {
                         return ApiResult<MedicationLotResponseDTO>.Failure(
                             new Exception("Không thể lấy thông tin lô thuốc đã cập nhật"));
                     }
 
-                    var lotDTO = MapToResponseDTO(updatedLot);
+                    var lotDTO = MedicationLotMapper.MapToResponseDTO(updatedLot);
                     return ApiResult<MedicationLotResponseDTO>.Success(
                         lotDTO, "Cập nhật lô thuốc thành công");
                 }
@@ -153,10 +150,6 @@ namespace Services.Implementations
 
         #region Batch Operations (Unified - Support Single and Multiple)
 
-        /// <summary>
-        /// Xóa một hoặc nhiều lô thuốc cùng lúc (soft delete hoặc permanent delete)
-        /// Hỗ trợ cả single (1 ID) và batch (nhiều IDs)
-        /// </summary>
         public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids, bool isPermanent = false)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -183,7 +176,7 @@ namespace Services.Implementations
                     if (isPermanent)
                     {
                         // Permanent delete: lấy tất cả lots (bao gồm cả đã xóa)
-                        var allLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
+                        var allLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
                         var existingIds = allLots.Select(l => l.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -201,7 +194,7 @@ namespace Services.Implementations
                         // Thực hiện permanent delete cho các lots tồn tại
                         if (existingIds.Any())
                         {
-                            var deletedCount = await _medicationLotRepository.PermanentDeleteLotsAsync(existingIds);
+                            var deletedCount = await _unitOfWork.MedicationLotRepository.PermanentDeleteLotsAsync(existingIds);
 
                             if (deletedCount > 0)
                             {
@@ -215,7 +208,7 @@ namespace Services.Implementations
                     else
                     {
                         // Soft delete: chỉ lấy các lots chưa bị xóa
-                        var existingLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
+                        var existingLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
                         var existingIds = existingLots.Select(l => l.Id).ToList();
                         var notFoundIds = ids.Except(existingIds).ToList();
 
@@ -234,7 +227,7 @@ namespace Services.Implementations
                         if (existingIds.Any())
                         {
                             var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _medicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
+                            var deletedCount = await _unitOfWork.MedicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
 
                             if (deletedCount > 0)
                             {
@@ -264,10 +257,6 @@ namespace Services.Implementations
             }, IsolationLevel.ReadCommitted);
         }
 
-        /// <summary>
-        /// Khôi phục một hoặc nhiều lô thuốc cùng lúc
-        /// Hỗ trợ cả single (1 ID) và batch (nhiều IDs)
-        /// </summary>
         public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationLotsAsync(List<Guid> ids)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -288,7 +277,7 @@ namespace Services.Implementations
                     };
 
                     // Lấy danh sách các lots đã bị soft delete
-                    var deletedLots = await _medicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
+                    var deletedLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
                     var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
                     var notDeletedIds = ids.Except(deletedLotIds).ToList();
 
@@ -312,7 +301,7 @@ namespace Services.Implementations
                     if (deletedLotIds.Any())
                     {
                         var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                        var restoredCount = await _medicationLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
+                        var restoredCount = await _unitOfWork.MedicationLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
 
                         if (restoredCount > 0)
                         {
@@ -342,127 +331,7 @@ namespace Services.Implementations
 
         #endregion
 
-        #region Soft Delete Operations
-
-        public async Task<ApiResult<PagedList<MedicationLotResponseDTO>>> GetSoftDeletedLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null)
-        {
-            try
-            {
-                var lots = await _medicationLotRepository.GetSoftDeletedLotsAsync(
-                    pageNumber, pageSize, searchTerm);
-
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-                var result = CreatePagedResult(lots, lotDTOs);
-
-                return ApiResult<PagedList<MedicationLotResponseDTO>>.Success(
-                    result, "Lấy danh sách lô thuốc đã xóa thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting soft deleted lots");
-                return ApiResult<PagedList<MedicationLotResponseDTO>>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<BatchOperationResultDTO>> CleanupExpiredLotsAsync(int daysToExpire = 90)
-        {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var deletedCount = await _medicationLotRepository.PermanentDeleteExpiredLotsAsync(daysToExpire);
-                    await _unitOfWork.SaveChangesAsync();
-
-                    var batchResult = new BatchOperationResultDTO
-                    {
-                        TotalRequested = deletedCount,
-                        SuccessCount = deletedCount,
-                        FailureCount = 0,
-                        Message = $"Đã dọn dẹp {deletedCount} lô thuốc hết hạn"
-                    };
-
-                    return ApiResult<BatchOperationResultDTO>.Success(
-                        batchResult,
-                        batchResult.Message
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error cleaning up expired lots");
-                    return ApiResult<BatchOperationResultDTO>.Failure(ex);
-                }
-            }, IsolationLevel.ReadCommitted);
-        }
-
-        #endregion
-
         #region Business Logic Operations
-
-        public async Task<ApiResult<List<MedicationLotResponseDTO>>> GetExpiringLotsAsync(int daysBeforeExpiry = 30)
-        {
-            try
-            {
-                var lots = await _medicationLotRepository.GetExpiringLotsAsync(daysBeforeExpiry);
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-
-                return ApiResult<List<MedicationLotResponseDTO>>.Success(
-                    lotDTOs, $"Lấy danh sách lô thuốc sắp hết hạn trong {daysBeforeExpiry} ngày thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting expiring lots");
-                return ApiResult<List<MedicationLotResponseDTO>>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<List<MedicationLotResponseDTO>>> GetExpiredLotsAsync()
-        {
-            try
-            {
-                var lots = await _medicationLotRepository.GetExpiredLotsAsync();
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-
-                return ApiResult<List<MedicationLotResponseDTO>>.Success(
-                    lotDTOs, "Lấy danh sách lô thuốc đã hết hạn thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting expired lots");
-                return ApiResult<List<MedicationLotResponseDTO>>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<List<MedicationLotResponseDTO>>> GetLotsByMedicationIdAsync(Guid medicationId)
-        {
-            try
-            {
-                var lots = await _medicationLotRepository.GetLotsByMedicationIdAsync(medicationId);
-                var lotDTOs = lots.Select(MapToResponseDTO).ToList();
-
-                return ApiResult<List<MedicationLotResponseDTO>>.Success(
-                    lotDTOs, "Lấy danh sách lô thuốc theo ID thuốc thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting lots by medication ID: {MedicationId}", medicationId);
-                return ApiResult<List<MedicationLotResponseDTO>>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<int>> GetAvailableQuantityAsync(Guid medicationId)
-        {
-            try
-            {
-                var quantity = await _medicationLotRepository.GetAvailableQuantityAsync(medicationId);
-                return ApiResult<int>.Success(quantity, "Lấy số lượng khả dụng thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting available quantity for medication: {MedicationId}", medicationId);
-                return ApiResult<int>.Failure(ex);
-            }
-        }
 
         public async Task<ApiResult<bool>> UpdateQuantityAsync(Guid lotId, int newQuantity)
         {
@@ -476,7 +345,7 @@ namespace Services.Implementations
                             new Exception("Số lượng không được âm"));
                     }
 
-                    var success = await _medicationLotRepository.UpdateQuantityAsync(lotId, newQuantity);
+                    var success = await _unitOfWork.MedicationLotRepository.UpdateQuantityAsync(lotId, newQuantity);
                     if (!success)
                     {
                         return ApiResult<bool>.Failure(
@@ -507,7 +376,7 @@ namespace Services.Implementations
                 var currentDate = DateTime.UtcNow.Date;
                 var expiryThreshold = currentDate.AddDays(30);
 
-                var statistics = await _medicationLotRepository.GetAllStatisticsAsync(currentDate, expiryThreshold);
+                var statistics = await _unitOfWork.MedicationLotRepository.GetAllStatisticsAsync(currentDate, expiryThreshold);
 
                 _logger.LogInformation(
                     "Successfully calculated medication lot statistics: Total={TotalLots}, Active={ActiveLots}, Expired={ExpiredLots}, Expiring={ExpiringInNext30Days}",
@@ -549,13 +418,13 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateCreateRequestAsync(CreateMedicationLotRequest request)
         {
-            var medication = await _medicationRepository.GetByIdAsync(request.MedicationId);
+            var medication = await _unitOfWork.MedicationRepository.GetByIdAsync(request.MedicationId);
             if (medication == null)
             {
                 return (false, "Không tìm thấy thuốc");
             }
 
-            var lotNumberExists = await _medicationLotRepository.LotNumberExistsAsync(request.LotNumber);
+            var lotNumberExists = await _unitOfWork.MedicationLotRepository.LotNumberExistsAsync(request.LotNumber);
             if (lotNumberExists)
             {
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
@@ -576,7 +445,7 @@ namespace Services.Implementations
 
         private async Task<(bool IsSuccess, string Message)> ValidateUpdateRequestAsync(UpdateMedicationLotRequest request, Guid excludeId)
         {
-            var lotNumberExists = await _medicationLotRepository.LotNumberExistsAsync(request.LotNumber, excludeId);
+            var lotNumberExists = await _unitOfWork.MedicationLotRepository.LotNumberExistsAsync(request.LotNumber, excludeId);
             if (lotNumberExists)
             {
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
@@ -588,57 +457,6 @@ namespace Services.Implementations
             }
 
             return (true, "Valid");
-        }
-
-        private static MedicationLot MapFromCreateRequest(CreateMedicationLotRequest request)
-        {
-            return new MedicationLot
-            {
-                MedicationId = request.MedicationId,
-                LotNumber = request.LotNumber,
-                ExpiryDate = request.ExpiryDate,
-                Quantity = request.Quantity,
-                StorageLocation = request.StorageLocation
-            };
-        }
-
-        private static void MapFromUpdateRequest(UpdateMedicationLotRequest request, MedicationLot lot)
-        {
-            lot.LotNumber = request.LotNumber;
-            lot.ExpiryDate = request.ExpiryDate;
-            lot.Quantity = request.Quantity;
-            lot.StorageLocation = request.StorageLocation;
-        }
-
-        private static MedicationLotResponseDTO MapToResponseDTO(MedicationLot lot)
-        {
-            return new MedicationLotResponseDTO
-            {
-                Id = lot.Id,
-                MedicationId = lot.MedicationId,
-                LotNumber = lot.LotNumber,
-                ExpiryDate = lot.ExpiryDate,
-                Quantity = lot.Quantity,
-                StorageLocation = lot.StorageLocation,
-                IsDeleted = lot.IsDeleted,
-                CreatedAt = lot.CreatedAt,
-                UpdatedAt = lot.UpdatedAt,
-                CreatedBy = lot.CreatedBy.ToString() ?? string.Empty,
-                UpdatedBy = lot.UpdatedBy.ToString() ?? string.Empty,
-                MedicationName = lot.Medication?.Name ?? string.Empty,
-                MedicationUnit = lot.Medication?.Unit ?? string.Empty
-            };
-        }
-
-        private static PagedList<MedicationLotResponseDTO> CreatePagedResult(
-            PagedList<MedicationLot> sourcePaged,
-            List<MedicationLotResponseDTO> mappedItems)
-        {
-            return new PagedList<MedicationLotResponseDTO>(
-                mappedItems,
-                sourcePaged.MetaData.TotalCount,
-                sourcePaged.MetaData.CurrentPage,
-                sourcePaged.MetaData.PageSize);
         }
 
         #endregion

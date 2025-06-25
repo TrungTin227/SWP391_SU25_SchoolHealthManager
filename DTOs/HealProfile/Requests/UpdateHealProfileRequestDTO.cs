@@ -10,10 +10,9 @@ namespace DTOs.HealProfile.Requests
 {
     public class UpdateHealProfileRequestDTO
     {
-        [Required(ErrorMessage = "Phiên bản là bắt buộc")]
-        public int Version { get; set; }
+        //[Required(ErrorMessage = "Phiên bản là bắt buộc")]
+        //public int Version { get; set; }
         [Required(ErrorMessage = "Ngày tạo profile là bắt buộc")]
-        public DateTime ProfileDate { get; set; }
         public string? Allergies { get; set; }
         public string? ChronicConditions { get; set; }
         public string? TreatmentHistory { get; set; }
