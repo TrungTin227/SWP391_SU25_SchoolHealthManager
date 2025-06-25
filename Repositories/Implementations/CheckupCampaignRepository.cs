@@ -1,7 +1,6 @@
-﻿using LinqKit;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-
+ 
 namespace Repositories.Implementations
 {
     public class CheckupCampaignRepository : GenericRepository<CheckupCampaign, Guid>, ICheckupCampaignRepository
@@ -124,31 +123,44 @@ namespace Repositories.Implementations
         }
 
         private Expression<Func<CheckupCampaign, bool>> BuildCampaignPredicate(
-            string? searchTerm, CheckupCampaignStatus? status, DateTime? startDate, DateTime? endDate)
+    string? searchTerm,
+    CheckupCampaignStatus? status,
+    DateTime? startDate,
+    DateTime? endDate)
         {
-            Expression<Func<CheckupCampaign, bool>> predicate = c => !c.IsDeleted;
+            // Bắt đầu với True, rồi AND thêm điều kiện IsDeleted = false
+            var predicate = PredicateBuilder
+                .True<CheckupCampaign>()
+                .And(c => !c.IsDeleted);
 
-            if (!string.IsNullOrEmpty(searchTerm))
+            // Nếu có từ khóa tìm kiếm, ghép thêm điều kiện chứa searchTerm
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
+                var term = searchTerm.Trim();
                 predicate = predicate.And(c =>
-                    c.Name.Contains(searchTerm) ||
-                    c.SchoolYear.Contains(searchTerm) ||
-                    (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(searchTerm)));
+                    c.Name.Contains(term) ||
+                    c.SchoolYear.Contains(term) ||
+                    (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(term)));
             }
 
+            // Nếu có trạng thái, ghép thêm điều kiện bằng status
             if (status.HasValue)
             {
                 predicate = predicate.And(c => c.Status == status.Value);
             }
 
+            // Nếu có ngày bắt đầu, ghép thêm điều kiện >= startDate
             if (startDate.HasValue)
             {
-                predicate = predicate.And(c => c.ScheduledDate >= startDate.Value.Date);
+                var from = startDate.Value.Date;
+                predicate = predicate.And(c => c.ScheduledDate >= from);
             }
 
+            // Nếu có ngày kết thúc, ghép thêm điều kiện <= endDate (đến cuối ngày)
             if (endDate.HasValue)
             {
-                predicate = predicate.And(c => c.ScheduledDate <= endDate.Value.Date.AddDays(1).AddTicks(-1));
+                var to = endDate.Value.Date.AddDays(1).AddTicks(-1);
+                predicate = predicate.And(c => c.ScheduledDate <= to);
             }
 
             return predicate;

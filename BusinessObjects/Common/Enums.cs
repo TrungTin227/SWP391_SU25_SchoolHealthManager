@@ -38,7 +38,7 @@
     {
         Pending = 0,        // Chờ phụ huynh ký
         Sent = 1,           // Đã gửi thông báo
-        Approved = 2,         // Phụ huynh đã ký đồng ý
+        Approved = 2,       // Phụ huynh đã ký đồng ý
         Rejected = 3,       // Phụ huynh từ chối
         Expired = 4         // Hết hạn ký
     }
