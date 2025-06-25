@@ -1,6 +1,4 @@
-﻿using DTOs.VaccinationScheduleDTOs.Response;
-
-namespace Services.Helpers.Mappers
+﻿namespace Services.Helpers.Mappers
 {
     public static class VaccinationScheduleMapper
     {

@@ -47,13 +47,19 @@ namespace WebAPI.Controllers
         }
 
 
+        /// <summary>
+        /// Tạo lịch tiêm mới (có thể tạo hàng loạt theo khối/lớp)
+        /// </summary>
         [HttpPost]
         //[Authorize(Roles = "Admin,Nurse")]
-        public async Task<IActionResult> CreateSchedule([FromBody] CreateVaccinationScheduleRequest request)
+        public async Task<IActionResult> CreateSchedules([FromBody] CreateVaccinationScheduleRequest request)
         {
-            var result = await _scheduleService.CreateScheduleAsync(request);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            var result = await _scheduleService.CreateSchedulesAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
 
         [HttpPut("{id}")]
         //[Authorize(Roles = "Admin,Nurse")]
