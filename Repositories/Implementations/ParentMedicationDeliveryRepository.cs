@@ -28,7 +28,7 @@ namespace Repositories.Implementations
                 ReceivedBy = request.ParentId, // Sửa: Thêm trường ReceivedBy
                 DeliveredAt = request.DeliveredAt,
                 Notes = request.Notes,
-                Status = request.Status
+                Status = StatusMedicationDelivery.Pending // Mặc định là Pending
             };
             await _context.AddAsync(parentmedicationDelivery);
             await _context.SaveChangesAsync();

@@ -19,9 +19,9 @@ namespace Services.Helpers.Mapers
                 QuantityDelivered = request.QuantityDelivered,
                 DeliveredAt = request.DeliveredAt,
                 Notes = request.Notes,
-                Status = request.Status
             };
         }
+
 
         public static ParentMedicationDelivery ToUpdateParentMedicationDelivery(this UpdateParentMedicationDeliveryRequestDTO request, ParentMedicationDelivery existingDelivery)
         {

@@ -25,6 +25,5 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Request
         public int QuantityDelivered { get; set; }
         public DateTime DeliveredAt { get; set; }
         public string? Notes { get; set; }
-        public StatusMedicationDelivery Status { get; set; }
     }
 }
