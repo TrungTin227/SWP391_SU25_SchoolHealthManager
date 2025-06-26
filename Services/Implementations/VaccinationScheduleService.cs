@@ -5,15 +5,18 @@ namespace Services.Implementations
     public class VaccinationScheduleService : BaseService<VaccinationSchedule, Guid>, IVaccinationScheduleService
     {
         private readonly ILogger<VaccinationScheduleService> _logger;
+        private readonly ISessionStudentService _sessionStudent;
         public VaccinationScheduleService(
             IVaccinationScheduleRepository scheduleRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
-            ILogger<VaccinationScheduleService> logger)
+            ILogger<VaccinationScheduleService> logger,
+            ISessionStudentService sessionStudent)
             : base(scheduleRepository, currentUserService, unitOfWork, currentTime)
         {
             _logger = logger;
+            _sessionStudent = sessionStudent;
         }
 
         #region CRUD Operations
@@ -135,7 +138,15 @@ namespace Services.Implementations
                     var totalStudents = createdSchedules.Sum(s => s.SessionStudents?.Count ?? 0);
                     _logger.LogInformation("Tạo thành công {ScheduleCount} lịch tiêm với tổng {StudentCount} học sinh cho chiến dịch {CampaignId}",
                         responseDTOs.Count, totalStudents, request.CampaignId);
+                    // ✅ Gửi email thông báo cho phụ huynh
+                    foreach (var createdSchedule in createdSchedules)
+                    {
+                        var studentIdsToNotify = createdSchedule.SessionStudents
+                            .Select(ss => ss.StudentId)
+                            .ToList();
 
+                        await _sessionStudent.SendVaccinationNotificationEmailToParents(studentIdsToNotify, vaccinationType.Name, createdSchedule);
+                    }
                     return ApiResult<List<VaccinationScheduleResponseDTO>>.Success(responseDTOs,
                         $"Tạo thành công {responseDTOs.Count} lịch tiêm với {totalStudents} học sinh");
                 }
