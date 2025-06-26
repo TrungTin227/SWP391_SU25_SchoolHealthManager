@@ -11,6 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="CheckUpRecordDTOs\Responds\" />
+    <Folder Include="CheckUpRecordDTOs\Requests\" />
+    <Folder Include="CounselingAppointmentDTOs\Responds\" />
     <Folder Include="SessionStudentDTOs\Responds\" />
   </ItemGroup>
 
