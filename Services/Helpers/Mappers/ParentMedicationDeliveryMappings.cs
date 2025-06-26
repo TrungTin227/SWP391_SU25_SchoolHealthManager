@@ -14,8 +14,10 @@ namespace Services.Helpers.Mapers
         {
             return new ParentMedicationDelivery
             {
+                MedicationName = request.MedicationName,
                 StudentId = request.StudentId,
                 ParentId = request.ParentId,
+                ReceivedBy = request.ParentId, // Assuming ReceivedBy is the same as ParentId for this example
                 QuantityDelivered = request.QuantityDelivered,
                 DeliveredAt = request.DeliveredAt,
                 Notes = request.Notes,
@@ -42,6 +44,9 @@ namespace Services.Helpers.Mapers
 
             if (!string.IsNullOrWhiteSpace(request.Notes))
                 existingDelivery.Notes = request.Notes;
+
+            if (!string.IsNullOrWhiteSpace(request.MedicationName))
+                existingDelivery.Notes = request.MedicationName;
 
             if (request.Status.HasValue && Enum.IsDefined(typeof(StatusMedicationDelivery), request.Status.Value))
                 existingDelivery.Status = request.Status.Value;

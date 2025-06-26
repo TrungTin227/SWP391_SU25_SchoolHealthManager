@@ -12,6 +12,9 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Request
 {
     public  class CreateParentMedicationDeliveryRequestDTO
     {
+        [Required(ErrorMessage = "Tên thuốc giao cho học sinh là bắt buộc")]
+
+        public string MedicationName { get; set; } // Thêm tên thuốc để dễ quản lý
         [Required(ErrorMessage = "ID học sinh là bắt buộc")]
         public Guid StudentId { get; set; }
 
