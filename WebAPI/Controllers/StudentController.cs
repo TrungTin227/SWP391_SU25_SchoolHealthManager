@@ -65,23 +65,23 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
         [HttpDelete("soft-delete-student-by-id")]
-        public async Task<IActionResult> SoftDeleteStudentById([FromQuery] Guid id)
+        public async Task<IActionResult> SoftDeleteStudentById([FromBody] List<Guid> ids)
         {
-            if (id == Guid.Empty)
+            if (ids== null || !ids.Any())
             {
                 return BadRequest(new { Message = "Id is required" });
             }
-            var result = await _studentService.SoftDeleteStudentByIdAsync(id);
+            var result = await _studentService.SoftDeleteStudentByIdsAsync(ids);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
         [HttpDelete("soft-delete-student-by-code")]
-        public async Task<IActionResult> SoftDeleteStudentByCode([FromQuery] string studentCode)
+        public async Task<IActionResult> SoftDeleteStudentByCode([FromBody] List<string> studentCodes)
         {
-            if (string.IsNullOrEmpty(studentCode))
+            if (studentCodes == null || !studentCodes.Any())
             {
                 return BadRequest(new { Message = "StudentCode is required" });
             }
-            var result = await _studentService.SoftDeleteStudentByCodeAsync(studentCode);
+            var result = await _studentService.SoftDeleteStudentByCodesAsync(studentCodes);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

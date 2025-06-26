@@ -12,6 +12,7 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Request
     {
         [Required(ErrorMessage = "ParentMedicationDeliveryId is required.")]
         public Guid ParentMedicationDeliveryId { get; set; }
+        public string? MedicationName { get; set; } // Optional, can be null if not updated
         public Guid? StudentId { get; set; }
 
         public Guid? ParentId { get; set; }

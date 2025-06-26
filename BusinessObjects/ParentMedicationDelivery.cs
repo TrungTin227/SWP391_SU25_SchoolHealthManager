@@ -9,6 +9,7 @@ namespace BusinessObjects
         [Key]
         public Guid Id { get; set; }
 
+        public string MedicationName { get; set; } // Thêm tên thuốc để dễ quản lý
         public Guid StudentId { get; set; }
         public Student Student { get; set; }
 

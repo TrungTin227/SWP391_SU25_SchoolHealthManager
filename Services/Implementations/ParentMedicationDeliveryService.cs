@@ -57,13 +57,11 @@ namespace Services.Implementations
                 if (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId) == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
 
-                //if (await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(request.ReceivedBy) == null)
-                //    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy người nhận với ID: " + request.ReceivedBy));
-
                 if (await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId) == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
 
-                await _unitOfWork.ParentMedicationDeliveryRepository.CreateParentMedicationDeliveryRequestDTO(request); // gọi base service để tạo entity
+                //await _unitOfWork.ParentMedicationDeliveryRepository.CreateParentMedicationDeliveryRequestDTO(request); // gọi base service để tạo entity
+                await CreateAsync(ParentMedicationDeliveryMappings.ToParentMedicationDelivery(request)); // map DTO thành entity và gọi base service để tạo entity
 
                 return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Success(request, "Tạo đơn thuốc phụ huynh giao thành công!!!"); // ví dụ
             }

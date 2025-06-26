@@ -7,7 +7,7 @@
     public enum ReferenceType { ConsentForm, HealthEvent, ScreeningResult }
     public enum RoleType{Student, Parent, SchoolNurse, Manager, Admin }
     public enum ScheduleType {Vaccination, Consultation }
-    public enum StatusMedicationDelivery { Confirmed, Pending, Rejected }
+    public enum StatusMedicationDelivery { Pending, Confirmed, Rejected, Delivered }
     public enum EventCategory { General, Vaccination } // Phân loại sự kiện tiêm chủng 
     public enum EventStatus { Pending, InProgress, Resolved } // Trạng thái sự kiện
     public enum NotificationType{VaccinationSchedule, SupplyShortage }
