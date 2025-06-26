@@ -30,7 +30,9 @@ namespace Repositories.WorkSeeds.Implements
         private IParentVaccinationRepository? _parentVaccinationRepository;
         private ICheckupCampaignRepository? _checkupCampaignRepository;
         private ICheckupScheduleRepository? _checkupScheduleRepository;
-
+        private ICheckupRecordRepository? _checkupRecordRepository;
+        private ICounselingAppointmentRepository? _counselingAppointmentRepository;
+        private INurseProfileRepository? _nurseProfileRepository;
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
             _context = context;
@@ -54,7 +56,6 @@ namespace Repositories.WorkSeeds.Implements
 
         public IMedicationLotRepository MedicationLotRepository =>
             _medicationLotRepository ??= _repositoryFactory.GetCustomRepository<IMedicationLotRepository>();
-
         public IMedicalSupplyRepository MedicalSupplyRepository =>
             _medicalSupplyRepository ??= _repositoryFactory.GetCustomRepository<IMedicalSupplyRepository>();
         public IMedicalSupplyLotRepository MedicalSupplyLotRepository =>
@@ -77,6 +78,12 @@ namespace Repositories.WorkSeeds.Implements
             _checkupCampaignRepository ??= _repositoryFactory.GetCustomRepository<ICheckupCampaignRepository>();
         public ICheckupScheduleRepository CheckupScheduleRepository => 
             _checkupScheduleRepository ??= _repositoryFactory.GetCustomRepository<ICheckupScheduleRepository>();
+        public ICheckupRecordRepository CheckupRecordRepository => 
+            _checkupRecordRepository ??= _repositoryFactory.GetCustomRepository<ICheckupRecordRepository>();
+        public ICounselingAppointmentRepository CounselingAppointmentRepository => 
+            _counselingAppointmentRepository ??= _repositoryFactory.GetCustomRepository<ICounselingAppointmentRepository>();
+        public INurseProfileRepository NurseProfileRepository =>
+            _nurseProfileRepository ??= _repositoryFactory.GetCustomRepository<INurseProfileRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {

@@ -65,12 +65,12 @@ namespace BusinessObjects
         /// <summary>
         /// Ghi chú trong buổi tư vấn
         /// </summary>
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
 
         /// <summary>
         /// Khuyến nghị cho phụ huynh sau tư vấn
         /// </summary>
-        public string Recommendations { get; set; }
+        public string? Recommendations { get; set; }
         /// <summary>
         /// Nếu buổi tư vấn sinh ra do phản ứng sau tiêm, liên kết tới VaccinationRecords
         /// </summary>
