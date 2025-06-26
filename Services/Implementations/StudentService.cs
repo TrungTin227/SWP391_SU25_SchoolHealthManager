@@ -14,9 +14,7 @@ namespace Services.Implementations
 {
     public class StudentService :BaseService<Student,Guid>, IStudentService
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<StudentService> _logger;
-        private readonly ICurrentUserService _currentUserService;
         private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
         public StudentService(
@@ -213,7 +211,7 @@ namespace Services.Implementations
             {
                 if (parentId == Guid.Empty)
                 {
-                    return ApiResult<List<GetAllStudentDTO>>.Failure(new ArgumentNullException(nameof(parentId), "ID phụ huynh không được để trống."));
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("ID phụ huynh không được để trống."));
                 }
                 var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId);
                 if (students == null || !students.Any())
