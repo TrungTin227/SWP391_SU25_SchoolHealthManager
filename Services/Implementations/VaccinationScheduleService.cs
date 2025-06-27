@@ -6,6 +6,7 @@ namespace Services.Implementations
     {
         private readonly ILogger<VaccinationScheduleService> _logger;
         private readonly ISessionStudentService _sessionStudent;
+
         public VaccinationScheduleService(
             IVaccinationScheduleRepository scheduleRepository,
             ICurrentUserService currentUserService,
@@ -117,16 +118,13 @@ namespace Services.Implementations
                             new InvalidOperationException("Không thể tạo lịch tiêm do xung đột thời gian"));
                     }
 
-                    // Save schedules to database
+                    // Save schedules to database using BaseService
                     var createdSchedules = new List<VaccinationSchedule>();
                     foreach (var schedule in schedules)
                     {
-                        // BaseService will handle audit fields automatically for the schedule
+                        // BaseService will handle audit fields automatically for the schedule and SessionStudents
                         var createdSchedule = await CreateAsync(schedule);
                         createdSchedules.Add(createdSchedule);
-
-                        // SessionStudents đã được tạo cùng với schedule, không cần thêm riêng
-                        // Vì schedule.SessionStudents đã có data, Entity Framework sẽ tự động lưu
 
                         _logger.LogInformation("Tạo lịch tiêm {ScheduleId} với {StudentCount} học sinh",
                             createdSchedule.Id, schedule.SessionStudents.Count);
@@ -822,7 +820,7 @@ namespace Services.Implementations
         }
 
         private async Task<List<VaccinationSchedule>> CreateSchedulesFromStudentIds(
-    CreateVaccinationScheduleRequest request, HashSet<Guid> studentIds)
+            CreateVaccinationScheduleRequest request, HashSet<Guid> studentIds)
         {
             var schedules = new List<VaccinationSchedule>();
             var baseScheduledTime = request.ScheduledAt;
@@ -849,7 +847,7 @@ namespace Services.Implementations
             {
                 var sessionStudents = validStudentIds.Select(studentId => new SessionStudent
                 {
-                    // Don't set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - will be handled when saved
+                    // Don't set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - BaseService will handle these
                     StudentId = studentId,
                     ConsentStatus = ParentConsentStatus.Pending,
                     ConsentDeadline = baseScheduledTime.AddDays(-2), // 2 days before vaccination
@@ -858,6 +856,7 @@ namespace Services.Implementations
 
                 var schedule = new VaccinationSchedule
                 {
+                    // Don't set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - BaseService will handle these
                     CampaignId = request.CampaignId,
                     VaccinationTypeId = request.VaccinationTypeId,
                     ScheduledAt = baseScheduledTime,
