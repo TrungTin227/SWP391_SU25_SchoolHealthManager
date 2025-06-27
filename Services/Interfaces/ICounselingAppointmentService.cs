@@ -12,7 +12,7 @@ namespace Services.Interfaces
     {
         Task<ApiResult<CounselingAppointmentRespondDTO>> CreateCounselingAppointmentAsync(CreateCounselingAppointmentRequestDTO request);
         Task<ApiResult<AddNoteAndRecommendRequestDTO>> AddNoteAndRecommend(AddNoteAndRecommendRequestDTO request);
-        Task<ApiResult<bool>> StartAppointment(Guid AppointmentId);
+        //Task<ApiResult<bool>> StartAppointment(Guid AppointmentId);
         Task<ApiResult<CounselingAppointmentRespondDTO>> UpdateAppointmentAsync(UpdateCounselingAppointmentRequestDTO request);
         Task<ApiResult<CounselingAppointmentRespondDTO?>> GetByIdAsync(Guid id);
         Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStaffIdAsync(Guid id);
@@ -21,7 +21,7 @@ namespace Services.Interfaces
         Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
         Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> id);
 
-        //Task<ApiResult<bool>> AcceptAppointmentAsync(Guid appointmentId, Guid counselorId);
-        //Task<ApiResult<bool>> RejectAppointmentAsync(Guid appointmentId, Guid counselorId);
+        Task<ApiResult<bool>> AcceptAppointmentAsync(Guid appointmentId);
+        Task<ApiResult<bool>> RejectAppointmentAsync(Guid appointmentId);
     }
 }
