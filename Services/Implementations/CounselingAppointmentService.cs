@@ -205,47 +205,42 @@ namespace Services.Implementations
         }
 
 
-        public async Task<ApiResult<bool>> StartAppointment(Guid AppointmentId)
-        {
-            try
-            {
-                if (AppointmentId == null)
-                {
-                    return ApiResult<bool>.Failure(
-                        new ArgumentNullException("Dữ liệu gửi lên không được để trống."));
-                }
+        //public async Task<ApiResult<bool>> StartAppointment(Guid AppointmentId)
+        //{
+        //    try
+        //    {
 
-                if (AppointmentId == Guid.Empty)
-                {
-                    return ApiResult<bool>.Failure(
-                        new ArgumentException("ID lịch tư vấn không hợp lệ."));
-                }
+        //        if (AppointmentId == Guid.Empty)
+        //        {
+        //            return ApiResult<bool>.Failure(
+        //                new ArgumentException("ID lịch tư vấn không hợp lệ."));
+        //        }
 
-                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(AppointmentId);
-                if (appointment == null || appointment.IsDeleted)
-                {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Không tìm thấy lịch tư vấn."));
-                }
-                if (appointment.Status != ScheduleStatus.Pending)
-                {
-                    return ApiResult<bool>.Failure(
-                        new Exception("Lịch tư vấn không ở trạng thái chờ."));
-                }
-                // Cập nhật trạng thái
-                appointment.Status = ScheduleStatus.InProgress;
-                appointment.UpdatedAt = _currentTime.GetVietnamTime();
-                appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
-                await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
-                await _unitOfWork.SaveChangesAsync();
-                return ApiResult<bool>.Success(true, "Bắt đầu lịch tư vấn thành công!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi tạo lịch tư vấn");
-                return ApiResult<bool>.Failure(new Exception("Tạo lịch tư vấn thất bại: " + ex.Message));
-            }
-        }
+        //        var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(AppointmentId);
+        //        if (appointment == null || appointment.IsDeleted)
+        //        {
+        //            return ApiResult<bool>.Failure(
+        //                new Exception("Không tìm thấy lịch tư vấn."));
+        //        }
+        //        if (appointment.Status != ScheduleStatus.Pending)
+        //        {
+        //            return ApiResult<bool>.Failure(
+        //                new Exception("Lịch tư vấn không ở trạng thái chờ."));
+        //        }
+        //        // Cập nhật trạng thái
+        //        appointment.Status = ScheduleStatus.InProgress;
+        //        appointment.UpdatedAt = _currentTime.GetVietnamTime();
+        //        appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+        //        await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
+        //        await _unitOfWork.SaveChangesAsync();
+        //        return ApiResult<bool>.Success(true, "Bắt đầu lịch tư vấn thành công!");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Lỗi khi tạo lịch tư vấn");
+        //        return ApiResult<bool>.Failure(new Exception("Tạo lịch tư vấn thất bại: " + ex.Message));
+        //    }
+        //}
 
         public async Task<ApiResult<CounselingAppointmentRespondDTO>> UpdateAppointmentAsync(UpdateCounselingAppointmentRequestDTO request)
         {
@@ -482,5 +477,78 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<bool>> AcceptAppointmentAsync(Guid appointmentId)
+        {
+            try
+            {
+
+                if (appointmentId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(
+                        new ArgumentException("ID lịch tư vấn không hợp lệ."));
+                }
+
+                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(appointmentId);
+                if (appointment == null || appointment.IsDeleted)
+                {
+                    return ApiResult<bool>.Failure(
+                        new Exception("Không tìm thấy lịch tư vấn."));
+                }
+                if (appointment.Status != ScheduleStatus.Pending)
+                {
+                    return ApiResult<bool>.Failure(
+                        new Exception("Lịch tư vấn không ở trạng thái chờ."));
+                }
+                // Cập nhật trạng thái
+                appointment.Status = ScheduleStatus.InProgress;
+                appointment.UpdatedAt = _currentTime.GetVietnamTime();
+                appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+                await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
+                await _unitOfWork.SaveChangesAsync();
+                return ApiResult<bool>.Success(true, "Bắt đầu lịch tư vấn thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi bắt đầu lịch tư vấn");
+                return ApiResult<bool>.Failure(new Exception("Bắt đầu lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+
+        public async Task<ApiResult<bool>> RejectAppointmentAsync(Guid appointmentId)
+        {
+            try
+            {
+
+                if (appointmentId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(
+                        new ArgumentException("ID lịch tư vấn không hợp lệ."));
+                }
+
+                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(appointmentId);
+                if (appointment == null || appointment.IsDeleted)
+                {
+                    return ApiResult<bool>.Failure(
+                        new Exception("Không tìm thấy lịch tư vấn."));
+                }
+                if (appointment.Status != ScheduleStatus.Pending)
+                {
+                    return ApiResult<bool>.Failure(
+                        new Exception("Lịch tư vấn không ở trạng thái chờ."));
+                }
+                // Cập nhật trạng thái
+                appointment.Status = ScheduleStatus.Cancelled;
+                appointment.UpdatedAt = _currentTime.GetVietnamTime();
+                appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+                await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
+                await _unitOfWork.SaveChangesAsync();
+                return ApiResult<bool>.Success(true, "Hủy lịch tư vấn thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi hủy lịch tư vấn");
+                return ApiResult<bool>.Failure(new Exception("Hủy lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
     }
 }

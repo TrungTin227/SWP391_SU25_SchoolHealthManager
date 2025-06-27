@@ -43,20 +43,36 @@ namespace WebAPI.Controllers
             return Ok(result);
         }
 
-        [HttpPost("start-Appointment")]
-        public async Task<IActionResult> StartAppointment(Guid AppointmentId)
+        [HttpPost("acpt-Appointment")]
+        public async Task<IActionResult> AcptAppointment(Guid AppointmentId)
         {
             if (AppointmentId == Guid.Empty)
             {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
             }
-            var result = await _counselingAppointmentService.StartAppointment(AppointmentId);
+            var result = await _counselingAppointmentService.AcceptAppointmentAsync(AppointmentId);
             if (!result.IsSuccess)
             {
                 return BadRequest(result);
             }
             return Ok(result);
         }
+
+        [HttpPost("reject-Appointment")]
+        public async Task<IActionResult> RejectAppointment(Guid AppointmentId)
+        {
+            if (AppointmentId == Guid.Empty)
+            {
+                return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
+            }
+            var result = await _counselingAppointmentService.RejectAppointmentAsync(AppointmentId);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
         [HttpPost("update-Appointment-by-id")]
         public async Task<IActionResult> UpdateAppointmentById([FromBody] UpdateCounselingAppointmentRequestDTO request)
         {
