@@ -79,7 +79,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CheckupCampaigns");
+                    b.ToTable("CheckupCampaigns", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.CheckupRecord", b =>
@@ -163,7 +163,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("CheckupRecords");
+                    b.ToTable("CheckupRecords", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.CheckupSchedule", b =>
@@ -228,7 +228,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("CheckupSchedules");
+                    b.ToTable("CheckupSchedules", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.CounselingAppointment", b =>
@@ -313,7 +313,7 @@ namespace Repositories.Migrations
                     b.HasIndex("VaccinationRecordId")
                         .HasDatabaseName("IX_CounselingAppointments_VaccinationRecordId");
 
-                    b.ToTable("CounselingAppointments");
+                    b.ToTable("CounselingAppointments", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Dispense", b =>
@@ -374,7 +374,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("Dispenses");
+                    b.ToTable("Dispenses", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.EventMedication", b =>
@@ -419,7 +419,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("MedicationLotId");
 
-                    b.ToTable("EventMedications");
+                    b.ToTable("EventMedications", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.FileAttachment", b =>
@@ -471,7 +471,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("FileAttachments");
+                    b.ToTable("FileAttachments", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.HealthEvent", b =>
@@ -544,7 +544,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("VaccinationRecordId");
 
-                    b.ToTable("HealthEvents");
+                    b.ToTable("HealthEvents", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.HealthProfile", b =>
@@ -621,7 +621,7 @@ namespace Repositories.Migrations
                     b.HasIndex("StudentId")
                         .HasDatabaseName("IX_HealthProfiles_StudentId");
 
-                    b.ToTable("HealthProfiles");
+                    b.ToTable("HealthProfiles", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.MedicalSupply", b =>
@@ -672,7 +672,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MedicalSupplies");
+                    b.ToTable("MedicalSupplies", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.MedicalSupplyLot", b =>
@@ -723,7 +723,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("MedicalSupplyId");
 
-                    b.ToTable("MedicalSupplyLots");
+                    b.ToTable("MedicalSupplyLots", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Medication", b =>
@@ -782,7 +782,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Medications");
+                    b.ToTable("Medications", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.MedicationLot", b =>
@@ -851,7 +851,7 @@ namespace Repositories.Migrations
                     b.HasIndex("VaccineTypeId")
                         .HasDatabaseName("IX_MedicationLots_VaccineTypeId");
 
-                    b.ToTable("MedicationLots");
+                    b.ToTable("MedicationLots", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Notification", b =>
@@ -916,7 +916,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.NurseProfile", b =>
@@ -957,7 +957,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("NurseProfiles");
+                    b.ToTable("NurseProfiles", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Parent", b =>
@@ -994,7 +994,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("Parents");
+                    b.ToTable("Parents", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.ParentMedicationDelivery", b =>
@@ -1066,7 +1066,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("ParentMedicationDeliveries");
+                    b.ToTable("ParentMedicationDeliveries", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.ParentVaccinationRecord", b =>
@@ -1119,7 +1119,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("VaccineTypeId");
 
-                    b.ToTable("ParentVaccinationRecord");
+                    b.ToTable("ParentVaccinationRecord", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Report", b =>
@@ -1174,7 +1174,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("HealthEventId");
 
-                    b.ToTable("Reports");
+                    b.ToTable("Reports", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Role", b =>
@@ -1300,7 +1300,7 @@ namespace Repositories.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_SessionStudents_ScheduleId_StudentId_Unique");
 
-                    b.ToTable("SessionStudents");
+                    b.ToTable("SessionStudents", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.Student", b =>
@@ -1372,7 +1372,7 @@ namespace Repositories.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Students_StudentCode_Unique");
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.SupplyUsage", b =>
@@ -1427,7 +1427,7 @@ namespace Repositories.Migrations
 
                     b.HasIndex("NurseProfileId");
 
-                    b.ToTable("SupplyUsages");
+                    b.ToTable("SupplyUsages", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.User", b =>
@@ -1580,7 +1580,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("VaccinationCampaigns");
+                    b.ToTable("VaccinationCampaigns", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationRecord", b =>
@@ -1666,7 +1666,7 @@ namespace Repositories.Migrations
                     b.HasIndex("VaccineTypeId")
                         .HasDatabaseName("IX_VaccinationRecords_VaccineTypeId");
 
-                    b.ToTable("VaccinationRecords");
+                    b.ToTable("VaccinationRecords", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationSchedule", b =>
@@ -1719,7 +1719,7 @@ namespace Repositories.Migrations
                     b.HasIndex("VaccinationTypeId")
                         .HasDatabaseName("IX_VaccinationSchedules_VaccinationTypeId");
 
-                    b.ToTable("VaccinationSchedules");
+                    b.ToTable("VaccinationSchedules", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationType", b =>
@@ -1775,7 +1775,7 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("VaccinationTypes");
+                    b.ToTable("VaccinationTypes", (string)null);
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
@@ -1832,7 +1832,7 @@ namespace Repositories.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_VaccineDoseInfos_VaccineTypeId_DoseNumber_Unique");
 
-                    b.ToTable("VaccineDoseInfos");
+                    b.ToTable("VaccineDoseInfos", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
