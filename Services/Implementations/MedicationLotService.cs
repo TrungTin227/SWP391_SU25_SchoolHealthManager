@@ -82,6 +82,8 @@ namespace Services.Implementations
                     }
 
                     var lot = MedicationLotMapper.MapFromCreateRequest(request);
+
+                    // Use BaseService's CreateAsync method - it handles audit fields and SaveChanges
                     var createdLot = await CreateAsync(lot);
 
                     var lotWithMedication = await _unitOfWork.MedicationLotRepository.GetLotWithMedicationAsync(createdLot.Id);
@@ -125,6 +127,8 @@ namespace Services.Implementations
                     }
 
                     MedicationLotMapper.MapFromUpdateRequest(request, lot);
+
+                    // Use BaseService's UpdateAsync method - it handles audit fields and SaveChanges
                     await UpdateAsync(lot);
 
                     var updatedLot = await _unitOfWork.MedicationLotRepository.GetLotWithMedicationAsync(id);
@@ -146,9 +150,31 @@ namespace Services.Implementations
             }, IsolationLevel.ReadCommitted);
         }
 
+        public async Task<ApiResult<bool>> DeleteMedicationLotAsync(Guid id)
+        {
+            try
+            {
+                // Use BaseService's DeleteAsync method - it handles soft delete and SaveChanges
+                var success = await DeleteAsync(id);
+
+                if (!success)
+                {
+                    return ApiResult<bool>.Failure(
+                        new Exception("Không tìm thấy lô thuốc"));
+                }
+
+                return ApiResult<bool>.Success(true, "Xóa lô thuốc thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting medication lot: {LotId}", id);
+                return ApiResult<bool>.Failure(ex);
+            }
+        }
+
         #endregion
 
-        #region Batch Operations (Unified - Support Single and Multiple)
+        #region Batch Operations
 
         public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationLotsAsync(List<Guid> ids, bool isPermanent = false)
         {
@@ -162,12 +188,6 @@ namespace Services.Implementations
                             new ArgumentException("Danh sách ID không được rỗng"));
                     }
 
-                    var operationType = isPermanent ? "permanent delete" : "soft delete";
-                    var operationText = isPermanent ? "xóa vĩnh viễn" : "xóa";
-
-                    _logger.LogInformation("Starting batch {OperationType} for {Count} medication lots",
-                        operationType, ids.Count);
-
                     var result = new BatchOperationResultDTO
                     {
                         TotalRequested = ids.Count
@@ -175,76 +195,19 @@ namespace Services.Implementations
 
                     if (isPermanent)
                     {
-                        // Permanent delete: lấy tất cả lots (bao gồm cả đã xóa)
-                        var allLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
-                        var existingIds = allLots.Select(l => l.Id).ToList();
-                        var notFoundIds = ids.Except(existingIds).ToList();
-
-                        // Thêm lỗi cho các ID không tìm thấy
-                        foreach (var notFoundId in notFoundIds)
-                        {
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = notFoundId.ToString(),
-                                Error = "Không tìm thấy lô thuốc",
-                                Details = $"Medication lot với ID {notFoundId} không tồn tại"
-                            });
-                        }
-
-                        // Thực hiện permanent delete cho các lots tồn tại
-                        if (existingIds.Any())
-                        {
-                            var deletedCount = await _unitOfWork.MedicationLotRepository.PermanentDeleteLotsAsync(existingIds);
-
-                            if (deletedCount > 0)
-                            {
-                                await _unitOfWork.SaveChangesAsync();
-
-                                result.SuccessCount = deletedCount;
-                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                            }
-                        }
+                        result = await ProcessPermanentDeleteBatch(ids, result);
                     }
                     else
                     {
-                        // Soft delete: chỉ lấy các lots chưa bị xóa
-                        var existingLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
-                        var existingIds = existingLots.Select(l => l.Id).ToList();
-                        var notFoundIds = ids.Except(existingIds).ToList();
-
-                        // Thêm lỗi cho các ID không tìm thấy
-                        foreach (var notFoundId in notFoundIds)
-                        {
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = notFoundId.ToString(),
-                                Error = "Không tìm thấy lô thuốc hoặc đã bị xóa",
-                                Details = $"Medication lot với ID {notFoundId} không tồn tại hoặc đã bị xóa"
-                            });
-                        }
-
-                        // Thực hiện soft delete cho các lots tồn tại
-                        if (existingIds.Any())
-                        {
-                            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _unitOfWork.MedicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
-
-                            if (deletedCount > 0)
-                            {
-                                await _unitOfWork.SaveChangesAsync();
-
-                                result.SuccessCount = deletedCount;
-                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                            }
-                        }
+                        result = await ProcessSoftDeleteBatch(ids, result);
                     }
 
-                    result.FailureCount = result.Errors.Count;
+                    var operationText = isPermanent ? "xóa vĩnh viễn" : "xóa";
                     result.Message = GenerateBatchOperationMessage(operationText, result);
 
                     _logger.LogInformation(
                         "Batch {OperationType} completed: {SuccessCount} success, {FailureCount} failures",
-                        operationType, result.SuccessCount, result.FailureCount);
+                        isPermanent ? "permanent delete" : "soft delete", result.SuccessCount, result.FailureCount);
 
                     return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
@@ -276,28 +239,15 @@ namespace Services.Implementations
                         TotalRequested = ids.Count
                     };
 
-                    // Lấy danh sách các lots đã bị soft delete
+                    // Get deleted lots
                     var deletedLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
                     var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
                     var notDeletedIds = ids.Except(deletedLotIds).ToList();
 
-                    // Thêm lỗi cho các ID không phải là soft deleted
-                    foreach (var notDeletedId in notDeletedIds)
-                    {
-                        var lot = deletedLots.FirstOrDefault(l => l.Id == notDeletedId);
-                        string errorMessage = lot == null
-                            ? "Không tìm thấy lô thuốc"
-                            : "Lô thuốc chưa bị xóa";
+                    // Add errors for non-deleted IDs
+                    AddRestoreErrors(result, notDeletedIds, deletedLots);
 
-                        result.Errors.Add(new BatchOperationErrorDTO
-                        {
-                            Id = notDeletedId.ToString(),
-                            Error = errorMessage,
-                            Details = $"Medication lot với ID {notDeletedId} {errorMessage.ToLower()}"
-                        });
-                    }
-
-                    // Thực hiện restore cho các lots đã bị soft delete
+                    // Restore deleted lots
                     if (deletedLotIds.Any())
                     {
                         var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
@@ -306,7 +256,6 @@ namespace Services.Implementations
                         if (restoredCount > 0)
                         {
                             await _unitOfWork.SaveChangesAsync();
-
                             result.SuccessCount = restoredCount;
                             result.SuccessIds = deletedLotIds.Select(id => id.ToString()).ToList();
                         }
@@ -395,6 +344,90 @@ namespace Services.Implementations
         #endregion
 
         #region Private Helper Methods
+
+        private async Task<BatchOperationResultDTO> ProcessPermanentDeleteBatch(List<Guid> ids, BatchOperationResultDTO result)
+        {
+            // Get all lots (including deleted ones)
+            var allLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: true);
+            var existingIds = allLots.Select(l => l.Id).ToList();
+            var notFoundIds = ids.Except(existingIds).ToList();
+
+            // Add errors for not found IDs
+            AddNotFoundErrors(result, notFoundIds, "Không tìm thấy lô thuốc");
+
+            // Perform permanent delete for existing lots
+            if (existingIds.Any())
+            {
+                var deletedCount = await _unitOfWork.MedicationLotRepository.PermanentDeleteLotsAsync(existingIds);
+
+                if (deletedCount > 0)
+                {
+                    await _unitOfWork.SaveChangesAsync();
+                    result.SuccessCount = deletedCount;
+                    result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<BatchOperationResultDTO> ProcessSoftDeleteBatch(List<Guid> ids, BatchOperationResultDTO result)
+        {
+            // Get only non-deleted lots
+            var existingLots = await _unitOfWork.MedicationLotRepository.GetMedicationLotsByIdsAsync(ids, includeDeleted: false);
+            var existingIds = existingLots.Select(l => l.Id).ToList();
+            var notFoundIds = ids.Except(existingIds).ToList();
+
+            // Add errors for not found IDs
+            AddNotFoundErrors(result, notFoundIds, "Không tìm thấy lô thuốc hoặc đã bị xóa");
+
+            // Perform soft delete for existing lots
+            if (existingIds.Any())
+            {
+                var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                var deletedCount = await _unitOfWork.MedicationLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
+
+                if (deletedCount > 0)
+                {
+                    await _unitOfWork.SaveChangesAsync();
+                    result.SuccessCount = deletedCount;
+                    result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
+                }
+            }
+
+            return result;
+        }
+
+        private void AddNotFoundErrors(BatchOperationResultDTO result, List<Guid> notFoundIds, string errorMessage)
+        {
+            foreach (var notFoundId in notFoundIds)
+            {
+                result.Errors.Add(new BatchOperationErrorDTO
+                {
+                    Id = notFoundId.ToString(),
+                    Error = errorMessage,
+                    Details = $"Medication lot với ID {notFoundId} {errorMessage.ToLower()}"
+                });
+            }
+        }
+
+        private void AddRestoreErrors(BatchOperationResultDTO result, List<Guid> notDeletedIds, List<MedicationLot> allLots)
+        {
+            foreach (var notDeletedId in notDeletedIds)
+            {
+                var lot = allLots.FirstOrDefault(l => l.Id == notDeletedId);
+                string errorMessage = lot == null
+                    ? "Không tìm thấy lô thuốc"
+                    : "Lô thuốc chưa bị xóa";
+
+                result.Errors.Add(new BatchOperationErrorDTO
+                {
+                    Id = notDeletedId.ToString(),
+                    Error = errorMessage,
+                    Details = $"Medication lot với ID {notDeletedId} {errorMessage.ToLower()}"
+                });
+            }
+        }
 
         private string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
         {

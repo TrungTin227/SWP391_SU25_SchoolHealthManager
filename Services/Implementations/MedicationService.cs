@@ -19,9 +19,6 @@ namespace Services.Implementations
 
         #region Public API Methods
 
-        /// <summary>
-        /// Lấy danh sách thuốc theo phân trang, có thể lọc theo searchTerm, category và includeDeleted.
-        /// </summary>
         public async Task<ApiResult<PagedList<MedicationResponse>>> GetMedicationsAsync(
             int pageNumber,
             int pageSize,
@@ -35,9 +32,9 @@ namespace Services.Implementations
             try
             {
                 _logger.LogInformation(
-                    "GetMedicationsAsync started by user {UserId} at {Timestamp} - Page: {PageNumber}, Size: {PageSize}, " +
+                    "GetMedicationsAsync started by user {UserId} - Page: {PageNumber}, Size: {PageSize}, " +
                     "Search: '{SearchTerm}', Category: {Category}, IncludeDeleted: {IncludeDeleted}",
-                    currentUserId, DateTime.UtcNow, pageNumber, pageSize, searchTerm, category, includeDeleted);
+                    currentUserId, pageNumber, pageSize, searchTerm, category, includeDeleted);
 
                 // Validate input parameters
                 var validationResult = ValidatePagingParameters(pageNumber, pageSize);
@@ -89,9 +86,6 @@ namespace Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Lấy thông tin chi tiết thuốc theo Id.
-        /// </summary>
         public async Task<ApiResult<MedicationResponse>> GetMedicationByIdAsync(Guid id)
         {
             try
@@ -107,7 +101,7 @@ namespace Services.Implementations
                 if (medication == null || medication.IsDeleted)
                 {
                     return ApiResult<MedicationResponse>.Failure(
-                        new Exception("Không tìm thấy thuốc"));
+                        new KeyNotFoundException("Không tìm thấy thuốc"));
                 }
 
                 var response = await MapSingleMedicationToResponseAsync(medication);
@@ -121,9 +115,6 @@ namespace Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Lấy thông tin chi tiết thuốc kèm thông tin lô.
-        /// </summary>
         public async Task<ApiResult<MedicationDetailResponse>> GetMedicationDetailByIdAsync(Guid id)
         {
             try
@@ -139,7 +130,7 @@ namespace Services.Implementations
                 if (medication == null || medication.IsDeleted)
                 {
                     return ApiResult<MedicationDetailResponse>.Failure(
-                        new Exception("Không tìm thấy thuốc"));
+                        new KeyNotFoundException("Không tìm thấy thuốc"));
                 }
 
                 var lots = await _unitOfWork.MedicationLotRepository.GetLotsByMedicationIdAsync(id);
@@ -155,9 +146,6 @@ namespace Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Tạo mới một thuốc.
-        /// </summary>
         public async Task<ApiResult<MedicationResponse>> CreateMedicationAsync(CreateMedicationRequest request)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -169,12 +157,12 @@ namespace Services.Implementations
                     if (!validationResult.IsValid)
                     {
                         return ApiResult<MedicationResponse>.Failure(
-                            new Exception(validationResult.ErrorMessage));
+                            new ArgumentException(validationResult.ErrorMessage));
                     }
 
-                    // Create entity and save
+                    // Create entity and save using BaseService
                     var medication = MapToMedicationEntity(request);
-                    var createdMedication = await CreateAsync(medication);
+                    var createdMedication = await CreateAsync(medication); // BaseService handles audit fields
 
                     // Map to response
                     var response = await MapSingleMedicationToResponseAsync(createdMedication);
@@ -191,9 +179,6 @@ namespace Services.Implementations
             });
         }
 
-        /// <summary>
-        /// Cập nhật thông tin thuốc theo Id.
-        /// </summary>
         public async Task<ApiResult<MedicationResponse>> UpdateMedicationAsync(
             Guid id, UpdateMedicationRequest request)
         {
@@ -212,7 +197,7 @@ namespace Services.Implementations
                     if (medication == null || medication.IsDeleted)
                     {
                         return ApiResult<MedicationResponse>.Failure(
-                            new Exception("Không tìm thấy thuốc"));
+                            new KeyNotFoundException("Không tìm thấy thuốc"));
                     }
 
                     // Validate update request
@@ -220,12 +205,12 @@ namespace Services.Implementations
                     if (!validationResult.IsValid)
                     {
                         return ApiResult<MedicationResponse>.Failure(
-                            new Exception(validationResult.ErrorMessage));
+                            new ArgumentException(validationResult.ErrorMessage));
                     }
 
-                    // Update entity
+                    // Update entity using BaseService
                     UpdateMedicationEntity(medication, request);
-                    var updatedMedication = await UpdateAsync(medication);
+                    var updatedMedication = await UpdateAsync(medication); // BaseService handles audit fields
 
                     // Map to response
                     var response = await MapSingleMedicationToResponseAsync(updatedMedication);
@@ -242,9 +227,6 @@ namespace Services.Implementations
             });
         }
 
-        /// <summary>
-        /// Xóa thuốc (hỗ trợ xóa 1 hoặc nhiều, soft delete hoặc permanent).
-        /// </summary>
         public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicationsAsync(List<Guid> medicationIds, bool isPermanent = false)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -258,13 +240,25 @@ namespace Services.Implementations
                             new ArgumentException(validationResult.ErrorMessage));
                     }
 
-                    var result = await ExecuteBatchDeleteOperation(medicationIds, isPermanent);
-                    await _unitOfWork.SaveChangesAsync();
+                    var operationType = isPermanent ? "xóa vĩnh viễn" : "xóa";
+                    _logger.LogInformation("Starting batch {Operation} for {Count} medications",
+                        operationType, medicationIds.Count);
 
-                    var actionType = isPermanent ? "xóa vĩnh viễn" : "xóa";
-                    result.Message = GenerateBatchOperationMessage(result, actionType);
+                    var result = new BatchOperationResultDTO { TotalRequested = medicationIds.Count };
 
-                    LogBatchOperationResult(actionType, result);
+                    if (isPermanent)
+                    {
+                        await ProcessPermanentDelete(medicationIds, result);
+                    }
+                    else
+                    {
+                        await ProcessSoftDelete(medicationIds, result);
+                    }
+
+                    result.FailureCount = result.Errors.Count;
+                    result.Message = GenerateBatchOperationMessage(result, operationType);
+
+                    LogBatchOperationResult(operationType, result);
 
                     return result.SuccessCount > 0
                         ? ApiResult<BatchOperationResultDTO>.Success(result, result.Message)
@@ -280,9 +274,6 @@ namespace Services.Implementations
             });
         }
 
-        /// <summary>
-        /// Khôi phục thuốc đã bị soft delete (hỗ trợ 1 hoặc nhiều).
-        /// </summary>
         public async Task<ApiResult<BatchOperationResultDTO>> RestoreMedicationsAsync(List<Guid> medicationIds)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -296,9 +287,9 @@ namespace Services.Implementations
                             new ArgumentException(validationResult.ErrorMessage));
                     }
 
-                    var result = await ExecuteBatchRestoreOperation(medicationIds);
-                    await _unitOfWork.SaveChangesAsync();
+                    _logger.LogInformation("Starting batch restore for {Count} medications", medicationIds.Count);
 
+                    var result = await ExecuteBatchRestoreOperation(medicationIds);
                     result.Message = GenerateBatchOperationMessage(result, "khôi phục");
                     LogBatchOperationResult("khôi phục", result);
 
@@ -315,9 +306,6 @@ namespace Services.Implementations
             });
         }
 
-        /// <summary>
-        /// Lấy danh sách thuốc đang ở trạng thái Active.
-        /// </summary>
         public async Task<ApiResult<List<MedicationResponse>>> GetActiveMedicationsAsync()
         {
             try
@@ -336,9 +324,6 @@ namespace Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Xóa vĩnh viễn các thuốc đã soft delete quá thời hạn.
-        /// </summary>
         public async Task<ApiResult<string>> CleanupExpiredMedicationsAsync(int daysToExpire = 30)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -352,7 +337,6 @@ namespace Services.Implementations
                     }
 
                     var deletedCount = await _unitOfWork.MedicationRepository.PermanentDeleteExpiredAsync(daysToExpire);
-                    await _unitOfWork.SaveChangesAsync();
 
                     var message = deletedCount > 0
                         ? $"Đã xóa vĩnh viễn {deletedCount} thuốc hết hạn"
@@ -448,18 +432,13 @@ namespace Services.Implementations
 
         #region Batch Operations
 
-        private async Task<BatchOperationResultDTO> ExecuteBatchDeleteOperation(List<Guid> medicationIds, bool isPermanent)
+        private async Task ProcessPermanentDelete(List<Guid> medicationIds, BatchOperationResultDTO result)
         {
-            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-            var result = new BatchOperationResultDTO { TotalRequested = medicationIds.Count };
-
             foreach (var id in medicationIds)
             {
                 try
                 {
-                    bool success = isPermanent
-                        ? await _unitOfWork.MedicationRepository.PermanentDeleteWithLotsAsync(id)
-                        : await _unitOfWork.MedicationRepository.SoftDeleteWithLotsAsync(id, currentUserId);
+                    var success = await _unitOfWork.MedicationRepository.PermanentDeleteWithLotsAsync(id);
 
                     if (success)
                     {
@@ -474,16 +453,40 @@ namespace Services.Implementations
                 catch (Exception ex)
                 {
                     AddBatchOperationError(result, id, "Exception", ex.Message);
-                    _logger.LogError(ex, "Error deleting medication {MedicationId}", id);
+                    _logger.LogError(ex, "Error permanently deleting medication {MedicationId}", id);
                 }
             }
+        }
 
-            return result;
+        private async Task ProcessSoftDelete(List<Guid> medicationIds, BatchOperationResultDTO result)
+        {
+            foreach (var id in medicationIds)
+            {
+                try
+                {
+                    // Sử dụng BaseService DeleteAsync cho soft delete
+                    var deleteResult = await DeleteAsync(id);
+                    if (deleteResult)
+                    {
+                        result.SuccessCount++;
+                        result.SuccessIds.Add(id.ToString());
+                    }
+                    else
+                    {
+                        AddBatchOperationError(result, id, "DeleteFailed", "Không thể xóa thuốc");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddBatchOperationError(result, id, "Exception", ex.Message);
+                    _logger.LogError(ex, "Error soft deleting medication {MedicationId}", id);
+                }
+            }
         }
 
         private async Task<BatchOperationResultDTO> ExecuteBatchRestoreOperation(List<Guid> medicationIds)
         {
-            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+            var currentUserId = GetCurrentUserIdOrThrow();
             var result = new BatchOperationResultDTO { TotalRequested = medicationIds.Count };
 
             foreach (var id in medicationIds)
@@ -510,6 +513,16 @@ namespace Services.Implementations
             }
 
             return result;
+        }
+
+        private Guid GetCurrentUserIdOrThrow()
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            if (!currentUserId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy thông tin người dùng hiện tại");
+            }
+            return currentUserId.Value;
         }
 
         private static void AddBatchOperationError(BatchOperationResultDTO result, Guid id, string error, string details)
@@ -711,6 +724,7 @@ namespace Services.Implementations
         {
             return new Medication
             {
+                // Không cần set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - BaseService sẽ xử lý
                 Name = request.Name,
                 Unit = request.Unit,
                 DosageForm = request.DosageForm,
@@ -767,20 +781,13 @@ namespace Services.Implementations
         private static string GenerateBatchOperationMessage(BatchOperationResultDTO result, string actionType)
         {
             if (result.IsCompleteSuccess)
-            {
                 return $"Đã {actionType} thành công tất cả {result.TotalRequested} thuốc";
-            }
-            else if (result.IsCompleteFailure)
-            {
-                return $"Không thể {actionType} bất kỳ thuốc nào";
-            }
-            else if (result.IsPartialSuccess)
-            {
+
+            if (result.IsPartialSuccess)
                 return $"Đã {actionType} thành công {result.SuccessCount}/{result.TotalRequested} thuốc. " +
                        $"Không thể {actionType} {result.FailureCount} thuốc";
-            }
 
-            return $"Hoàn thành việc {actionType} thuốc";
+            return $"Không thể {actionType} bất kỳ thuốc nào";
         }
 
         private static string GenerateGetMedicationsSuccessMessage(

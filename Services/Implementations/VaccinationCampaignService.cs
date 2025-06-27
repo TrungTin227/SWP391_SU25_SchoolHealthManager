@@ -73,7 +73,7 @@ namespace Services.Implementations
                         new KeyNotFoundException($"Không tìm thấy chiến dịch tiêm chủng với ID: {id}"));
                 }
 
-                var response = VaccinationCampaignMapper.MapToDetailResponseDTO(campaign); //  MAP VACCINE TYPE
+                var response = VaccinationCampaignMapper.MapToDetailResponseDTO(campaign);
                 return ApiResult<VaccinationCampaignDetailResponseDTO>.Success(response, "Lấy chi tiết chiến dịch tiêm chủng thành công");
             }
             catch (Exception ex)
@@ -106,6 +106,7 @@ namespace Services.Implementations
                     var campaign = VaccinationCampaignMapper.MapFromCreateRequest(request);
                     campaign.Status = VaccinationCampaignStatus.Pending; // Initial status
 
+                    // BaseService sẽ tự động xử lý audit fields
                     var createdCampaign = await CreateAsync(campaign);
                     var response = VaccinationCampaignMapper.MapToResponseDTO(createdCampaign);
 
@@ -146,6 +147,7 @@ namespace Services.Implementations
                     // Update campaign properties
                     VaccinationCampaignMapper.UpdateFromRequest(campaign, request);
 
+                    // BaseService sẽ tự động xử lý audit fields
                     var updatedCampaign = await UpdateAsync(campaign);
                     var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign);
 
@@ -166,76 +168,14 @@ namespace Services.Implementations
 
         public async Task<ApiResult<VaccinationCampaignResponseDTO>> StartCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
-                    if (campaign == null)
-                    {
-                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
-                            new KeyNotFoundException("Không tìm thấy chiến dịch tiêm chủng"));
-                    }
-
-                    if (campaign.Status != VaccinationCampaignStatus.Pending)
-                    {
-                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
-                            new InvalidOperationException($"Không thể bắt đầu chiến dịch từ trạng thái {campaign.Status}"));
-                    }
-
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, VaccinationCampaignStatus.InProgress, currentUserId);
-
-                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
-                    var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
-
-                    _logger.LogInformation("Chiến dịch tiêm chủng được bắt đầu: {CampaignId}", campaignId);
-                    return ApiResult<VaccinationCampaignResponseDTO>.Success(response, "Bắt đầu chiến dịch tiêm chủng thành công");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi khi bắt đầu chiến dịch tiêm chủng: {CampaignId}", campaignId);
-                    return ApiResult<VaccinationCampaignResponseDTO>.Failure(ex);
-                }
-            });
+            return await UpdateCampaignStatusAsync(campaignId, VaccinationCampaignStatus.InProgress,
+                "bắt đầu", VaccinationCampaignStatus.Pending);
         }
 
         public async Task<ApiResult<VaccinationCampaignResponseDTO>> CompleteCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
-                    if (campaign == null)
-                    {
-                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
-                            new KeyNotFoundException("Không tìm thấy chiến dịch tiêm chủng"));
-                    }
-
-                    if (campaign.Status != VaccinationCampaignStatus.InProgress)
-                    {
-                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
-                            new InvalidOperationException($"Không thể hoàn thành chiến dịch từ trạng thái {campaign.Status}"));
-                    }
-
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, VaccinationCampaignStatus.Resolved, currentUserId);
-
-                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
-                    var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
-
-                    _logger.LogInformation("Chiến dịch tiêm chủng được hoàn thành: {CampaignId}", campaignId);
-                    return ApiResult<VaccinationCampaignResponseDTO>.Success(response, "Hoàn thành chiến dịch tiêm chủng thành công");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi khi hoàn thành chiến dịch tiêm chủng: {CampaignId}", campaignId);
-                    return ApiResult<VaccinationCampaignResponseDTO>.Failure(ex);
-                }
-            });
+            return await UpdateCampaignStatusAsync(campaignId, VaccinationCampaignStatus.Resolved,
+                "hoàn thành", VaccinationCampaignStatus.InProgress);
         }
 
         public async Task<ApiResult<VaccinationCampaignResponseDTO>> CancelCampaignAsync(Guid campaignId, string? notes = null)
@@ -257,12 +197,11 @@ namespace Services.Implementations
                             new InvalidOperationException("Không thể hủy chiến dịch đã hoàn thành"));
                     }
 
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, VaccinationCampaignStatus.Cancelled, currentUserId);
+                    campaign.Status = VaccinationCampaignStatus.Cancelled;
 
-                    var updatedCampaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
-                    var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign!);
+                    // BaseService sẽ tự động xử lý UpdatedAt và UpdatedBy
+                    var updatedCampaign = await UpdateAsync(campaign);
+                    var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign);
 
                     _logger.LogInformation("Chiến dịch tiêm chủng được hủy: {CampaignId}", campaignId);
                     return ApiResult<VaccinationCampaignResponseDTO>.Success(response, "Hủy chiến dịch tiêm chủng thành công");
@@ -285,20 +224,57 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var deletedCount = await _unitOfWork.VaccinationCampaignRepository.SoftDeleteCampaignsAsync(campaignIds, currentUserId);
-
-                    var result = new BatchOperationResultDTO
+                    var validationResult = ValidateBatchInput(campaignIds, "xóa");
+                    if (!validationResult.isValid)
                     {
-                        TotalRequested = campaignIds.Count,
-                        SuccessCount = deletedCount,
-                        FailureCount = campaignIds.Count - deletedCount
-                    };
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException(validationResult.message));
+                    }
 
-                    var message = GenerateBatchOperationMessage("xóa", result);
-                    _logger.LogInformation("Xóa mềm chiến dịch tiêm chủng: {SuccessCount}/{TotalCount}", deletedCount, campaignIds.Count);
+                    _logger.LogInformation("Starting batch soft delete for {Count} vaccination campaigns", campaignIds.Count);
 
-                    return ApiResult<BatchOperationResultDTO>.Success(result, message);
+                    var result = new BatchOperationResultDTO { TotalRequested = campaignIds.Count };
+
+                    foreach (var campaignId in campaignIds)
+                    {
+                        try
+                        {
+                            // Sử dụng BaseService DeleteAsync cho soft delete
+                            var deleteResult = await DeleteAsync(campaignId);
+                            if (deleteResult)
+                            {
+                                result.SuccessCount++;
+                                result.SuccessIds.Add(campaignId.ToString());
+                            }
+                            else
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = campaignId.ToString(),
+                                    Error = "Xóa thất bại",
+                                    Details = "Không thể xóa chiến dịch tiêm chủng"
+                                });
+                                result.FailureCount++;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Errors.Add(new BatchOperationErrorDTO
+                            {
+                                Id = campaignId.ToString(),
+                                Error = "Lỗi hệ thống",
+                                Details = ex.Message
+                            });
+                            result.FailureCount++;
+                        }
+                    }
+
+                    result.Message = GenerateBatchOperationMessage("xóa", result);
+
+                    _logger.LogInformation("Batch soft delete completed: {SuccessCount}/{TotalCount} vaccination campaigns",
+                        result.SuccessCount, campaignIds.Count);
+
+                    return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
                 catch (Exception ex)
                 {
@@ -314,20 +290,32 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                    var validationResult = ValidateBatchInput(campaignIds, "khôi phục");
+                    if (!validationResult.isValid)
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException(validationResult.message));
+                    }
+
+                    _logger.LogInformation("Starting batch restore for {Count} vaccination campaigns", campaignIds.Count);
+
+                    var currentUserId = GetCurrentUserIdOrThrow();
                     var restoredCount = await _unitOfWork.VaccinationCampaignRepository.RestoreCampaignsAsync(campaignIds, currentUserId);
 
                     var result = new BatchOperationResultDTO
                     {
                         TotalRequested = campaignIds.Count,
                         SuccessCount = restoredCount,
-                        FailureCount = campaignIds.Count - restoredCount
+                        FailureCount = campaignIds.Count - restoredCount,
+                        SuccessIds = campaignIds.Take(restoredCount).Select(id => id.ToString()).ToList()
                     };
 
-                    var message = GenerateBatchOperationMessage("khôi phục", result);
-                    _logger.LogInformation("Khôi phục chiến dịch tiêm chủng: {SuccessCount}/{TotalCount}", restoredCount, campaignIds.Count);
+                    result.Message = GenerateBatchOperationMessage("khôi phục", result);
 
-                    return ApiResult<BatchOperationResultDTO>.Success(result, message);
+                    _logger.LogInformation("Batch restore completed: {SuccessCount}/{TotalCount} vaccination campaigns",
+                        restoredCount, campaignIds.Count);
+
+                    return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
                 catch (Exception ex)
                 {
@@ -343,59 +331,73 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var totalSuccess = 0;
-                    var successIds = new List<string>();
-                    var errors = new List<BatchOperationErrorDTO>(); // Thay đổi từ List<string> thành List<BatchOperationErrorDTO>
+                    var validationResult = ValidateBatchStatusUpdate(request);
+                    if (!validationResult.isValid)
+                    {
+                        return ApiResult<BatchOperationResultDTO>.Failure(
+                            new ArgumentException(validationResult.message));
+                    }
+
+                    _logger.LogInformation("Starting batch status update for {Count} vaccination campaigns", request.Updates.Count);
+
+                    var result = new BatchOperationResultDTO { TotalRequested = request.Updates.Count };
 
                     foreach (var update in request.Updates)
                     {
                         try
                         {
-                            var affected = await _unitOfWork.VaccinationCampaignRepository.UpdateCampaignStatusAsync(
-                                update.CampaignId, update.Status, currentUserId);
-
-                            if (affected > 0)
+                            var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(update.CampaignId);
+                            if (campaign == null)
                             {
-                                totalSuccess++;
-                                successIds.Add(update.CampaignId.ToString()); // Thêm ID vào danh sách thành công
-                            }
-                            else
-                            {
-                                errors.Add(new BatchOperationErrorDTO
+                                result.Errors.Add(new BatchOperationErrorDTO
                                 {
                                     Id = update.CampaignId.ToString(),
-                                    Details = $"Không thể cập nhật trạng thái cho chiến dịch {update.CampaignId}",
-                                    Error = "UPDATE_FAILED"
+                                    Error = "Không tìm thấy",
+                                    Details = "Chiến dịch tiêm chủng không tồn tại"
                                 });
+                                result.FailureCount++;
+                                continue;
                             }
+
+                            // Validate status transition
+                            if (!IsValidStatusTransition(campaign.Status, update.Status))
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = update.CampaignId.ToString(),
+                                    Error = "Trạng thái không hợp lệ",
+                                    Details = $"Không thể chuyển từ {campaign.Status} sang {update.Status}"
+                                });
+                                result.FailureCount++;
+                                continue;
+                            }
+
+                            campaign.Status = update.Status;
+
+                            // BaseService sẽ tự động xử lý UpdatedAt và UpdatedBy
+                            await UpdateAsync(campaign);
+
+                            result.SuccessCount++;
+                            result.SuccessIds.Add(update.CampaignId.ToString());
                         }
                         catch (Exception ex)
                         {
-                            errors.Add(new BatchOperationErrorDTO
+                            result.Errors.Add(new BatchOperationErrorDTO
                             {
                                 Id = update.CampaignId.ToString(),
-                                Details = $"Lỗi khi cập nhật chiến dịch {update.CampaignId}: {ex.Message}",
-                                Error = "EXCEPTION"
+                                Error = "Lỗi hệ thống",
+                                Details = ex.Message
                             });
+                            result.FailureCount++;
                         }
                     }
 
-                    var result = new BatchOperationResultDTO
-                    {
-                        TotalRequested = request.Updates.Count,
-                        SuccessCount = totalSuccess,
-                        FailureCount = request.Updates.Count - totalSuccess,
-                        SuccessIds = successIds, // Gán danh sách ID thành công
-                        Errors = errors // Bây giờ đã đúng kiểu dữ liệu
-                    };
+                    result.Message = GenerateBatchOperationMessage("cập nhật trạng thái", result);
 
-                    var message = GenerateBatchOperationMessage("cập nhật trạng thái", result);
-                    result.Message = message;
+                    _logger.LogInformation("Batch status update completed: {SuccessCount}/{TotalCount} vaccination campaigns",
+                        result.SuccessCount, request.Updates.Count);
 
-                    _logger.LogInformation("Cập nhật trạng thái chiến dịch tiêm chủng: {SuccessCount}/{TotalCount}", totalSuccess, request.Updates.Count);
-
-                    return ApiResult<BatchOperationResultDTO>.Success(result, message);
+                    return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
                 catch (Exception ex)
                 {
@@ -432,25 +434,138 @@ namespace Services.Implementations
 
         #endregion
 
-        #region Helper Methods
+        #region Private Helper Methods
 
-        private string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
+        /// <summary>
+        /// Lấy current user ID và ném exception nếu null
+        /// </summary>
+        private Guid GetCurrentUserIdOrThrow()
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            if (!currentUserId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy thông tin người dùng hiện tại");
+            }
+            return currentUserId.Value;
+        }
+
+        /// <summary>
+        /// Helper method cho status update operations
+        /// </summary>
+        private async Task<ApiResult<VaccinationCampaignResponseDTO>> UpdateCampaignStatusAsync(
+            Guid campaignId,
+            VaccinationCampaignStatus newStatus,
+            string actionName,
+            VaccinationCampaignStatus validCurrentStatus)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                    if (campaign == null)
+                    {
+                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
+                            new KeyNotFoundException("Không tìm thấy chiến dịch tiêm chủng"));
+                    }
+
+                    if (campaign.Status != validCurrentStatus)
+                    {
+                        return ApiResult<VaccinationCampaignResponseDTO>.Failure(
+                            new InvalidOperationException($"Không thể {actionName} chiến dịch từ trạng thái {campaign.Status}"));
+                    }
+
+                    campaign.Status = newStatus;
+
+                    // BaseService sẽ tự động xử lý UpdatedAt và UpdatedBy
+                    var updatedCampaign = await UpdateAsync(campaign);
+                    var response = VaccinationCampaignMapper.MapToResponseDTO(updatedCampaign);
+
+                    _logger.LogInformation("Chiến dịch tiêm chủng được {ActionName}: {CampaignId}", actionName, campaignId);
+                    return ApiResult<VaccinationCampaignResponseDTO>.Success(response, $"{char.ToUpper(actionName[0])}{actionName.Substring(1)} chiến dịch tiêm chủng thành công");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi khi {ActionName} chiến dịch tiêm chủng: {CampaignId}", actionName, campaignId);
+                    return ApiResult<VaccinationCampaignResponseDTO>.Failure(ex);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Validate batch input
+        /// </summary>
+        private static (bool isValid, string message) ValidateBatchInput(List<Guid> ids, string operation)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return (false, "Danh sách ID không được rỗng");
+            }
+
+            if (ids.Any(id => id == Guid.Empty))
+            {
+                return (false, "Danh sách chứa ID không hợp lệ");
+            }
+
+            if (ids.Count > 100)
+            {
+                return (false, $"Không thể {operation} quá 100 chiến dịch cùng lúc");
+            }
+
+            return (true, string.Empty);
+        }
+
+        /// <summary>
+        /// Validate batch status update request
+        /// </summary>
+        private static (bool isValid, string message) ValidateBatchStatusUpdate(BatchUpdateCampaignStatusRequest request)
+        {
+            if (request?.Updates == null || !request.Updates.Any())
+            {
+                return (false, "Danh sách cập nhật không được rỗng");
+            }
+
+            if (request.Updates.Any(u => u.CampaignId == Guid.Empty))
+            {
+                return (false, "Danh sách chứa ID không hợp lệ");
+            }
+
+            if (request.Updates.Count > 100)
+            {
+                return (false, "Không thể cập nhật quá 100 chiến dịch cùng lúc");
+            }
+
+            return (true, string.Empty);
+        }
+
+        /// <summary>
+        /// Validate status transition
+        /// </summary>
+        private static bool IsValidStatusTransition(VaccinationCampaignStatus currentStatus, VaccinationCampaignStatus newStatus)
+        {
+            return currentStatus switch
+            {
+                VaccinationCampaignStatus.Pending => newStatus is VaccinationCampaignStatus.InProgress or VaccinationCampaignStatus.Cancelled,
+                VaccinationCampaignStatus.InProgress => newStatus is VaccinationCampaignStatus.Resolved or VaccinationCampaignStatus.Cancelled,
+                VaccinationCampaignStatus.Resolved => false, // Cannot change from resolved
+                VaccinationCampaignStatus.Cancelled => newStatus == VaccinationCampaignStatus.Pending, // Can restart cancelled
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// Generate batch operation message
+        /// </summary>
+        private static string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
         {
             if (result.IsCompleteSuccess)
-            {
                 return $"Đã {operation} thành công tất cả {result.TotalRequested} chiến dịch tiêm chủng";
-            }
-            else if (result.IsCompleteFailure)
-            {
-                return $"Không thể {operation} bất kỳ chiến dịch tiêm chủng nào";
-            }
-            else if (result.IsPartialSuccess)
-            {
+
+            if (result.IsPartialSuccess)
                 return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} chiến dịch tiêm chủng. " +
                        $"Không thể {operation} {result.FailureCount} chiến dịch";
-            }
 
-            return $"Hoàn thành việc {operation} chiến dịch tiêm chủng";
+            return $"Không thể {operation} bất kỳ chiến dịch tiêm chủng nào";
         }
 
         #endregion

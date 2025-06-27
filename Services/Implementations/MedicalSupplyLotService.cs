@@ -47,7 +47,8 @@ namespace Services.Implementations
             {
                 var lot = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(id);
                 if (lot == null)
-                    return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception("Không tìm thấy lô vật tư y tế"));
+                    return ApiResult<MedicalSupplyLotResponseDTO>.Failure(
+                        new KeyNotFoundException("Không tìm thấy lô vật tư y tế"));
 
                 var dto = MedicalSupplyLotMapper.ToResponseDTO(lot);
                 return ApiResult<MedicalSupplyLotResponseDTO>.Success(dto, "Lấy thông tin lô vật tư y tế thành công");
@@ -67,16 +68,22 @@ namespace Services.Implementations
                 {
                     var validation = await ValidateCreateRequestAsync(request);
                     if (!validation.IsSuccess)
-                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception(validation.Message));
+                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(
+                            new ArgumentException(validation.Message));
 
                     var entity = MedicalSupplyLotMapper.MapFromCreateRequest(request);
+
+                    // BaseService sẽ tự động xử lý audit fields
                     var created = await CreateAsync(entity);
 
                     await UpdateSupplyCurrentStockAsync(request.MedicalSupplyId);
 
                     var lot = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(created.Id)
-                              ?? throw new Exception("Không thể lấy lô vừa tạo");
+                              ?? throw new InvalidOperationException("Không thể lấy lô vừa tạo");
                     var dto = MedicalSupplyLotMapper.ToResponseDTO(lot);
+
+                    _logger.LogInformation("Created medical supply lot: {LotId} for supply: {SupplyId}",
+                        created.Id, request.MedicalSupplyId);
 
                     return ApiResult<MedicalSupplyLotResponseDTO>.Success(dto, "Tạo lô vật tư y tế thành công");
                 }
@@ -97,22 +104,28 @@ namespace Services.Implementations
                 {
                     var lot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(id);
                     if (lot == null)
-                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception("Không tìm thấy lô vật tư y tế"));
+                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(
+                            new KeyNotFoundException("Không tìm thấy lô vật tư y tế"));
 
                     var validation = await ValidateUpdateRequestAsync(request, id);
                     if (!validation.IsSuccess)
-                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(new Exception(validation.Message));
+                        return ApiResult<MedicalSupplyLotResponseDTO>.Failure(
+                            new ArgumentException(validation.Message));
 
                     var oldSupplyId = lot.MedicalSupplyId;
                     MedicalSupplyLotMapper.MapFromUpdateRequest(request, lot);
+
+                    // BaseService sẽ tự động xử lý audit fields
                     await UpdateAsync(lot);
 
                     // Update stock for the affected supply
                     await UpdateSupplyCurrentStockAsync(oldSupplyId);
 
                     var updated = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(id)
-                                   ?? throw new Exception("Không thể lấy lô đã cập nhật");
+                                   ?? throw new InvalidOperationException("Không thể lấy lô đã cập nhật");
                     var dto = MedicalSupplyLotMapper.ToResponseDTO(updated);
+
+                    _logger.LogInformation("Updated medical supply lot: {LotId}", id);
 
                     return ApiResult<MedicalSupplyLotResponseDTO>.Success(dto, "Cập nhật lô vật tư y tế thành công");
                 }
@@ -128,9 +141,6 @@ namespace Services.Implementations
 
         #region Unified Delete & Restore Operations
 
-        /// <summary>
-        /// Xóa lô vật tư y tế (hỗ trợ cả xóa mềm và xóa vĩnh viễn)
-        /// </summary>
         public async Task<ApiResult<BatchOperationResultDTO>> DeleteMedicalSupplyLotsAsync(List<Guid> ids, bool isPermanent = false)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
@@ -154,82 +164,18 @@ namespace Services.Implementations
 
                     if (isPermanent)
                     {
-                        // Permanent delete - get all lots (including deleted ones)
-                        var allLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
-                        var existingIds = allLots.Select(l => l.Id).ToList();
-                        var notFoundIds = ids.Except(existingIds).ToList();
-
-                        // Add errors for not found lots
-                        foreach (var notFoundId in notFoundIds)
-                        {
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = notFoundId.ToString(),
-                                Error = "Không tìm thấy lô vật tư y tế",
-                                Details = $"Medical supply lot với ID {notFoundId} không tồn tại"
-                            });
-                        }
-
-                        if (existingIds.Any())
-                        {
-                            // Store affected supply IDs before deletion
-                            var affectedSupplyIds = allLots.Select(l => l.MedicalSupplyId).Distinct().ToList();
-
-                            var deletedCount = await _unitOfWork.MedicalSupplyLotRepository.PermanentDeleteLotsAsync(existingIds);
-
-                            if (deletedCount > 0)
-                            {
-                                // Update stock for all affected supplies
-                                foreach (var supplyId in affectedSupplyIds)
-                                {
-                                    await UpdateSupplyCurrentStockAsync(supplyId);
-                                }
-
-                                result.SuccessCount = deletedCount;
-                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                            }
-                        }
+                        await ProcessPermanentDelete(ids, result);
                     }
                     else
                     {
-                        // Soft delete - only get non-deleted lots
-                        var existingLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: false);
-                        var existingIds = existingLots.Select(l => l.Id).ToList();
-                        var notFoundIds = ids.Except(existingIds).ToList();
-
-                        // Add errors for not found or already deleted lots
-                        foreach (var notFoundId in notFoundIds)
-                        {
-                            result.Errors.Add(new BatchOperationErrorDTO
-                            {
-                                Id = notFoundId.ToString(),
-                                Error = "Không tìm thấy lô vật tư y tế hoặc đã bị xóa",
-                                Details = $"Medical supply lot với ID {notFoundId} không tồn tại hoặc đã bị xóa"
-                            });
-                        }
-
-                        if (existingIds.Any())
-                        {
-                            var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                            var deletedCount = await _unitOfWork.MedicalSupplyLotRepository.SoftDeleteLotsAsync(existingIds, currentUserId);
-
-                            if (deletedCount > 0)
-                            {
-                                // Update stock for all affected supplies
-                                var affectedSupplyIds = existingLots.Select(l => l.MedicalSupplyId).Distinct();
-                                foreach (var supplyId in affectedSupplyIds)
-                                {
-                                    await UpdateSupplyCurrentStockAsync(supplyId);
-                                }
-
-                                result.SuccessCount = deletedCount;
-                                result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
-                            }
-                        }
+                        await ProcessSoftDelete(ids, result);
                     }
 
                     result.FailureCount = result.Errors.Count;
                     result.Message = GenerateBatchOperationMessage(operationType, result);
+
+                    _logger.LogInformation("Batch {Operation} completed: {SuccessCount}/{TotalCount} successful",
+                        operationType, result.SuccessCount, result.TotalRequested);
 
                     return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
@@ -264,6 +210,7 @@ namespace Services.Implementations
                     var deletedLotIds = deletedLots.Where(l => l.IsDeleted).Select(l => l.Id).ToList();
                     var notDeletedIds = ids.Except(deletedLotIds).ToList();
 
+                    // Add errors for lots that are not deleted or don't exist
                     foreach (var notDeletedId in notDeletedIds)
                     {
                         var lot = deletedLots.FirstOrDefault(l => l.Id == notDeletedId);
@@ -279,9 +226,10 @@ namespace Services.Implementations
                         });
                     }
 
+                    // Process valid restorations
                     if (deletedLotIds.Any())
                     {
-                        var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                        var currentUserId = GetCurrentUserIdOrThrow();
                         var restoredCount = await _unitOfWork.MedicalSupplyLotRepository.RestoreLotsAsync(deletedLotIds, currentUserId);
 
                         if (restoredCount > 0)
@@ -296,6 +244,8 @@ namespace Services.Implementations
 
                             result.SuccessCount = restoredCount;
                             result.SuccessIds = deletedLotIds.Select(id => id.ToString()).ToList();
+
+                            _logger.LogInformation("Restored {Count} medical supply lots", restoredCount);
                         }
                     }
 
@@ -415,14 +365,14 @@ namespace Services.Implementations
                     if (newQuantity < 0)
                     {
                         return ApiResult<bool>.Failure(
-                            new Exception("Số lượng không được âm"));
+                            new ArgumentException("Số lượng không được âm"));
                     }
 
                     var lot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(lotId);
                     if (lot == null)
                     {
                         return ApiResult<bool>.Failure(
-                            new Exception("Không tìm thấy lô vật tư y tế"));
+                            new KeyNotFoundException("Không tìm thấy lô vật tư y tế"));
                     }
 
                     var supplyId = lot.MedicalSupplyId;
@@ -430,10 +380,12 @@ namespace Services.Implementations
                     if (!success)
                     {
                         return ApiResult<bool>.Failure(
-                            new Exception("Không thể cập nhật số lượng"));
+                            new InvalidOperationException("Không thể cập nhật số lượng"));
                     }
 
                     await UpdateSupplyCurrentStockAsync(supplyId);
+
+                    _logger.LogInformation("Updated quantity for lot {LotId} to {Quantity}", lotId, newQuantity);
 
                     return ApiResult<bool>.Success(true, "Cập nhật số lượng thành công");
                 }
@@ -449,24 +401,132 @@ namespace Services.Implementations
 
         #region Private Helper Methods
 
-        private string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
+        /// <summary>
+        /// Lấy current user ID và ném exception nếu null
+        /// </summary>
+        private Guid GetCurrentUserIdOrThrow()
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            if (!currentUserId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy thông tin người dùng hiện tại");
+            }
+            return currentUserId.Value;
+        }
+
+        private async Task ProcessPermanentDelete(List<Guid> ids, BatchOperationResultDTO result)
+        {
+            // Permanent delete - get all lots (including deleted ones)
+            var allLots = await _unitOfWork.MedicalSupplyLotRepository.GetMedicalSupplyLotsByIdsAsync(ids, includeDeleted: true);
+            var existingIds = allLots.Select(l => l.Id).ToList();
+            var notFoundIds = ids.Except(existingIds).ToList();
+
+            // Add errors for not found lots
+            foreach (var notFoundId in notFoundIds)
+            {
+                result.Errors.Add(new BatchOperationErrorDTO
+                {
+                    Id = notFoundId.ToString(),
+                    Error = "Không tìm thấy lô vật tư y tế",
+                    Details = $"Medical supply lot với ID {notFoundId} không tồn tại"
+                });
+            }
+
+            if (existingIds.Any())
+            {
+                // Store affected supply IDs before deletion
+                var affectedSupplyIds = allLots.Select(l => l.MedicalSupplyId).Distinct().ToList();
+
+                var deletedCount = await _unitOfWork.MedicalSupplyLotRepository.PermanentDeleteLotsAsync(existingIds);
+
+                if (deletedCount > 0)
+                {
+                    // Update stock for all affected supplies
+                    foreach (var supplyId in affectedSupplyIds)
+                    {
+                        await UpdateSupplyCurrentStockAsync(supplyId);
+                    }
+
+                    result.SuccessCount = deletedCount;
+                    result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
+
+                    _logger.LogInformation("Permanently deleted {Count} medical supply lots", deletedCount);
+                }
+            }
+        }
+
+        private async Task ProcessSoftDelete(List<Guid> ids, BatchOperationResultDTO result)
+        {
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var lot = await _unitOfWork.MedicalSupplyLotRepository.GetByIdAsync(id);
+                    if (lot == null)
+                    {
+                        result.Errors.Add(new BatchOperationErrorDTO
+                        {
+                            Id = id.ToString(),
+                            Error = "Không tìm thấy lô vật tư y tế",
+                            Details = $"Medical supply lot với ID {id} không tồn tại"
+                        });
+                        continue;
+                    }
+
+                    if (lot.IsDeleted)
+                    {
+                        result.Errors.Add(new BatchOperationErrorDTO
+                        {
+                            Id = id.ToString(),
+                            Error = "Đã bị xóa",
+                            Details = "Lô vật tư y tế đã được xóa trước đó"
+                        });
+                        continue;
+                    }
+
+                    var supplyId = lot.MedicalSupplyId;
+
+                    // Sử dụng BaseService DeleteAsync
+                    var deleteResult = await DeleteAsync(id);
+                    if (deleteResult)
+                    {
+                        await UpdateSupplyCurrentStockAsync(supplyId);
+
+                        result.SuccessIds.Add(id.ToString());
+                        result.SuccessCount++;
+                    }
+                    else
+                    {
+                        result.Errors.Add(new BatchOperationErrorDTO
+                        {
+                            Id = id.ToString(),
+                            Error = "Xóa thất bại",
+                            Details = "Không thể xóa lô vật tư y tế"
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add(new BatchOperationErrorDTO
+                    {
+                        Id = id.ToString(),
+                        Error = "Lỗi hệ thống",
+                        Details = ex.Message
+                    });
+                }
+            }
+        }
+
+        private static string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
         {
             if (result.IsCompleteSuccess)
-            {
                 return $"Đã {operation} thành công {result.SuccessCount} lô vật tư y tế";
-            }
-            else if (result.IsCompleteFailure)
-            {
-                return $"Không thể {operation} bất kỳ lô vật tư y tế nào. {result.FailureCount} lỗi";
-            }
-            else if (result.IsPartialSuccess)
-            {
-                return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} lô vật tư y tế. {result.FailureCount} lỗi";
-            }
-            else
-            {
-                return $"Không có lô vật tư y tế nào được {operation}";
-            }
+
+            if (result.IsPartialSuccess)
+                return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} lô vật tư y tế. " +
+                       $"{result.FailureCount} thất bại";
+
+            return $"Không thể {operation} lô vật tư y tế nào. Tất cả {result.FailureCount} yêu cầu đều thất bại";
         }
 
         private async Task<(bool IsSuccess, string Message)> ValidateCreateRequestAsync(CreateMedicalSupplyLotRequest request)
@@ -483,12 +543,14 @@ namespace Services.Implementations
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
             }
 
-            if (request.ExpirationDate.Date <= DateTime.UtcNow.Date)
+            var currentDate = _currentTime.GetVietnamTime().Date;
+
+            if (request.ExpirationDate.Date <= currentDate)
             {
                 return (false, "Ngày hết hạn phải lớn hơn ngày hiện tại");
             }
 
-            if (request.ManufactureDate.Date > DateTime.UtcNow.Date)
+            if (request.ManufactureDate.Date > currentDate)
             {
                 return (false, "Ngày sản xuất không được lớn hơn ngày hiện tại");
             }
@@ -514,7 +576,9 @@ namespace Services.Implementations
                 return (false, $"Số lô '{request.LotNumber}' đã tồn tại");
             }
 
-            if (request.ManufactureDate.Date > DateTime.UtcNow.Date)
+            var currentDate = _currentTime.GetVietnamTime().Date;
+
+            if (request.ManufactureDate.Date > currentDate)
             {
                 return (false, "Ngày sản xuất không được lớn hơn ngày hiện tại");
             }
@@ -547,7 +611,9 @@ namespace Services.Implementations
             }
         }
 
-        private static PagedList<MedicalSupplyLotResponseDTO> CreatePagedResult(PagedList<MedicalSupplyLot> sourcePaged, List<MedicalSupplyLotResponseDTO> mappedItems)
+        private static PagedList<MedicalSupplyLotResponseDTO> CreatePagedResult(
+            PagedList<MedicalSupplyLot> sourcePaged,
+            List<MedicalSupplyLotResponseDTO> mappedItems)
         {
             var meta = sourcePaged.MetaData;
             return new PagedList<MedicalSupplyLotResponseDTO>(

@@ -37,3 +37,5 @@ global using DTOs.HealthEventDTOs.Request;
 global using DTOs.HealthEventDTOs.Response;
 global using DTOs.CheckupSchedule.Request;
 global using DTOs.CheckupSchedule.Response;
+global using DTOs.CheckupCampaign.Request;
+global using DTOs.CheckupCampaign.Response;

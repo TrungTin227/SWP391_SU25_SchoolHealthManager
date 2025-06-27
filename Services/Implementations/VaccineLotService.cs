@@ -58,7 +58,7 @@ namespace Services.Implementations
                 if (lot == null)
                 {
                     return ApiResult<VaccineLotResponseDTO>.Failure(
-                        new Exception("Không tìm thấy lô vaccine"));
+                        new KeyNotFoundException("Không tìm thấy lô vaccine"));
                 }
 
                 var lotDTO = VaccineLotMapper.MapToResponseDTO(lot);
@@ -81,15 +81,20 @@ namespace Services.Implementations
                     var (isValid, message) = await ValidateCreateRequestAsync(request);
                     if (!isValid)
                     {
-                        return ApiResult<VaccineLotResponseDTO>.Failure(new Exception(message));
+                        return ApiResult<VaccineLotResponseDTO>.Failure(
+                            new ArgumentException(message));
                     }
 
                     var vaccineLot = VaccineLotMapper.MapFromCreateRequest(request);
+
+                    // BaseService sẽ tự động xử lý audit fields
                     var createdLot = await CreateAsync(vaccineLot);
 
-                    await _unitOfWork.SaveChangesAsync();
-
                     var response = VaccineLotMapper.MapToResponseDTO(createdLot);
+
+                    _logger.LogInformation("Created vaccine lot: {LotId} with lot number: {LotNumber}",
+                        createdLot.Id, createdLot.LotNumber);
+
                     return ApiResult<VaccineLotResponseDTO>.Success(response, "Tạo lô vaccine thành công");
                 }
                 catch (Exception ex)
@@ -110,21 +115,25 @@ namespace Services.Implementations
                     if (existingLot == null)
                     {
                         return ApiResult<VaccineLotResponseDTO>.Failure(
-                            new Exception("Không tìm thấy lô vaccine"));
+                            new KeyNotFoundException("Không tìm thấy lô vaccine"));
                     }
 
                     var (isValid, message) = await ValidateUpdateRequestAsync(request, id);
                     if (!isValid)
                     {
-                        return ApiResult<VaccineLotResponseDTO>.Failure(new Exception(message));
+                        return ApiResult<VaccineLotResponseDTO>.Failure(
+                            new ArgumentException(message));
                     }
 
                     VaccineLotMapper.MapFromUpdateRequest(request, existingLot);
+
+                    // BaseService sẽ tự động xử lý audit fields
                     var updatedLot = await UpdateAsync(existingLot);
 
-                    await _unitOfWork.SaveChangesAsync();
-
                     var response = VaccineLotMapper.MapToResponseDTO(updatedLot);
+
+                    _logger.LogInformation("Updated vaccine lot: {LotId}", id);
+
                     return ApiResult<VaccineLotResponseDTO>.Success(response, "Cập nhật lô vaccine thành công");
                 }
                 catch (Exception ex)
@@ -145,41 +154,81 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var currentUserId = _currentUserService.GetUserId();
-                    if (!currentUserId.HasValue)
+                    var validationResult = ValidateBatchInput(ids, "xóa");
+                    if (!validationResult.isValid)
                     {
                         return ApiResult<BatchOperationResultDTO>.Failure(
-                            new UnauthorizedAccessException("Người dùng chưa đăng nhập"));
+                            new ArgumentException(validationResult.message));
                     }
+
+                    _logger.LogInformation("Starting batch soft delete for {Count} vaccine lots", ids.Count);
 
                     var result = new BatchOperationResultDTO { TotalRequested = ids.Count };
 
-                    var deletedCount = await _unitOfWork.VaccineLotRepository.SoftDeleteVaccineLotsAsync(ids, currentUserId.Value);
-                    result.SuccessCount = deletedCount;
-                    result.FailureCount = ids.Count - deletedCount;
-
-                    if (deletedCount > 0)
+                    foreach (var id in ids)
                     {
-                        result.SuccessIds = ids.Take(deletedCount).Select(id => id.ToString()).ToList();
-                    }
+                        try
+                        {
+                            var lot = await _unitOfWork.VaccineLotRepository.GetVaccineLotByIdAsync(id);
+                            if (lot == null)
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = id.ToString(),
+                                    Error = "Không tìm thấy lô vaccine",
+                                    Details = $"Vaccine lot với ID {id} không tồn tại"
+                                });
+                                result.FailureCount++;
+                                continue;
+                            }
 
-                    if (result.FailureCount > 0)
-                    {
-                        var failedIds = ids.Skip(deletedCount);
-                        foreach (var failedId in failedIds)
+                            if (lot.IsDeleted)
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = id.ToString(),
+                                    Error = "Đã bị xóa",
+                                    Details = "Lô vaccine đã được xóa trước đó"
+                                });
+                                result.FailureCount++;
+                                continue;
+                            }
+
+                            // Sử dụng BaseService DeleteAsync
+                            var deleteResult = await DeleteAsync(id);
+                            if (deleteResult)
+                            {
+                                result.SuccessIds.Add(id.ToString());
+                                result.SuccessCount++;
+                            }
+                            else
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = id.ToString(),
+                                    Error = "Xóa thất bại",
+                                    Details = "Không thể xóa lô vaccine"
+                                });
+                                result.FailureCount++;
+                            }
+                        }
+                        catch (Exception ex)
                         {
                             result.Errors.Add(new BatchOperationErrorDTO
                             {
-                                Id = failedId.ToString(),
-                                Error = "Không thể xóa",
-                                Details = "Lô vaccine không tồn tại hoặc đã bị xóa"
+                                Id = id.ToString(),
+                                Error = "Lỗi hệ thống",
+                                Details = ex.Message
                             });
+                            result.FailureCount++;
                         }
                     }
 
-                    await _unitOfWork.SaveChangesAsync();
-
                     result.Message = GenerateBatchOperationMessage("xóa", result);
+
+                    _logger.LogInformation("Batch soft delete completed: {SuccessCount}/{TotalCount} vaccine lots",
+                        result.SuccessCount, ids.Count);
+
                     return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
                 catch (Exception ex)
@@ -196,23 +245,25 @@ namespace Services.Implementations
             {
                 try
                 {
-                    var currentUserId = _currentUserService.GetUserId();
-                    if (!currentUserId.HasValue)
+                    var validationResult = ValidateBatchInput(ids, "khôi phục");
+                    if (!validationResult.isValid)
                     {
                         return ApiResult<BatchOperationResultDTO>.Failure(
-                            new UnauthorizedAccessException("Người dùng chưa đăng nhập"));
+                            new ArgumentException(validationResult.message));
                     }
 
-                    var result = new BatchOperationResultDTO { TotalRequested = ids.Count };
+                    _logger.LogInformation("Starting batch restore for {Count} vaccine lots", ids.Count);
 
-                    var restoredCount = await _unitOfWork.VaccineLotRepository.RestoreVaccineLotsAsync(ids, currentUserId.Value);
-                    result.SuccessCount = restoredCount;
-                    result.FailureCount = ids.Count - restoredCount;
+                    var currentUserId = GetCurrentUserIdOrThrow();
+                    var restoredCount = await _unitOfWork.VaccineLotRepository.RestoreVaccineLotsAsync(ids, currentUserId);
 
-                    if (restoredCount > 0)
+                    var result = new BatchOperationResultDTO
                     {
-                        result.SuccessIds = ids.Take(restoredCount).Select(id => id.ToString()).ToList();
-                    }
+                        TotalRequested = ids.Count,
+                        SuccessCount = restoredCount,
+                        FailureCount = ids.Count - restoredCount,
+                        SuccessIds = ids.Take(restoredCount).Select(id => id.ToString()).ToList()
+                    };
 
                     if (result.FailureCount > 0)
                     {
@@ -228,9 +279,11 @@ namespace Services.Implementations
                         }
                     }
 
-                    await _unitOfWork.SaveChangesAsync();
-
                     result.Message = GenerateBatchOperationMessage("khôi phục", result);
+
+                    _logger.LogInformation("Batch restore completed: {SuccessCount}/{TotalCount} vaccine lots",
+                        restoredCount, ids.Count);
+
                     return ApiResult<BatchOperationResultDTO>.Success(result, result.Message);
                 }
                 catch (Exception ex)
@@ -304,16 +357,19 @@ namespace Services.Implementations
                 {
                     if (newQuantity < 0)
                     {
-                        return ApiResult<bool>.Failure(new Exception("Số lượng không được âm"));
+                        return ApiResult<bool>.Failure(
+                            new ArgumentException("Số lượng không được âm"));
                     }
 
                     var success = await _unitOfWork.VaccineLotRepository.UpdateVaccineQuantityAsync(lotId, newQuantity);
                     if (!success)
                     {
-                        return ApiResult<bool>.Failure(new Exception("Không tìm thấy lô vaccine"));
+                        return ApiResult<bool>.Failure(
+                            new KeyNotFoundException("Không tìm thấy lô vaccine"));
                     }
 
-                    await _unitOfWork.SaveChangesAsync();
+                    _logger.LogInformation("Updated vaccine quantity for lot {LotId} to {Quantity}", lotId, newQuantity);
+
                     return ApiResult<bool>.Success(true, "Cập nhật số lượng vaccine thành công");
                 }
                 catch (Exception ex)
@@ -381,24 +437,52 @@ namespace Services.Implementations
 
         #region Private Helper Methods
 
-        private string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
+        /// <summary>
+        /// Lấy current user ID và ném exception nếu null
+        /// </summary>
+        private Guid GetCurrentUserIdOrThrow()
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            if (!currentUserId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy thông tin người dùng hiện tại");
+            }
+            return currentUserId.Value;
+        }
+
+        /// <summary>
+        /// Validate batch input
+        /// </summary>
+        private static (bool isValid, string message) ValidateBatchInput(List<Guid> ids, string operation)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return (false, "Danh sách ID không được rỗng");
+            }
+
+            if (ids.Any(id => id == Guid.Empty))
+            {
+                return (false, "Danh sách chứa ID không hợp lệ");
+            }
+
+            if (ids.Count > 100)
+            {
+                return (false, $"Không thể {operation} quá 100 lô vaccine cùng lúc");
+            }
+
+            return (true, string.Empty);
+        }
+
+        private static string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
         {
             if (result.IsCompleteSuccess)
-            {
                 return $"Đã {operation} thành công {result.SuccessCount} lô vaccine";
-            }
-            else if (result.IsCompleteFailure)
-            {
-                return $"Không thể {operation} bất kỳ lô vaccine nào. {result.FailureCount} lỗi";
-            }
-            else if (result.IsPartialSuccess)
-            {
-                return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} lô vaccine. {result.FailureCount} lỗi";
-            }
-            else
-            {
-                return $"Không có lô vaccine nào được {operation}";
-            }
+
+            if (result.IsPartialSuccess)
+                return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} lô vaccine. " +
+                       $"{result.FailureCount} thất bại";
+
+            return $"Không thể {operation} lô vaccine nào. Tất cả {result.FailureCount} yêu cầu đều thất bại";
         }
 
         private async Task<(bool IsSuccess, string Message)> ValidateCreateRequestAsync(CreateVaccineLotRequest request)
@@ -415,7 +499,9 @@ namespace Services.Implementations
                 return (false, $"Số lô vaccine '{request.LotNumber}' đã tồn tại");
             }
 
-            if (request.ExpiryDate.Date <= _currentTime.GetVietnamTime().Date)
+            var currentDate = _currentTime.GetVietnamTime().Date;
+
+            if (request.ExpiryDate.Date <= currentDate)
             {
                 return (false, "Ngày hết hạn phải lớn hơn ngày hiện tại");
             }
