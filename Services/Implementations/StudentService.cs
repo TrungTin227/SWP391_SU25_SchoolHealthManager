@@ -1,28 +1,33 @@
-﻿using System;
+﻿using BusinessObjects;
+using DTOs.MedicationLotDTOs.Response;
+using DTOs.StudentDTOs.Request;
+using DTOs.StudentDTOs.Response;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DTOs.MedicationLotDTOs.Response;
-using DTOs.StudentDTOs.Request;
-using DTOs.StudentDTOs.Response;
-using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
 {
-    public class StudentService : IStudentService
+    public class StudentService :BaseService<Student,Guid>, IStudentService
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<StudentService> _logger;
-        private readonly ICurrentUserService _currentUserService;
         private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
-        public StudentService(IUnitOfWork unitOfWork, ILogger<StudentService> logger, ICurrentUserService currentUserService)
+        public StudentService(
+            IGenericRepository<Student, Guid> repository, 
+            ICurrentUserService currentUserService, IUnitOfWork unitOfWork, 
+            ICurrentTime currentTime) : 
+            base(repository, 
+                currentUserService, 
+                unitOfWork, 
+                currentTime)
         {
-            _unitOfWork = unitOfWork;
-            _logger = logger;
-            _currentUserService = currentUserService;
         }
+
         public async Task<ApiResult<AddStudentRequestDTO>> AddStudentAsync(AddStudentRequestDTO addStudentRequestDTO)
         {
             try
@@ -169,25 +174,13 @@ namespace Services.Implementations
             try
             {
                 if (id == Guid.Empty)
-                {
-                    return ApiResult<bool>.Failure(new ArgumentNullException(nameof(id), "ID học sinh không được để trống."));
-                }
+                    return ApiResult<bool>.Failure(new ArgumentException("ID học sinh không được để trống."));
+
                 var student = await _unitOfWork.StudentRepository.GetByIdAsync(id);
                 if (student == null)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy học sinh với ID: " + id + " !!"));
-                }
-                student.IsDeleted = true;
-                student.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
-                student.DeletedAt = DateTime.UtcNow;
-                
-                var result = await _unitOfWork.StudentRepository.SoftDeleteStudentAsync(student);
-                if (!result)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Xóa học sinh thất bại!!"));
-                }
-                
-                return ApiResult<bool>.Success(true, "Xóa học sinh thành công!!");
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy học sinh với ID: " + id));
+                return await SoftDeleteStudentByIdsAsync(new List<Guid> { id });
+
             }
             catch (Exception ex)
             {
@@ -201,22 +194,9 @@ namespace Services.Implementations
             try
             {
                 if (string.IsNullOrWhiteSpace(studentCode))
-                {
-                    return ApiResult<bool>.Failure(new ArgumentNullException(nameof(studentCode), "Mã học sinh không được để trống."));
-                }
-                var student = await _unitOfWork.StudentRepository.FirstOrDefaultAsync(o=> o.StudentCode == studentCode);
-                if (student == null)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy học sinh với mã: " + studentCode + " !!"));
-                }
-                student.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
-                student.DeletedAt = DateTime.UtcNow;
-                var result = await _unitOfWork.StudentRepository.SoftDeleteStudentAsync(student);
-                if (!result)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Xóa học sinh thất bại!!"));
-                }
-                return ApiResult<bool>.Success(true, "Xóa học sinh thành công!!");
+                    return ApiResult<bool>.Failure(new ArgumentException("Mã học sinh không được để trống."));
+
+                return await SoftDeleteStudentByCodesAsync(new List<string> { studentCode });
             }
             catch (Exception ex)
             {
@@ -231,7 +211,7 @@ namespace Services.Implementations
             {
                 if (parentId == Guid.Empty)
                 {
-                    return ApiResult<List<GetAllStudentDTO>>.Failure(new ArgumentNullException(nameof(parentId), "ID phụ huynh không được để trống."));
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("ID phụ huynh không được để trống."));
                 }
                 var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId);
                 if (students == null || !students.Any())
@@ -247,5 +227,91 @@ namespace Services.Implementations
             }
 
         }
+
+        public async Task<ApiResult<bool>> SoftDeleteStudentByIdsAsync(List<Guid> studentIds)
+        {
+            try
+            {
+                if (studentIds == null || !studentIds.Any())
+                {
+                    return ApiResult<bool>.Failure(new ArgumentException("ID học sinh không được để trống."));
+                }
+
+                var systemUserId = _currentUserService.GetUserId() ?? SystemGuid;
+                var vietnamTime = _currentTime.GetVietnamTime();
+
+                var students = await _unitOfWork.StudentRepository
+                    .GetQueryable()
+                    .Where(s => studentIds.Contains(s.Id) && !s.IsDeleted)
+                    .ToListAsync();
+
+                var notFoundIds = studentIds.Except(students.Select(s => s.Id)).ToList();
+                if (notFoundIds.Any())
+                {
+                    return ApiResult<bool>.Failure(new Exception($"Không tìm thấy các học sinh với ID: {string.Join(", ", notFoundIds)}"));
+                }
+
+                foreach (var student in students)
+                {
+                    student.IsDeleted = true;
+                    student.DeletedBy = systemUserId;
+                    student.DeletedAt = vietnamTime;
+                }
+
+                await _unitOfWork.StudentRepository.UpdateRangeAsync(students);
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, $"Đã xóa mềm {students.Count} học sinh thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa học sinh");
+                return ApiResult<bool>.Failure(new Exception("Xóa danh sách học sinh thất bại: " + ex.Message));
+            }
+        }
+
+        public async Task<ApiResult<bool>> SoftDeleteStudentByCodesAsync(List<string> studentCodes)
+        {
+            try
+            {
+                if (studentCodes == null || !studentCodes.Any())
+                {
+                    return ApiResult<bool>.Failure(new ArgumentException("Mã học sinh không được để trống."));
+                }
+
+                var normalizedCodes = studentCodes.Select(c => c.Trim()).ToList();
+                var systemUserId = _currentUserService.GetUserId() ?? SystemGuid;
+                var vietnamTime = _currentTime.GetVietnamTime();
+
+                var students = await _unitOfWork.StudentRepository
+                    .GetQueryable()
+                    .Where(s => normalizedCodes.Contains(s.StudentCode) && !s.IsDeleted)
+                    .ToListAsync();
+
+                var notFoundCodes = normalizedCodes.Except(students.Select(s => s.StudentCode)).ToList();
+                if (notFoundCodes.Any())
+                {
+                    return ApiResult<bool>.Failure(new Exception($"Không tìm thấy học sinh với mã: {string.Join(", ", notFoundCodes)}"));
+                }
+
+                foreach (var student in students)
+                {
+                    student.IsDeleted = true;
+                    student.DeletedBy = systemUserId;
+                    student.DeletedAt = vietnamTime;
+                }
+
+                await _unitOfWork.StudentRepository.UpdateRangeAsync(students);
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, $"Đã xóa mềm {students.Count} học sinh thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa học sinh");
+                return ApiResult<bool>.Failure(new Exception("Xóa danh sách học sinh thất bại: " + ex.Message));
+            }
+        }
+
     }
 }

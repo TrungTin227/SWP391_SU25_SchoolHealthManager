@@ -29,10 +29,29 @@ namespace Services.Implementations
         {
             try
             {
+                var now = _currentTime.GetVietnamTime();
                 _logger.LogInformation("Starting ParentAcptVaccineAsync for StudentId: {StudentId}, VaccinationScheduleId: {VaccinationScheduleId}", request.StudentId, request.VaccinationScheduleId);
+
+                var student = (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId));
+                if (student == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy học sinh!!"));
+                }
+
+                if (await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.VaccinationScheduleId) == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tiêm chủng!!"));
+                }
+
+                if (!Enum.IsDefined(typeof(ParentConsentStatus), request.ConsentStatus))
+                    return ApiResult<bool>.Failure(new Exception("Giá trị ConsentStatus không hợp lệ!"));
+
                 // 1. Lấy thông tin SessionStudent theo Id
 
                 var sessionStudent = await _unitOfWork.SessionStudentRepository.FirstOrDefaultAsync(ss => ss.StudentId == request.StudentId && ss.VaccinationScheduleId == request.VaccinationScheduleId);
+
+                if (_currentUserService.GetUserId() != student.ParentUserId )
+                    return ApiResult<bool>.Failure(new Exception("Bạn không có quyền cập nhật thông tin cho học sinh này."));
 
                 if (sessionStudent == null)
                 {
@@ -40,10 +59,10 @@ namespace Services.Implementations
                 }
                 // 2. Cập nhật trạng thái đồng ý của phụ huynh
                 sessionStudent.ConsentStatus = request.ConsentStatus;
-                sessionStudent.ParentSignedAt = DateTime.UtcNow;
+                sessionStudent.ParentSignedAt = now;
                 sessionStudent.ParentNotes = request.ParentNote;
                 sessionStudent.ParentSignature = request.ParentSignature;
-                sessionStudent.UpdatedAt = DateTime.UtcNow;
+                sessionStudent.UpdatedAt = now;
                 var userId = _currentUserService.GetUserId();
                 if (userId.HasValue)
                 {
@@ -58,7 +77,8 @@ namespace Services.Implementations
                 // 3. Lưu thay đổi
                 await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
                 await _unitOfWork.SaveChangesAsync();
-                return ApiResult<bool>.Success(true, "Parent consent status updated successfully.");
+                return ApiResult<bool>.Success(true, "Cập nhật trạng thái đồng ý tiêm chủng thành công.");
+
             }
             catch (Exception ex)
             {
@@ -134,7 +154,7 @@ namespace Services.Implementations
                              ss.VaccinationScheduleId == vaccinationScheduleId)
                 .ToListAsync();
 
-            var now = DateTime.UtcNow;
+            var now = _currentTime.GetVietnamTime();
 
             foreach (var ss in sessionStudents)
             {

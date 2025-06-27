@@ -22,6 +22,8 @@
         IParentVaccinationRepository ParentVaccinationRepository { get; }
         ICheckupCampaignRepository CheckupCampaignRepository { get; }
         ICheckupScheduleRepository CheckupScheduleRepository { get; }
-
+        ICheckupRecordRepository CheckupRecordRepository { get; }
+        ICounselingAppointmentRepository CounselingAppointmentRepository { get; }
+        INurseProfileRepository NurseProfileRepository { get; }
     }
 }

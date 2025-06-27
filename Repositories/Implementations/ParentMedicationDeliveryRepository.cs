@@ -28,7 +28,7 @@ namespace Repositories.Implementations
                 ReceivedBy = request.ParentId, // Sửa: Thêm trường ReceivedBy
                 DeliveredAt = request.DeliveredAt,
                 Notes = request.Notes,
-                Status = request.Status
+                Status = StatusMedicationDelivery.Pending // Mặc định là Pending
             };
             await _context.AddAsync(parentmedicationDelivery);
             await _context.SaveChangesAsync();
@@ -42,6 +42,7 @@ namespace Repositories.Implementations
                    .OrderBy(s => s.CreatedAt)
                    .Select(s => new GetParentMedicationDeliveryRespondDTO
                    {
+                       medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
                        ParentMedicationDeliveryId = s.Id,
                        ParentId = s.ParentId,
                        StudentId = s.StudentId,
@@ -62,6 +63,7 @@ namespace Repositories.Implementations
                    .OrderBy(s => s.CreatedAt)
                    .Select(s => new GetParentMedicationDeliveryRespondDTO
                    {
+                       medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
                        ParentMedicationDeliveryId = s.Id,
                        ParentId = s.ParentId,
                        StudentId = s.StudentId,

@@ -28,6 +28,7 @@ namespace Services.Implementations
 
         public async Task<ApiResult<HealProfileResponseDTO>> CreateHealProfileAsync(CreateHealProfileRequestDTO request)
         {
+            var now = _currentTime.GetVietnamTime();
             var student = await _unitOfWork.StudentRepository
                .GetQueryable()
                .FirstOrDefaultAsync(s => s.StudentCode == request.StudentCode);  
@@ -48,7 +49,7 @@ namespace Services.Implementations
             // ✅ Convert DTO sang entity và gán Version
             HealthProfile healthProfile = HealProfileMappings.ToEntity(request, student, parent);
             healthProfile.Version = maxVersion + 1;
-            healthProfile.ProfileDate = DateTime.UtcNow;
+            healthProfile.ProfileDate = now;
             
             await _repository.AddAsync(healthProfile);
             await _unitOfWork.SaveChangesAsync();
@@ -189,6 +190,7 @@ namespace Services.Implementations
         public async Task<ApiResult<HealProfileResponseDTO>> UpdateHealProfileByStudentCodeAsync(string studentcode, UpdateHealProfileRequestDTO request)
         {
             // Tìm student theo studentcode
+            var now = _currentTime.GetVietnamTime();
             var student = await _unitOfWork.StudentRepository
                 .GetQueryable()
                 .FirstOrDefaultAsync(s => s.StudentCode == studentcode);
@@ -210,7 +212,7 @@ namespace Services.Implementations
                 return ApiResult<HealProfileResponseDTO>.Failure(new Exception("Không tìm thấy hồ sơ sức khỏe."));
             }
 
-            entity.ProfileDate = DateTime.UtcNow;
+            entity.ProfileDate = now;
 
             if (request.Allergies != null)
                 entity.Allergies = request.Allergies;

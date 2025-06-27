@@ -19,7 +19,7 @@ namespace BusinessObjects
         public DateTime ExaminedAt { get; set; }                  // Thời gian khám thực tế
         public string? Remarks { get; set; }              // Khuyến nghị
         public CheckupRecordStatus Status { get; set; }           // Hoàn thành/Cần tái khám
-        public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; } = new List<CounselingAppointment>();
+        public virtual ICollection<CounselingAppointment>? CounselingAppointments { get; set; }
 
     }
 }

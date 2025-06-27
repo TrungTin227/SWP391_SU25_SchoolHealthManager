@@ -10,8 +10,9 @@ using DTOs.HealProfile.Responds;
 namespace Services.Helpers.Mapers
 {
     public static class HealProfileMappings
-    {
-            public static HealthProfile ToEntity(CreateHealProfileRequestDTO dto, Student student, Parent parent)
+    {   
+
+        public static HealthProfile ToEntity(CreateHealProfileRequestDTO dto, Student student, Parent parent)
             {
                 return new HealthProfile
                 {

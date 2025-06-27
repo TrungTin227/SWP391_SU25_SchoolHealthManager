@@ -157,7 +157,7 @@ namespace WebAPI.Controllers
             }
             return Ok(result);
         }
-        [HttpGet("get-all-parent-medication-delivery-by-id/{id}")]
+        [HttpGet("get-parent-medication-delivery-by-id/{id}")]
         public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
         {
             if (id == Guid.Empty)
