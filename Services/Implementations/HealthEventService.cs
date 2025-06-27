@@ -23,10 +23,21 @@ namespace Services.Implementations
         public async Task<ApiResult<PagedList<HealthEventResponseDTO>>> GetHealthEventsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             EventStatus? status = null, EventType? eventType = null,
-            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null)
+            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null, bool filterByCurrentUser = false)
         {
             try
             {
+                // Lấy current user ID
+                Guid? currentUserId = null;
+                if (filterByCurrentUser)
+                {
+                    currentUserId = _currentUserService.GetUserId();
+                    if (!currentUserId.HasValue)
+                    {
+                        return ApiResult<PagedList<HealthEventResponseDTO>>.Failure(
+                            new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                    }
+                }
                 var events = await _unitOfWork.HealthEventRepository.GetHealthEventsAsync(
                     pageNumber, pageSize, searchTerm, status, eventType, studentId, fromDate, toDate);
 

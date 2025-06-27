@@ -6,7 +6,7 @@
         Task<PagedList<HealthEvent>> GetHealthEventsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             EventStatus? status = null, EventType? eventType = null,
-            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null);
+            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null, Guid? parentUserId = null);
 
         Task<HealthEvent?> GetHealthEventWithDetailsAsync(Guid id);
 
