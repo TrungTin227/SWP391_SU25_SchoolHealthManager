@@ -11,6 +11,7 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Respond
     public class GetParentMedicationDeliveryRespondDTO
     {
         public Guid ParentMedicationDeliveryId { get; set; }
+        public string medicationName { get; set; }
         public Guid StudentId { get; set; }
 
         public Guid ParentId { get; set; }
