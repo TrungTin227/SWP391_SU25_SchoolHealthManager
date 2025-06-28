@@ -12,10 +12,8 @@ namespace Repositories.Implementations
 {
     public class StudentRepository : GenericRepository<Student, Guid>, IStudentRepository
     {
-        private readonly SchoolHealthManagerDbContext _context;
         public StudentRepository(SchoolHealthManagerDbContext context) : base(context)
         {
-            _context = context;
         }
 
         public new async Task<Student> AddAsync(Student entity)
