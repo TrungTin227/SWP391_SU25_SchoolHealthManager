@@ -19,7 +19,7 @@ namespace Services.Implementations
             IGenericRepository<SessionStudentService, Guid> repository,
             ICurrentUserService currentUserService, IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
-            ISchoolHealthEmailService schoolHealthEmailService, 
+            ISchoolHealthEmailService schoolHealthEmailService,
             ILogger<SessionStudentService> logger) : base(repository, currentUserService, unitOfWork, currentTime)
         {
             _schoolHealthEmailService = schoolHealthEmailService;
@@ -130,12 +130,6 @@ namespace Services.Implementations
         }
 
 
-
-        public async Task<ApiResult<bool>> ParentDeclineVaccineAsync(ParentAcptVaccine request)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
         {
             try
@@ -188,10 +182,63 @@ namespace Services.Implementations
             return await SendVaccinationNotificationEmailToParents(new List<Guid> { studentId }, VaccineName, schedule);
         }
 
-        public async Task<ApiResult<bool>> MarkParentNotificationStatusAsync(
-    List<Guid> studentIds,
-    Guid vaccinationScheduleId,
-    DateTime consentDeadline)
+
+        public async Task<ApiResult<List<SessionStudentRespondDTO>>> GetSessionStudentsWithOptionalFilterAsync(GetSessionStudentsRequest request)
+        {
+            try
+            {
+                IQueryable<SessionStudent> query = _unitOfWork.SessionStudentRepository.GetQueryable();
+
+                // Lọc theo StudentId nếu có
+                if (request.StudentId.HasValue)
+                {
+                    query = query.Where(ss => ss.StudentId == request.StudentId.Value);
+                }
+                // Nếu không có StudentId nhưng có ParentId thì lọc theo con của phụ huynh đó
+                else if (request.ParentId.HasValue)
+                {
+                    var studentIds = await _unitOfWork.StudentRepository
+                                    .GetQueryable()
+                                    .Where(s => s.ParentUserId == request.ParentId.Value)
+                                    .Select(s => s.Id)
+                                    .ToListAsync();
+
+
+                    if (!studentIds.Any())
+                    {
+                        return ApiResult<List<SessionStudentRespondDTO>>.Success(new List<SessionStudentRespondDTO>(), "Không tìm thấy học sinh nào.");
+                    }
+
+                    query = query.Where(ss => studentIds.Contains(ss.StudentId));
+                }
+
+                // Optional filter thêm theo VaccinationScheduleId nếu có
+                if (request.VaccinationScheduleId.HasValue)
+                {
+                    query = query.Where(ss => ss.VaccinationScheduleId == request.VaccinationScheduleId.Value);
+                }
+
+                var sessionStudents = await query.ToListAsync();
+
+                // Map sang DTO
+                var result = sessionStudents
+                            .Select(ss => ss.ToRespondDTO())
+                            .ToList();
+
+                if (!result.Any())
+                {
+                    return ApiResult<List<SessionStudentRespondDTO>>.Success(new List<SessionStudentRespondDTO>(), "Không tìm thấy SessionStudent nào phù hợp với điều kiện lọc.");
+                }
+
+                return ApiResult<List<SessionStudentRespondDTO>>.Success(result,"Lấy danh sách SessionStudent thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception($"Lỗi khi lấy danh sách SessionStudent: {ex.Message}"));
+            }
+        }
+
+        public async Task<ApiResult<bool>> MarkParentNotificationStatusAsync(List<Guid> studentIds, Guid vaccinationScheduleId, DateTime consentDeadline)
         {
             var sessionStudents = await _unitOfWork.SessionStudentRepository
                 .GetQueryable()
@@ -212,6 +259,103 @@ namespace Services.Implementations
             await _unitOfWork.SaveChangesAsync();
 
             return ApiResult<bool>.Success(true, "Cập nhật thời gian thông báo cho phụ huynh tiêm chủng thành công!!");
+        }
+
+        public async Task<ApiResult<List<SessionStudentRespondDTO>>> UpdateCheckinTimeById(UpdateSessionStudentCheckInRequest request)
+        {
+            try
+            {
+                var now = _currentTime.GetVietnamTime();
+                var userId = _currentUserService.GetUserId();
+
+                if (request.SessionStudentId == null || !request.SessionStudentId.Any())
+                {
+                    return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception("Danh sách SessionStudentId không được để trống!"));
+                }
+
+                var sessionStudents = await _unitOfWork.SessionStudentRepository
+                                    .GetQueryable()
+                                    .Where(ss => request.SessionStudentId.Contains(ss.Id))
+                                    .ToListAsync();
+
+                if (!sessionStudents.Any())
+                {
+                    return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception("Không tìm thấy session student nào khớp với ID đã cung cấp!"));
+                }
+
+                var resultList = new List<SessionStudentRespondDTO>();
+
+                foreach (var ss in sessionStudents)
+                {
+                    ss.CheckInTime = now;
+                    if (!string.IsNullOrWhiteSpace(request.Note))
+                        ss.Notes = request.Note;
+                    ss.Status = SessionStatus.Present;
+
+                    ss.UpdatedAt = now;
+                    if (userId.HasValue)
+                        ss.UpdatedBy = userId.Value;
+
+                    await _unitOfWork.SessionStudentRepository.UpdateAsync(ss);
+
+                    resultList.Add(ss.ToRespondDTO());
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<List<SessionStudentRespondDTO>>.Success(resultList, "Cập nhật check-in thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception($"Lỗi khi cập nhật check-in: {ex.Message}"));
+            }
+        }
+
+        public async Task<ApiResult<List<SessionStudentRespondDTO>>> UpdateSessionStudentStatus(UpdateSessionStatus request)
+        {
+            try
+            {
+                var now = _currentTime.GetVietnamTime();
+                var userId = _currentUserService.GetUserId();
+
+                if (request.SessionStudentIds == null || !request.SessionStudentIds.Any())
+                {
+                    return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception("Danh sách SessionStudentIds không được để trống!"));
+                }
+
+                var sessionStudents = await _unitOfWork.SessionStudentRepository
+                    .GetQueryable()
+                    .Where(ss => request.SessionStudentIds.Contains(ss.Id))
+                    .ToListAsync();
+
+                if (!sessionStudents.Any())
+                {
+                    return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception("Không tìm thấy session student nào với ID đã cung cấp!"));
+                }
+
+                var updatedList = new List<SessionStudentRespondDTO>();
+
+                foreach (var ss in sessionStudents)
+                {
+
+                    ss.Status = request.Status;
+                    ss.UpdatedAt = now;
+
+                    if (userId.HasValue)
+                        ss.UpdatedBy = userId.Value;
+
+                    await _unitOfWork.SessionStudentRepository.UpdateAsync(ss);
+                    updatedList.Add(ss.ToRespondDTO()); // mapping đã tạo
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<List<SessionStudentRespondDTO>>.Success(updatedList, "Cập nhật trạng thái Session thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception($"Lỗi khi cập nhật trạng thái Session: {ex.Message}"));
+            }
         }
 
     }

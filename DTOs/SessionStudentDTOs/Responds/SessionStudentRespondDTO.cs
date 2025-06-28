@@ -8,31 +8,25 @@ using System.Threading.Tasks;
 
 namespace DTOs.SessionStudentDTOs.Responds
 {
-    public class SessionStudentRespondsDTO
+    public class SessionStudentRespondDTO
     {
+        public Guid SessionStudentId { get; set; }
         public Guid VaccinationScheduleId { get; set; }
         public Guid StudentId { get; set; }
-        public SessionStatus Status { get; set; } // Present, Absent, Excused, etc.
-
+        public string StudentAttendStatus { get; set; } // Present, Absent, Excused, etc.
         public DateTime? CheckInTime { get; set; }
         public string? Notes { get; set; }
-
-        // Thời gian gửi thông báo cho phụ huynh
-        public DateTime? ParentNotifiedAt { get; set; }
-
-        // Thời gian phụ huynh ký (đồng ý hoặc từ chối)
-        public DateTime? ParentSignedAt { get; set; }
-
-        // Trạng thái đồng ý của phụ huynh
-        public ParentConsentStatus ConsentStatus { get; set; } 
+        public string ConsentStatus { get; set; }
 
         // Chữ ký số hoặc confirmation token từ phụ huynh
         public string? ParentSignature { get; set; }
 
         // Ghi chú từ phụ huynh khi ký (lý do từ chối, yêu cầu đặc biệt...)
         public string? ParentNotes { get; set; }
+        public DateTime? ParentNotifiedAt { get; set; }
 
-        // Deadline để phụ huynh ký (có thể tính từ ScheduledAt - X ngày)
+        // Thời gian phụ huynh ký (đồng ý hoặc từ chối)
+        public DateTime? ParentSignedAt { get; set; }
         public DateTime? ConsentDeadline { get; set; }
 
     }
