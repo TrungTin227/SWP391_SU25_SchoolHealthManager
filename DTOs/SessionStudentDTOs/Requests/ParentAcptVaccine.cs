@@ -9,7 +9,7 @@ namespace DTOs.SessionStudentDTOs.Requests
 {
     public class ParentAcptVaccine
     {
-        public Guid StudentId { get; set; }
+        public List<Guid> StudentIds { get; set; }
         public Guid VaccinationScheduleId { get; set; }
 
         public string? ParentNote { get; set; }
