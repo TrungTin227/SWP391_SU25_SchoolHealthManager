@@ -43,5 +43,20 @@ namespace Services.Helpers.Mappers
             };
         }
 
+        public static CounselingAppointment MapToEntity(CreateCounselingAppointmentRequestDTO appointment)
+        {
+            return new CounselingAppointment
+            {
+                StudentId = appointment.StudentId,
+                ParentId = appointment.ParentId,
+                StaffUserId = appointment.StaffUserId,
+                AppointmentDate = appointment.AppointmentDate,
+                Duration = appointment.Duration,
+                Purpose = appointment.Purpose,
+                CheckupRecordId = appointment.CheckupRecordId,
+                VaccinationRecordId = appointment.VaccinationRecordId,
+            };
+        }
+
     }
 }
