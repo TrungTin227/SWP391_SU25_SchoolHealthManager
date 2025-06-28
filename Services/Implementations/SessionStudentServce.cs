@@ -1,4 +1,5 @@
 ﻿using DTOs.SessionStudentDTOs.Requests;
+using DTOs.SessionStudentDTOs.Responds;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
@@ -25,66 +26,110 @@ namespace Services.Implementations
             _logger = logger;
         }
 
-        public async Task<ApiResult<bool>> ParentAcptVaccineAsync(ParentAcptVaccine request)
+        public async Task<ApiResult<List<ParentAcptVaccineResult>>> ParentAcptVaccineAsync(ParentAcptVaccine request)
         {
+            var resultList = new List<ParentAcptVaccineResult>();
+            var now = _currentTime.GetVietnamTime();
+
             try
             {
-                var now = _currentTime.GetVietnamTime();
-                _logger.LogInformation("Starting ParentAcptVaccineAsync for StudentId: {StudentId}, VaccinationScheduleId: {VaccinationScheduleId}", request.StudentId, request.VaccinationScheduleId);
-
-                var student = (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId));
-                if (student == null)
+                if (request.StudentIds == null || !request.StudentIds.Any())
                 {
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy học sinh!!"));
+                    return ApiResult<List<ParentAcptVaccineResult>>.Failure(new Exception("Danh sách học sinh không được để trống!"));
                 }
 
-                if (await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.VaccinationScheduleId) == null)
+                var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.VaccinationScheduleId);
+                if (schedule == null)
                 {
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tiêm chủng!!"));
+                    return ApiResult<List<ParentAcptVaccineResult>>.Failure(new Exception("Không tìm thấy lịch tiêm chủng!"));
                 }
 
                 if (!Enum.IsDefined(typeof(ParentConsentStatus), request.ConsentStatus))
-                    return ApiResult<bool>.Failure(new Exception("Giá trị ConsentStatus không hợp lệ!"));
-
-                // 1. Lấy thông tin SessionStudent theo Id
-
-                var sessionStudent = await _unitOfWork.SessionStudentRepository.FirstOrDefaultAsync(ss => ss.StudentId == request.StudentId && ss.VaccinationScheduleId == request.VaccinationScheduleId);
-
-                if (_currentUserService.GetUserId() != student.ParentUserId )
-                    return ApiResult<bool>.Failure(new Exception("Bạn không có quyền cập nhật thông tin cho học sinh này."));
-
-                if (sessionStudent == null)
                 {
-                    return ApiResult<bool>.Failure(new Exception("Session student not found."));
-                }
-                // 2. Cập nhật trạng thái đồng ý của phụ huynh
-                sessionStudent.ConsentStatus = request.ConsentStatus;
-                sessionStudent.ParentSignedAt = now;
-                sessionStudent.ParentNotes = request.ParentNote;
-                sessionStudent.ParentSignature = request.ParentSignature;
-                sessionStudent.UpdatedAt = now;
-                var userId = _currentUserService.GetUserId();
-                if (userId.HasValue)
-                {
-                    sessionStudent.UpdatedBy = userId.Value;
-                }
-                else
-                {
-                    _logger.LogWarning("UserId is null in ParentAcptVaccineAsync");
-                    // Có thể return lỗi hoặc xử lý theo logic riêng tuỳ yêu cầu
+                    return ApiResult<List<ParentAcptVaccineResult>>.Failure(new Exception("Giá trị ConsentStatus không hợp lệ!"));
                 }
 
-                // 3. Lưu thay đổi
-                await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
+                foreach (var studentId in request.StudentIds)
+                {
+                    var result = new ParentAcptVaccineResult { StudentId = studentId };
+
+                    try
+                    {
+                        var student = await _unitOfWork.StudentRepository.GetByIdAsync(studentId);
+                        if (student == null)
+                        {
+                            result.IsSuccess = false;
+                            result.Message = "Không tìm thấy học sinh.";
+                            resultList.Add(result);
+                            continue;
+                        }
+
+                        if (_currentUserService.GetUserId() != student.ParentUserId)
+                        {
+                            result.IsSuccess = false;
+                            result.Message = "Bạn không có quyền cập nhật cho học sinh này.";
+                            resultList.Add(result);
+                            continue;
+                        }
+
+                        var sessionStudent = await _unitOfWork.SessionStudentRepository
+                            .FirstOrDefaultAsync(ss => ss.StudentId == studentId && ss.VaccinationScheduleId == request.VaccinationScheduleId);
+
+                        if (sessionStudent == null)
+                        {
+                            result.IsSuccess = false;
+                            result.Message = "Không tìm thấy thông tin session của học sinh.";
+                            resultList.Add(result);
+                            continue;
+                        }
+
+                        if (sessionStudent.ConsentDeadline.HasValue && now > sessionStudent.ConsentDeadline.Value)
+                        {
+                            result.IsSuccess = false;
+                            result.Message = "Đã hết hạn đồng ý tiêm chủng.";
+                            resultList.Add(result);
+                            sessionStudent.ConsentStatus = ParentConsentStatus.Expired;
+                            continue;
+                        }
+
+                        // Update sessionStudent
+                        sessionStudent.ConsentStatus = request.ConsentStatus;
+                        sessionStudent.ParentSignedAt = now;
+                        sessionStudent.ParentNotes = request.ParentNote;
+                        sessionStudent.ParentSignature = request.ParentSignature;
+                        sessionStudent.UpdatedAt = now;
+
+                        var userId = _currentUserService.GetUserId();
+                        if (userId.HasValue)
+                        {
+                            sessionStudent.UpdatedBy = userId.Value;
+                        }
+
+                        await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
+
+                        result.IsSuccess = true;
+                        result.Message = "Cập nhật thành công.";
+                    }
+                    catch (Exception exInner)
+                    {
+                        result.IsSuccess = false;
+                        result.Message = $"Lỗi khi xử lý học sinh: {exInner.Message}";
+                    }
+
+                    resultList.Add(result);
+                }
+
                 await _unitOfWork.SaveChangesAsync();
-                return ApiResult<bool>.Success(true, "Cập nhật trạng thái đồng ý tiêm chủng thành công.");
 
+                return ApiResult<List<ParentAcptVaccineResult>>.Success(resultList, "Xử lý cập nhật đồng ý tiêm chủng hoàn tất.");
             }
             catch (Exception ex)
             {
-                return ApiResult<bool>.Failure(new Exception($"Lỗi khi gán giá trị cho session học sinh!!: {ex.Message}"));
+                return ApiResult<List<ParentAcptVaccineResult>>.Failure(new Exception($"Lỗi hệ thống: {ex.Message}"));
             }
         }
+
+
 
         public async Task<ApiResult<bool>> ParentDeclineVaccineAsync(ParentAcptVaccine request)
         {
