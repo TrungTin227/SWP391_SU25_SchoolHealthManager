@@ -10,37 +10,7 @@ namespace Services.Helpers.Mappers
 {
     public static class CheckupRecordMappings
     {
-        //public static CheckupRecord MapToEntity(CreateCheckupRecordRequestDTO dto)
-        //{
-        //    var entity = new CheckupRecord
-        //    {
-        //        ScheduleId = dto.ScheduleId,
-        //        StudentId = dto.StudentId,
-        //        HeightCm = dto.HeightCm,
-        //        WeightKg = dto.WeightKg,
-        //        VisionLeft = dto.VisionLeft,
-        //        VisionRight = dto.VisionRight,
-        //        Hearing = dto.Hearing,
-        //        BloodPressureDiastolic = dto.BloodPressureDiastolic,
-        //        ExaminedByNurseId = dto.ExaminedByNurseId,
-        //        ExaminedAt = dto.ExaminedAt,
-        //        Remarks = dto.Remarks,
-        //        Status = dto.Status,
-        //        CounselingAppointments = new List<CounselingAppointment>()
-        //    };
-
-        //    if (dto.CounselingAppointment != null)
-        //    {
-        //            entity.CounselingAppointments.Add(new CounselingAppointment
-        //            {
-        //                Id = id,
-        //                CheckupRecordId = entity.Id // thiết lập FK cho đúng
-        //            });
-        //    }
-
-        //    return entity;
-        //}
-        public static CheckupRecord MapToEntity(CreateCheckupRecordRequestDTO dto)
+        public static CheckupRecord MapToEntity(CreateCheckupRecordRequestDTO dto, Student student)
         {
             var checkupRecord = new CheckupRecord
             {
@@ -60,7 +30,7 @@ namespace Services.Helpers.Mappers
             };
 
             // Nếu có danh sách khám lại thì gán vào
-            if (dto.CounselingAppointment != null && dto.CounselingAppointment.Any())
+            if (dto.CounselingAppointment != null && dto.CounselingAppointment.Any() && dto.Status == CheckupRecordStatus.RequiresFollowUp)
             {
                 foreach (var counselingDto in dto.CounselingAppointment)
                 {
@@ -69,16 +39,15 @@ namespace Services.Helpers.Mappers
                         Id = Guid.NewGuid(),
                         AppointmentDate = counselingDto.AppointmentDate,
                         Duration = counselingDto.Duration,
+                        StudentId = student.Id, // FK
+                        ParentId = student.ParentUserId, // FK
                         Purpose = counselingDto.Purpose, // Gán đầy đủ trường Purpose
-                        ParentId = counselingDto.ParentId,
                         StaffUserId = counselingDto.StaffUserId,
-                        StudentId = counselingDto.StudentId,
-                        VaccinationRecordId = counselingDto.VaccinationRecordId,
                         CheckupRecordId = checkupRecord.Id, // FK
                         Status = ScheduleStatus.Pending,
                         IsDeleted = false,
                         CreatedAt = DateTime.UtcNow,
-                        CreatedBy = Guid.NewGuid() // Thay thế với user Id thực tế
+                        CreatedBy = counselingDto.StaffUserId // Thay thế với user Id thực tế
                     });
                 }
             }

@@ -30,7 +30,7 @@ namespace DTOs.CheckUpRecordDTOs.Requests
         public CheckupRecordStatus Status { get; set; }
 
         // Nếu có thông tin khám lại thì truyền DTO con vào đây
-        public List<CreateCounselingAppointmentRequestDTO>? CounselingAppointment { get; set; }
+        public List<CreateAppointmentForCheckup>? CounselingAppointment { get; set; }
     }
 
 }

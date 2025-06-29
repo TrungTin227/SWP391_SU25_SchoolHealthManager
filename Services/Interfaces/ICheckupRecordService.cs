@@ -12,11 +12,11 @@ namespace Services.Interfaces
     {
         public Task<ApiResult<CheckupRecordRespondDTO>> CreateCheckupRecordAsync(CreateCheckupRecordRequestDTO request);
         //public Task<ApiResult<CheckupRecordRespondDTO>> UpdateCheckupRecordAsync(UpdateCheckupRecordRequestDTO request);
-        //public Task<ApiResult<CheckupRecordRespondDTO?>> GetByIdAsync(Guid id);
-        //public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id);
-        //public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentId);
-        //public Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
-        //public Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> id);
+        public Task<ApiResult<CheckupRecordRespondDTO?>> GetByIdAsync(Guid id);
+        public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id);
+        public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentId);
+        public Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
+        public Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> id);
 
     }
 }

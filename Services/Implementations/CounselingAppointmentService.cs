@@ -137,7 +137,7 @@ namespace Services.Implementations
                     CreatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001")
                 };
 
-                await CreateAsync(appointment);
+                //await CreateAsync(appointment);
                 //await _unitOfWork.SaveChangesAsync();
                 var respond = CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO(appointment);
                 return ApiResult<CounselingAppointmentRespondDTO>.Success(respond, "Tạo lịch tư vấn thành công!");

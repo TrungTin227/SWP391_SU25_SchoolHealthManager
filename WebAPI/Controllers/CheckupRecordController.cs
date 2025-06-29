@@ -15,9 +15,6 @@ namespace WebAPI.Controllers
         [HttpPost("create-checkup-record")]
         public async Task<IActionResult> CreateCheckupRecord([FromBody] CreateCheckupRecordRequestDTO request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             if (request == null)
             {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu!!" });
