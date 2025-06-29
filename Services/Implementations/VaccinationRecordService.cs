@@ -152,17 +152,17 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<List<VaccinationRecord>>> GetRecordsByStudentAsync(Guid studentId)
+        public async Task<ApiResult<PagedList<VaccinationRecord>>> GetRecordsByStudentAsync(Guid studentId, int pageNumber, int pageSize, string? searchTerm = null)
         {
             try
             {
-                var records = await _recordRepository.GetRecordsByStudentAsync(studentId);
-                return ApiResult<List<VaccinationRecord>>.Success(records, "Lấy danh sách phiếu tiêm theo học sinh thành công");
+                var records = await _recordRepository.GetRecordsByStudentAsync(studentId, pageNumber, pageSize, searchTerm);
+                return ApiResult<PagedList<VaccinationRecord>>.Success(records, "Lấy danh sách phiếu tiêm theo học sinh thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách phiếu tiêm theo học sinh");
-                return ApiResult<List<VaccinationRecord>>.Failure(ex);
+                return ApiResult<PagedList<VaccinationRecord>>.Failure(ex);
             }
         }
 
