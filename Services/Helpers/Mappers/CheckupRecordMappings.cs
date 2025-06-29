@@ -67,9 +67,18 @@ namespace Services.Helpers.Mappers
                     checkupRecord.CounselingAppointments.Add(new CounselingAppointment
                     {
                         Id = Guid.NewGuid(),
-                        //ScheduleTime = counselingDto.ScheduleTime ?? DateTime.Now.AddDays(1),
-                        //Note = counselingDto.Note,
-                        CheckupRecordId = checkupRecord.Id // gán FK
+                        AppointmentDate = counselingDto.AppointmentDate,
+                        Duration = counselingDto.Duration,
+                        Purpose = counselingDto.Purpose, // Gán đầy đủ trường Purpose
+                        ParentId = counselingDto.ParentId,
+                        StaffUserId = counselingDto.StaffUserId,
+                        StudentId = counselingDto.StudentId,
+                        VaccinationRecordId = counselingDto.VaccinationRecordId,
+                        CheckupRecordId = checkupRecord.Id, // FK
+                        Status = ScheduleStatus.Pending,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = Guid.NewGuid() // Thay thế với user Id thực tế
                     });
                 }
             }
