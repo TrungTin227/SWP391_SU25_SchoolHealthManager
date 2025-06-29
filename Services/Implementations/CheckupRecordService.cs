@@ -3,8 +3,10 @@ using BusinessObjects;
 using DTOs.CheckUpRecordDTOs.Requests;
 using DTOs.CheckUpRecordDTOs.Responds;
 using DTOs.CounselingAppointmentDTOs.Requests;
+using DTOs.CounselingAppointmentDTOs.Responds;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Crypto;
 using Services.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -120,37 +122,153 @@ namespace Services.Implementations
 
         public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
         {
-            var records = await _unitOfWork.CheckupRecordRepository
+            try
+            {
+                var isNurse = await _unitOfWork.NurseProfileRepository
+                        .AnyAsync(n => n.UserId == id);
+
+                if (!isNurse)
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Nhân viên không phải là y tá."));
+                var records = await _unitOfWork.CheckupRecordRepository
+                            .GetQueryable()
+                            .Include(r => r.CounselingAppointments)
+                            .Where(r => !r.IsDeleted && r.ExaminedByNurseId == id)
+                            .ToListAsync();
+
+                if (records == null || !records.Any())
+                {
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Success(new List<CheckupRecordRespondDTO?>(), "Không có hồ sơ kiểm tra nào được tìm thấy cho nhân viên này.");
+                }
+                var result = records.Select(CheckupRecordMappings.MapToRespondDTO).ToList();
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Success(result, "Lấy bản ghi thành công với staff id : " + id);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Lỗi khi lấy bản ghi kiểm tra: " + ex.Message));
+            }
+        }
+        public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentCode)
+        {
+            try
+            {
+                var student = await _unitOfWork.StudentRepository
                     .GetQueryable()
-                    .Where(r => !r.IsDeleted && r.ExaminedByNurseId == id)
+                    .FirstOrDefaultAsync(s => s.StudentCode == studentCode && !s.IsDeleted);
+
+                if (student == null)
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Không tìm thấy học sinh!"));
+
+                var records = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .Include(r => r.CounselingAppointments)
+                    .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();
 
-            if (records == null || !records.Any())
-            {
-                return ApiResult<List<CheckupRecordRespondDTO?>>.Success(new List<CheckupRecordRespondDTO?>(), "Không có hồ sơ kiểm tra nào được tìm thấy cho nhân viên này.");
+                var result = records.Select(CheckupRecordMappings.MapToRespondDTO).ToList();
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Success(result, "lấy hồ sơ theo mã học sinh thành công!!");
             }
-            var result = _mapper.Map<List<CheckupRecordRespondDTO>>(records);
-            return ApiResult<List<CheckupRecordRespondDTO?>>.Success(result);
-        }
-
-        public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentId)
-        {
-            throw new NotImplementedException();
+            catch (Exception ex)
+            {
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Lỗi khi lấy hồ sơ theo mã học sinh: " + ex.Message));
+            }
         }
 
         public async Task<ApiResult<CheckupRecordRespondDTO?>> GetByIdAsync(Guid id)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var record = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .Include(r => r.CounselingAppointments)
+                    .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+                if (record == null)
+                    return ApiResult<CheckupRecordRespondDTO?>.Failure(new Exception("Không tìm thấy hồ sơ kiểm tra!"));
+
+                var response = CheckupRecordMappings.MapToRespondDTO(record);
+                return ApiResult<CheckupRecordRespondDTO?>.Success(response,"Lấy thông tin thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<CheckupRecordRespondDTO?>.Failure(new Exception("Lỗi khi lấy hồ sơ kiểm tra theo ID: " + ex.Message));
+            }
         }
 
         public async Task<ApiResult<bool>> SoftDeleteAsync(Guid id)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var record = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .Include(r => r.CounselingAppointments)
+                    .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+
+                if (record == null || record.IsDeleted)
+                    return ApiResult<bool>.Failure(new Exception($"Không tìm thấy hồ sơ kiểm tra hoặc đã bị xoá: {id}"));
+
+                record.IsDeleted = true;
+                record.DeletedAt = _currentTime.GetVietnamTime();
+                record.DeletedBy = _currentUserService.GetUserId() ?? Guid.Empty;
+
+                foreach (var ca in record.CounselingAppointments)
+                {
+                    ca.IsDeleted = true;
+                    ca.DeletedAt = _currentTime.GetVietnamTime();
+                    ca.DeletedBy = _currentUserService.GetUserId() ?? Guid.Empty;
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, $"Xoá mềm hồ sơ {id} và các lịch hẹn tư vấn liên quan thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception("Lỗi khi xoá mềm hồ sơ: " + ex.Message));
+            }
         }
 
-        public async Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> id)
+        public async Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> ids)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var records = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .Include(r => r.CounselingAppointments)
+                    .Where(r => ids.Contains(r.Id) && !r.IsDeleted)
+                    .ToListAsync();
+
+                var deletedIds = new List<Guid>();
+                var failedIds = ids.Except(records.Select(r => r.Id)).ToList();
+
+                foreach (var record in records)
+                {
+                    record.IsDeleted = true;
+                    record.DeletedAt = _currentTime.GetVietnamTime();
+                    record.DeletedBy = _currentUserService.GetUserId() ?? Guid.Empty;
+                    deletedIds.Add(record.Id);
+
+                    foreach (var ca in record.CounselingAppointments)
+                    {
+                        ca.IsDeleted = true;
+                        ca.DeletedAt = _currentTime.GetVietnamTime();
+                        ca.DeletedBy = _currentUserService.GetUserId() ?? Guid.Empty;
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                var message = $"Xoá mềm thành công: [{string.Join(", ", deletedIds)}]. ";
+                if (failedIds.Any())
+                {
+                    message += $"Không xoá được: [{string.Join(", ", failedIds)}].";
+                }
+
+                return ApiResult<bool>.Success(true, message);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception("Lỗi khi xoá mềm hàng loạt hồ sơ: " + ex.Message));
+            }
         }
     }
 }
