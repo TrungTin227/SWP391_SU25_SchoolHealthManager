@@ -12,7 +12,7 @@ namespace Repositories.Implementations
         public async Task<PagedList<HealthEvent>> GetHealthEventsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             EventStatus? status = null, EventType? eventType = null,
-            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null)
+            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null, Guid? parentUserId = null)
         {
             var query = _context.HealthEvents
                 .Include(he => he.Student)
@@ -20,7 +20,11 @@ namespace Repositories.Implementations
                 .Include(he => he.EventMedications)
                 .Include(he => he.SupplyUsages)
                 .Where(he => !he.IsDeleted);
-
+            // ✅ Filter theo parentUserId (cho phụ huynh chỉ xem sự kiện của con mình)
+            if (parentUserId.HasValue)
+            {
+                query = query.Where(he => he.Student.ParentUserId == parentUserId.Value);
+            }
             // Apply filters
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {

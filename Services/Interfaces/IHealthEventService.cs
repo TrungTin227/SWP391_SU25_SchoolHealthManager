@@ -1,7 +1,4 @@
-﻿using DTOs.HealthEventDTOs.Request;
-using DTOs.HealthEventDTOs.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface IHealthEventService
     {
@@ -9,7 +6,7 @@ namespace Services.Interfaces
         Task<ApiResult<PagedList<HealthEventResponseDTO>>> GetHealthEventsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             EventStatus? status = null, EventType? eventType = null,
-            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null);
+            Guid? studentId = null, DateTime? fromDate = null, DateTime? toDate = null, bool filterByCurrentUser = false);
 
         Task<ApiResult<HealthEventDetailResponseDTO>> GetHealthEventByIdAsync(Guid id);
         Task<ApiResult<HealthEventResponseDTO>> CreateHealthEventAsync(CreateHealthEventRequestDTO request);

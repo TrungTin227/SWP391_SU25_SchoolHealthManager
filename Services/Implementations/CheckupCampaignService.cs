@@ -1,7 +1,4 @@
-﻿using DTOs.CheckupCampaign.Request;
-using DTOs.CheckupCampaign.Response;
-using DTOs.CheckupSchedule.Response;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
@@ -20,17 +17,17 @@ namespace Services.Implementations
             _logger = logger;
         }
 
+        #region CRUD Operations
+
         public async Task<ApiResult<PagedList<CheckupCampaignResponseDTO>>> GetCheckupCampaignsAsync(
             int pageNumber, int pageSize, string? searchTerm = null,
             CheckupCampaignStatus? status = null, DateTime? startDate = null, DateTime? endDate = null)
         {
             try
             {
-                // Sử dụng repository thông qua UnitOfWork
                 var campaignsPaged = await _unitOfWork.CheckupCampaignRepository
                     .GetCheckupCampaignsAsync(pageNumber, pageSize, searchTerm, status, startDate, endDate);
 
-                // Chuyển từng entity thành DTO
                 var responseDTOs = new List<CheckupCampaignResponseDTO>();
                 foreach (var campaign in campaignsPaged)
                 {
@@ -38,7 +35,6 @@ namespace Services.Implementations
                     responseDTOs.Add(dto);
                 }
 
-                // Tạo PagedList<DTO> mới, dùng MetaData từ campaignsPaged
                 var result = new PagedList<CheckupCampaignResponseDTO>(
                     responseDTOs,
                     campaignsPaged.MetaData.TotalCount,
@@ -46,8 +42,7 @@ namespace Services.Implementations
                     campaignsPaged.MetaData.PageSize);
 
                 return ApiResult<PagedList<CheckupCampaignResponseDTO>>.Success(
-                    result,
-                    "Lấy danh sách chiến dịch khám định kỳ thành công");
+                    result, "Lấy danh sách chiến dịch khám định kỳ thành công");
             }
             catch (Exception ex)
             {
@@ -124,6 +119,7 @@ namespace Services.Implementations
                     var campaign = MapFromCreateRequest(request);
                     campaign.Status = CheckupCampaignStatus.Planning; // Initial status
 
+                    // BaseService sẽ tự động xử lý audit fields
                     var createdCampaign = await CreateAsync(campaign);
 
                     var response = await MapToResponseDTO(createdCampaign);
@@ -165,6 +161,7 @@ namespace Services.Implementations
                     // Update campaign properties
                     UpdateFromRequest(campaign, request);
 
+                    // BaseService sẽ tự động xử lý audit fields
                     var updatedCampaign = await UpdateAsync(campaign);
                     var response = await MapToResponseDTO(updatedCampaign);
 
@@ -179,84 +176,33 @@ namespace Services.Implementations
             });
         }
 
+        #endregion
+
         #region Status Management
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> StartCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var campaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
-                    if (campaign == null)
-                    {
-                        return ApiResult<CheckupCampaignResponseDTO>.Failure(
-                            new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
-                    }
-
-                    if (campaign.Status != CheckupCampaignStatus.Planning &&
-                        campaign.Status != CheckupCampaignStatus.Scheduled)
-                    {
-                        return ApiResult<CheckupCampaignResponseDTO>.Failure(
-                            new InvalidOperationException($"Không thể bắt đầu chiến dịch từ trạng thái {campaign.Status}"));
-                    }
-
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.CheckupCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, CheckupCampaignStatus.InProgress, currentUserId);
-
-                    var updatedCampaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
-                    var response = await MapToResponseDTO(updatedCampaign!);
-
-                    _logger.LogInformation("Chiến dịch khám định kỳ được bắt đầu: {CampaignId}", campaignId);
-                    return ApiResult<CheckupCampaignResponseDTO>.Success(response, "Bắt đầu chiến dịch khám định kỳ thành công");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi khi bắt đầu chiến dịch khám định kỳ: {CampaignId}", campaignId);
-                    return ApiResult<CheckupCampaignResponseDTO>.Failure(ex);
-                }
-            });
+            return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.InProgress,
+                "bắt đầu", CheckupCampaignStatus.Planning, CheckupCampaignStatus.Scheduled);
         }
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CompleteCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await _unitOfWork.ExecuteTransactionAsync(async () =>
-            {
-                try
-                {
-                    var campaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
-                    if (campaign == null)
-                    {
-                        return ApiResult<CheckupCampaignResponseDTO>.Failure(
-                            new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
-                    }
-
-                    if (campaign.Status != CheckupCampaignStatus.InProgress)
-                    {
-                        return ApiResult<CheckupCampaignResponseDTO>.Failure(
-                            new InvalidOperationException($"Không thể hoàn thành chiến dịch từ trạng thái {campaign.Status}"));
-                    }
-
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.CheckupCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, CheckupCampaignStatus.Completed, currentUserId);
-
-                    var updatedCampaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
-                    var response = await MapToResponseDTO(updatedCampaign!);
-
-                    _logger.LogInformation("Chiến dịch khám định kỳ được hoàn thành: {CampaignId}", campaignId);
-                    return ApiResult<CheckupCampaignResponseDTO>.Success(response, "Hoàn thành chiến dịch khám định kỳ thành công");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi khi hoàn thành chiến dịch khám định kỳ: {CampaignId}", campaignId);
-                    return ApiResult<CheckupCampaignResponseDTO>.Failure(ex);
-                }
-            });
+            return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Completed,
+                "hoàn thành", CheckupCampaignStatus.InProgress);
         }
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CancelCampaignAsync(Guid campaignId, string? reason = null)
+        {
+            return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Cancelled,
+                "hủy", CheckupCampaignStatus.Planning, CheckupCampaignStatus.Scheduled, CheckupCampaignStatus.InProgress);
+        }
+
+        private async Task<ApiResult<CheckupCampaignResponseDTO>> UpdateCampaignStatusAsync(
+            Guid campaignId,
+            CheckupCampaignStatus newStatus,
+            string actionName,
+            params CheckupCampaignStatus[] validCurrentStatuses)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -269,26 +215,24 @@ namespace Services.Implementations
                             new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
                     }
 
-                    if (campaign.Status == CheckupCampaignStatus.Completed ||
-                        campaign.Status == CheckupCampaignStatus.Cancelled)
+                    if (!validCurrentStatuses.Contains(campaign.Status))
                     {
                         return ApiResult<CheckupCampaignResponseDTO>.Failure(
-                            new InvalidOperationException($"Không thể hủy chiến dịch từ trạng thái {campaign.Status}"));
+                            new InvalidOperationException($"Không thể {actionName} chiến dịch từ trạng thái {campaign.Status}"));
                     }
 
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    await _unitOfWork.CheckupCampaignRepository.UpdateCampaignStatusAsync(
-                        campaignId, CheckupCampaignStatus.Cancelled, currentUserId);
+                    campaign.Status = newStatus;
 
-                    var updatedCampaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
-                    var response = await MapToResponseDTO(updatedCampaign!);
+                    // BaseService sẽ tự động xử lý UpdatedAt và UpdatedBy
+                    var updatedCampaign = await UpdateAsync(campaign);
+                    var response = await MapToResponseDTO(updatedCampaign);
 
-                    _logger.LogInformation("Chiến dịch khám định kỳ được hủy: {CampaignId}, Lý do: {Reason}", campaignId, reason);
-                    return ApiResult<CheckupCampaignResponseDTO>.Success(response, "Hủy chiến dịch khám định kỳ thành công");
+                    _logger.LogInformation("Chiến dịch khám định kỳ được {ActionName}: {CampaignId}", actionName, campaignId);
+                    return ApiResult<CheckupCampaignResponseDTO>.Success(response, $"{char.ToUpper(actionName[0])}{actionName.Substring(1)} chiến dịch khám định kỳ thành công");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Lỗi khi hủy chiến dịch khám định kỳ: {CampaignId}", campaignId);
+                    _logger.LogError(ex, "Lỗi khi {ActionName} chiến dịch khám định kỳ: {CampaignId}", actionName, campaignId);
                     return ApiResult<CheckupCampaignResponseDTO>.Failure(ex);
                 }
             });
@@ -328,7 +272,6 @@ namespace Services.Implementations
                                 continue;
                             }
 
-                            // Validate transition logic nếu cần
                             if (!IsValidStatusTransition(campaign.Status, request.Status))
                             {
                                 result.Errors.Add(new BatchOperationErrorDTO
@@ -357,7 +300,7 @@ namespace Services.Implementations
                     // Thực hiện update cho các campaign hợp lệ
                     if (validCampaignIds.Any())
                     {
-                        var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                        var currentUserId = GetCurrentUserIdOrThrow();
                         var updatedCount = await _unitOfWork.CheckupCampaignRepository.BatchUpdateCampaignStatusAsync(
                             validCampaignIds, request.Status, currentUserId);
 
@@ -365,11 +308,7 @@ namespace Services.Implementations
                     }
 
                     result.FailureCount = result.Errors.Count;
-                    result.Message = result.IsCompleteSuccess
-                        ? $"Đã cập nhật trạng thái cho tất cả {result.SuccessCount} chiến dịch"
-                        : result.IsPartialSuccess
-                            ? $"Cập nhật thành công {result.SuccessCount}/{result.TotalRequested} chiến dịch"
-                            : "Không thể cập nhật chiến dịch nào";
+                    result.Message = GenerateBatchOperationMessage("cập nhật trạng thái", result);
 
                     _logger.LogInformation("Batch update status: {SuccessCount}/{TotalCount} campaigns",
                         result.SuccessCount, result.TotalRequested);
@@ -395,9 +334,6 @@ namespace Services.Implementations
                         TotalRequested = request.Ids.Count
                     };
 
-                    var validCampaignIds = new List<Guid>();
-
-                    // Kiểm tra từng campaign trước khi xóa
                     foreach (var campaignId in request.Ids)
                     {
                         try
@@ -411,6 +347,7 @@ namespace Services.Implementations
                                     Error = "NotFound",
                                     Details = "Không tìm thấy chiến dịch"
                                 });
+                                result.FailureCount++;
                                 continue;
                             }
 
@@ -422,10 +359,10 @@ namespace Services.Implementations
                                     Error = "AlreadyDeleted",
                                     Details = "Chiến dịch đã được xóa trước đó"
                                 });
+                                result.FailureCount++;
                                 continue;
                             }
 
-                            // Kiểm tra logic business nếu cần (ví dụ: không cho xóa chiến dịch đang diễn ra)
                             if (campaign.Status == CheckupCampaignStatus.InProgress)
                             {
                                 result.Errors.Add(new BatchOperationErrorDTO
@@ -434,11 +371,27 @@ namespace Services.Implementations
                                     Error = "CannotDeleteActiveSession",
                                     Details = "Không thể xóa chiến dịch đang diễn ra"
                                 });
+                                result.FailureCount++;
                                 continue;
                             }
 
-                            validCampaignIds.Add(campaignId);
-                            result.SuccessIds.Add(campaignId.ToString());
+                            // Sử dụng BaseService DeleteAsync
+                            var deleteResult = await DeleteAsync(campaignId);
+                            if (deleteResult)
+                            {
+                                result.SuccessIds.Add(campaignId.ToString());
+                                result.SuccessCount++;
+                            }
+                            else
+                            {
+                                result.Errors.Add(new BatchOperationErrorDTO
+                                {
+                                    Id = campaignId.ToString(),
+                                    Error = "DeleteFailed",
+                                    Details = "Không thể xóa chiến dịch"
+                                });
+                                result.FailureCount++;
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -448,25 +401,11 @@ namespace Services.Implementations
                                 Error = "ProcessingError",
                                 Details = ex.Message
                             });
+                            result.FailureCount++;
                         }
                     }
 
-                    // Thực hiện xóa mềm cho các campaign hợp lệ
-                    if (validCampaignIds.Any())
-                    {
-                        var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                        var deletedCount = await _unitOfWork.CheckupCampaignRepository.BatchSoftDeleteAsync(
-                            validCampaignIds, currentUserId);
-
-                        result.SuccessCount = deletedCount;
-                    }
-
-                    result.FailureCount = result.Errors.Count;
-                    result.Message = result.IsCompleteSuccess
-                        ? $"Đã xóa tất cả {result.SuccessCount} chiến dịch"
-                        : result.IsPartialSuccess
-                            ? $"Xóa thành công {result.SuccessCount}/{result.TotalRequested} chiến dịch"
-                            : "Không thể xóa chiến dịch nào";
+                    result.Message = GenerateBatchOperationMessage("xóa", result);
 
                     _logger.LogInformation("Batch delete: {SuccessCount}/{TotalCount} campaigns, Reason: {Reason}",
                         result.SuccessCount, result.TotalRequested, request.Reason);
@@ -494,12 +433,10 @@ namespace Services.Implementations
 
                     var validCampaignIds = new List<Guid>();
 
-                    // Kiểm tra từng campaign trước khi khôi phục
                     foreach (var campaignId in request.Ids)
                     {
                         try
                         {
-                            // Lấy cả campaign đã xóa để kiểm tra
                             var campaign = await _unitOfWork.CheckupCampaignRepository
                                     .GetQueryable()
                                     .Where(c => c.Id == campaignId)
@@ -541,10 +478,9 @@ namespace Services.Implementations
                         }
                     }
 
-                    // Thực hiện khôi phục cho các campaign hợp lệ
                     if (validCampaignIds.Any())
                     {
-                        var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
+                        var currentUserId = GetCurrentUserIdOrThrow();
                         var restoredCount = await _unitOfWork.CheckupCampaignRepository.BatchRestoreAsync(
                             validCampaignIds, currentUserId);
 
@@ -552,11 +488,7 @@ namespace Services.Implementations
                     }
 
                     result.FailureCount = result.Errors.Count;
-                    result.Message = result.IsCompleteSuccess
-                        ? $"Đã khôi phục tất cả {result.SuccessCount} chiến dịch"
-                        : result.IsPartialSuccess
-                            ? $"Khôi phục thành công {result.SuccessCount}/{result.TotalRequested} chiến dịch"
-                            : "Không thể khôi phục chiến dịch nào";
+                    result.Message = GenerateBatchOperationMessage("khôi phục", result);
 
                     _logger.LogInformation("Batch restore: {SuccessCount}/{TotalCount} campaigns",
                         result.SuccessCount, result.TotalRequested);
@@ -571,22 +503,9 @@ namespace Services.Implementations
             });
         }
 
-        // Helper method để validate status transition
-        private bool IsValidStatusTransition(CheckupCampaignStatus currentStatus, CheckupCampaignStatus newStatus)
-        {
-            return (currentStatus, newStatus) switch
-            {
-                (CheckupCampaignStatus.Planning, CheckupCampaignStatus.Scheduled) => true,
-                (CheckupCampaignStatus.Planning, CheckupCampaignStatus.Cancelled) => true,
-                (CheckupCampaignStatus.Scheduled, CheckupCampaignStatus.InProgress) => true,
-                (CheckupCampaignStatus.Scheduled, CheckupCampaignStatus.Cancelled) => true,
-                (CheckupCampaignStatus.InProgress, CheckupCampaignStatus.Completed) => true,
-                (CheckupCampaignStatus.InProgress, CheckupCampaignStatus.Cancelled) => true,
-                _ => false
-            };
-        }
-
         #endregion
+
+        #region Statistics
 
         public async Task<ApiResult<Dictionary<CheckupCampaignStatus, int>>> GetCampaignStatusStatisticsAsync()
         {
@@ -603,7 +522,48 @@ namespace Services.Implementations
             }
         }
 
-        #region Private Methods
+        #endregion
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Lấy current user ID và ném exception nếu null
+        /// </summary>
+        private Guid GetCurrentUserIdOrThrow()
+        {
+            var currentUserId = _currentUserService.GetUserId();
+            if (!currentUserId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Không tìm thấy thông tin người dùng hiện tại");
+            }
+            return currentUserId.Value;
+        }
+
+        private bool IsValidStatusTransition(CheckupCampaignStatus currentStatus, CheckupCampaignStatus newStatus)
+        {
+            return (currentStatus, newStatus) switch
+            {
+                (CheckupCampaignStatus.Planning, CheckupCampaignStatus.Scheduled) => true,
+                (CheckupCampaignStatus.Planning, CheckupCampaignStatus.Cancelled) => true,
+                (CheckupCampaignStatus.Scheduled, CheckupCampaignStatus.InProgress) => true,
+                (CheckupCampaignStatus.Scheduled, CheckupCampaignStatus.Cancelled) => true,
+                (CheckupCampaignStatus.InProgress, CheckupCampaignStatus.Completed) => true,
+                (CheckupCampaignStatus.InProgress, CheckupCampaignStatus.Cancelled) => true,
+                _ => false
+            };
+        }
+
+        private static string GenerateBatchOperationMessage(string operation, BatchOperationResultDTO result)
+        {
+            if (result.IsCompleteSuccess)
+                return $"Đã {operation} thành công {result.SuccessCount} chiến dịch";
+
+            if (result.IsPartialSuccess)
+                return $"Đã {operation} thành công {result.SuccessCount}/{result.TotalRequested} chiến dịch. " +
+                       $"{result.FailureCount} thất bại";
+
+            return $"Không thể {operation} chiến dịch nào. Tất cả {result.FailureCount} yêu cầu đều thất bại";
+        }
 
         private async Task<CheckupCampaignResponseDTO> MapToResponseDTO(CheckupCampaign campaign)
         {
@@ -672,7 +632,7 @@ namespace Services.Implementations
         {
             return new CheckupCampaign
             {
-                Id = Guid.NewGuid(),
+                // Không cần set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - BaseService sẽ xử lý
                 Name = request.Name,
                 SchoolYear = request.SchoolYear,
                 ScheduledDate = request.ScheduledDate,

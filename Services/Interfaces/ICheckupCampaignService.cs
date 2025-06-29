@@ -1,7 +1,4 @@
-﻿using DTOs.CheckupCampaign.Request;
-using DTOs.CheckupCampaign.Response;
-
-namespace Services.Interfaces
+﻿namespace Services.Interfaces
 {
     public interface ICheckupCampaignService
     {

@@ -31,7 +31,8 @@ namespace WebAPI.Controllers
             [FromQuery] EventType? eventType = null,
             [FromQuery] Guid? studentId = null,
             [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null)
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] bool filterByCurrentUser = false)
         {
             var result = await _healthEventService.GetHealthEventsAsync(
                 pageNumber, pageSize, searchTerm, status, eventType, studentId, fromDate, toDate);
