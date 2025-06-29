@@ -34,5 +34,6 @@ namespace DTOs.CounselingAppointmentDTOs.Requests
         public Guid? CheckupRecordId { get; set; }
 
         public Guid? VaccinationRecordId { get; set; }
+       
     }
 }

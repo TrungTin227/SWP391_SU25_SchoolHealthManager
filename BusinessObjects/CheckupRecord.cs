@@ -1,11 +1,15 @@
 ﻿using BusinessObjects.Common;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
     public class CheckupRecord : BaseEntity
     {
         [Key] public Guid Id { get; set; }
+        //public Guid StudentId { get; set; }
+        //[ForeignKey(nameof(StudentId))]
+        //public virtual Student Student { get; set; }
         public Guid ScheduleId { get; set; }
         public CheckupSchedule Schedule { get; set; } = null!;
         public decimal HeightCm { get; set; }
