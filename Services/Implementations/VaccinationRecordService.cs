@@ -37,6 +37,21 @@ namespace Services.Implementations
                     return ApiResult<bool>.Failure(new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
 
+                // 1. Lấy thông tin lô thuốc
+                var lot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(request.VaccineLotId);
+                if (lot == null)
+                {
+                    return ApiResult<bool>.Failure(new InvalidOperationException("Lô vaccine không tồn tại."));
+                }
+
+                // 2. Đếm số lượng đã sử dụng
+                var usedCount = lot.VaccinationRecords?.Count(v => !v.IsDeleted) ?? 0;
+                if (usedCount >= lot.Quantity)
+                {
+                    return ApiResult<bool>.Failure(new InvalidOperationException("Lô vaccine đã hết số lượng sử dụng."));
+                }
+
+                // 3. Tạo phiếu tiêm
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
@@ -57,6 +72,7 @@ namespace Services.Implementations
                 };
 
                 var created = await base.CreateAsync(record);
+
                 return ApiResult<bool>.Success(created != null, "Tạo phiếu tiêm thành công");
             }
             catch (Exception ex)
@@ -65,6 +81,7 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(ex);
             }
         }
+
 
         public async Task<ApiResult<bool>> UpdateAsync(Guid id, UpdateVaccinationRecordRequest request)
         {
