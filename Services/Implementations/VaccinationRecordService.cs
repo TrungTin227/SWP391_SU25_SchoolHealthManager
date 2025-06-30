@@ -72,7 +72,6 @@ namespace Services.Implementations
                         new KeyNotFoundException("Không tìm thấy phiếu tiêm."));
                 }
 
-                _mapper.Map(request, record);
                 record.UpdatedAt = _currentTime.GetCurrentTime();
 
                 var updated = await base.UpdateAsync(record);
