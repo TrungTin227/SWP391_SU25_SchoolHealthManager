@@ -10,9 +10,6 @@ namespace DTOs.CheckupCampaign.Request
         [Required, MaxLength(50)]
         public string SchoolYear { get; set; } = "";
 
-        [Required]
-        public DateTime ScheduledDate { get; set; }
-
         [MaxLength(1000)]
         public string Description { get; set; } = "";
 
