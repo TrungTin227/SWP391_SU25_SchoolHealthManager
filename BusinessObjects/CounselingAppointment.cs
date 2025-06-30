@@ -54,8 +54,9 @@ namespace BusinessObjects
         /// <summary>
         /// Mục đích tư vấn
         /// </summary>
-        [MaxLength(500)]
-        public string Purpose { get; set; }
+        [MaxLength(500)] // Giới hạn chiều dài cho SQL
+        public string? Purpose { get; set; } // C# bắt buộc gán
+
 
         /// <summary>
         /// Trạng thái: Scheduled, Completed, Cancelled

@@ -123,7 +123,6 @@ namespace Services.Implementations
                 // Tạo lịch tư vấn
                 var appointment = new CounselingAppointment
                 {
-                    Id = Guid.NewGuid(),
                     StudentId = request.StudentId,
                     ParentId = request.ParentId,
                     StaffUserId = request.StaffUserId,
@@ -138,8 +137,8 @@ namespace Services.Implementations
                     CreatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001")
                 };
 
-                await CreateAsync(appointment);
-                await _unitOfWork.SaveChangesAsync();
+                //await CreateAsync(appointment);
+                //await _unitOfWork.SaveChangesAsync();
                 var respond = CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO(appointment);
                 return ApiResult<CounselingAppointmentRespondDTO>.Success(respond, "Tạo lịch tư vấn thành công!");
             }
