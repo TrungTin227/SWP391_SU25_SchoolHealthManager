@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using AutoMapper;
 using DTOs.VaccinationRecordDTOs.Request;
 using DTOs.VaccinationRecordDTOs.Response;
 using Microsoft.Extensions.Logging;
@@ -14,7 +11,6 @@ namespace Services.Implementations
         : BaseService<VaccinationRecord, Guid>, IVaccinationRecordService
     {
         private readonly IVaccinationRecordRepository _recordRepository;
-        private readonly IMapper _mapper;
         private readonly ILogger<VaccinationRecordService> _logger;
 
         public VaccinationRecordService(
@@ -22,42 +18,51 @@ namespace Services.Implementations
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
-            IMapper mapper,
             ILogger<VaccinationRecordService> logger)
             : base(recordRepository, currentUserService, unitOfWork, currentTime)
         {
             _recordRepository = recordRepository;
-            _mapper = mapper;
             _logger = logger;
         }
 
         #region CRUD
 
-        public async Task<ApiResult<CreateVaccinationRecordResponse>> CreateAsync(CreateVaccinationRecordRequest request)
+        public async Task<ApiResult<bool>> CreateAsync(CreateVaccinationRecordRequest request)
         {
             try
             {
                 var exists = await _recordRepository.HasDuplicateEntryAsync(request.StudentId, request.ScheduleId);
                 if (exists)
                 {
-                    return ApiResult<CreateVaccinationRecordResponse>.Failure(new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
+                    return ApiResult<bool>.Failure(new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
 
-                var record = _mapper.Map<VaccinationRecord>(request);
-                record.Id = Guid.NewGuid();
-                record.CreatedAt = _currentTime.GetCurrentTime();
-                record.UpdatedAt = _currentTime.GetCurrentTime();
-                record.IsDeleted = false;
+                var record = new VaccinationRecord
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = request.StudentId,
+                    ScheduleId = request.ScheduleId,
+                    SessionStudentId = request.SessionStudentId,
+                    VaccineLotId = request.VaccineLotId,
+                    AdministeredDate = request.AdministeredDate,
+                    VaccinatedById = request.VaccinatedById,
+                    VaccinatedAt = request.VaccinatedAt,
+                    ReactionFollowup24h = request.ReactionFollowup24h,
+                    ReactionFollowup72h = request.ReactionFollowup72h,
+                    ReactionSeverity = (VaccinationReactionSeverity)request.ReactionSeverity,
+                    VaccineTypeId = request.VaccineTypeId,
+                    CreatedAt = _currentTime.GetCurrentTime(),
+                    UpdatedAt = _currentTime.GetCurrentTime(),
+                    IsDeleted = false
+                };
 
                 var created = await base.CreateAsync(record);
-                var response = _mapper.Map<CreateVaccinationRecordResponse>(created);
-
-                return ApiResult<CreateVaccinationRecordResponse>.Success(response, "Tạo phiếu tiêm thành công");
+                return ApiResult<bool>.Success(created != null, "Tạo phiếu tiêm thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi tạo phiếu tiêm");
-                return ApiResult<CreateVaccinationRecordResponse>.Failure(ex);
+                return ApiResult<bool>.Failure(ex);
             }
         }
 
@@ -68,11 +73,25 @@ namespace Services.Implementations
                 var record = await _recordRepository.GetByIdAsync(id);
                 if (record == null || record.IsDeleted)
                 {
-                    return ApiResult<bool>.Failure(
-                        new KeyNotFoundException("Không tìm thấy phiếu tiêm."));
+                    return ApiResult<bool>.Failure(new KeyNotFoundException("Không tìm thấy phiếu tiêm."));
                 }
 
                 record.UpdatedAt = _currentTime.GetCurrentTime();
+
+                if (request.AdministeredDate.HasValue)
+                    record.AdministeredDate = request.AdministeredDate.Value;
+
+                if (request.VaccinatedAt.HasValue)
+                    record.VaccinatedAt = request.VaccinatedAt.Value;
+
+                if (request.ReactionFollowup24h.HasValue)
+                    record.ReactionFollowup24h = request.ReactionFollowup24h.Value;
+
+                if (request.ReactionFollowup72h.HasValue)
+                    record.ReactionFollowup72h = request.ReactionFollowup72h.Value;
+
+                if (request.ReactionSeverity.HasValue)
+                    record.ReactionSeverity = (VaccinationReactionSeverity)request.ReactionSeverity.Value;
 
                 var updated = await base.UpdateAsync(record);
                 if (updated != null)
@@ -81,8 +100,7 @@ namespace Services.Implementations
                     return ApiResult<bool>.Success(true, "Cập nhật phiếu tiêm thành công");
                 }
 
-                return ApiResult<bool>.Failure(
-                    new InvalidOperationException("Không thể cập nhật phiếu tiêm."));
+                return ApiResult<bool>.Failure(new InvalidOperationException("Không thể cập nhật phiếu tiêm."));
             }
             catch (Exception ex)
             {
