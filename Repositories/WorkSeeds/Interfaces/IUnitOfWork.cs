@@ -25,5 +25,6 @@
         ICheckupRecordRepository CheckupRecordRepository { get; }
         ICounselingAppointmentRepository CounselingAppointmentRepository { get; }
         INurseProfileRepository NurseProfileRepository { get; }
+        IVaccinationRecordRepository VaccinationRecordRepository { get; }
     }
 }

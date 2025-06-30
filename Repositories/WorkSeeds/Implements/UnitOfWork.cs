@@ -33,6 +33,7 @@ namespace Repositories.WorkSeeds.Implements
         private ICheckupRecordRepository? _checkupRecordRepository;
         private ICounselingAppointmentRepository? _counselingAppointmentRepository;
         private INurseProfileRepository? _nurseProfileRepository;
+        private IVaccinationRecordRepository? _vaccinationRecordRepository;
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
         {
             _context = context;
@@ -84,6 +85,8 @@ namespace Repositories.WorkSeeds.Implements
             _counselingAppointmentRepository ??= _repositoryFactory.GetCustomRepository<ICounselingAppointmentRepository>();
         public INurseProfileRepository NurseProfileRepository =>
             _nurseProfileRepository ??= _repositoryFactory.GetCustomRepository<INurseProfileRepository>();
+        public IVaccinationRecordRepository VaccinationRecordRepository => 
+            _vaccinationRecordRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationRecordRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {
@@ -91,6 +94,7 @@ namespace Repositories.WorkSeeds.Implements
         }
 
         public bool HasActiveTransaction => _transaction != null;
+
 
         public async Task<IDbContextTransaction> BeginTransactionAsync(
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted,
