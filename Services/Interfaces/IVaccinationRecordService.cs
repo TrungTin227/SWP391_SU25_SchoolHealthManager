@@ -10,7 +10,7 @@ namespace Services.Interfaces
 {
     public interface IVaccinationRecordService
     {
-        Task<ApiResult<bool>> CreateAsync(CreateVaccinationRecordRequest request);
+        Task<ApiResult<CreateVaccinationRecordResponse>> CreateAsync(CreateVaccinationRecordRequest request);
         Task<ApiResult<bool>> UpdateAsync(Guid id, UpdateVaccinationRecordRequest request);
         Task<ApiResult<bool>> DeleteAsync(Guid id, Guid deletedBy);
         Task<ApiResult<VaccinationRecord?>> GetByIdAsync(Guid id);

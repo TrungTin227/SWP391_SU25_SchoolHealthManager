@@ -27,28 +27,31 @@ namespace Services.Implementations
 
         #region CRUD
 
-        public async Task<ApiResult<bool>> CreateAsync(CreateVaccinationRecordRequest request)
+        public async Task<ApiResult<CreateVaccinationRecordResponse>> CreateAsync(CreateVaccinationRecordRequest request)
         {
             try
             {
                 var exists = await _recordRepository.HasDuplicateEntryAsync(request.StudentId, request.ScheduleId);
                 if (exists)
                 {
-                    return ApiResult<bool>.Failure(new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
 
                 // 1. Lấy thông tin lô thuốc
                 var lot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(request.VaccineLotId);
                 if (lot == null)
                 {
-                    return ApiResult<bool>.Failure(new InvalidOperationException("Lô vaccine không tồn tại."));
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new InvalidOperationException("Lô vaccine không tồn tại."));
                 }
 
                 // 2. Đếm số lượng đã sử dụng
                 var usedCount = lot.VaccinationRecords?.Count(v => !v.IsDeleted) ?? 0;
                 if (usedCount >= lot.Quantity)
                 {
-                    return ApiResult<bool>.Failure(new InvalidOperationException("Lô vaccine đã hết số lượng sử dụng."));
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new InvalidOperationException("Lô vaccine đã hết số lượng sử dụng."));
                 }
 
                 // 3. Tạo phiếu tiêm
@@ -73,12 +76,23 @@ namespace Services.Implementations
 
                 var created = await base.CreateAsync(record);
 
-                return ApiResult<bool>.Success(created != null, "Tạo phiếu tiêm thành công");
+                if (created != null)
+                {
+                    // Lấy lại record đầy đủ thông tin liên kết để map DTO
+                    var fullRecord = await _recordRepository.GetRecordWithDetailsAsync(created.Id);
+                    if (fullRecord != null)
+                    {
+                        var responseDTO = VaccinationRecordMapper.MapToCreateResponseDTO(fullRecord);
+                        return ApiResult<CreateVaccinationRecordResponse>.Success(responseDTO, "Tạo phiếu tiêm thành công");
+                    }
+                }
+
+                return ApiResult<CreateVaccinationRecordResponse>.Failure(new Exception("Không thể tạo phiếu tiêm."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi tạo phiếu tiêm");
-                return ApiResult<bool>.Failure(ex);
+                return ApiResult<CreateVaccinationRecordResponse>.Failure(ex);
             }
         }
 
