@@ -170,6 +170,11 @@
                 }
             }
         }
+        public bool IsWithinWorkingHours(DateTime time)
+        {
+            var hour = time.Hour;
+            return hour >= 8 && hour < 18;
+        }
 
         // Helper methods
         private bool IsInheritedFromBaseEntity(Type type)

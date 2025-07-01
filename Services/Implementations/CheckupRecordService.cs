@@ -48,6 +48,11 @@ namespace Services.Implementations
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám không tồn tại!!"));
                 }
+
+                if (!IsWithinWorkingHours(request.ExaminedAt))
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám không nằm trong giờ làm việc của trường!!"));
+                }
                 if (schedule.IsDeleted)
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám đã bị xóa!!"));

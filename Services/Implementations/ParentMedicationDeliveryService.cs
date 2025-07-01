@@ -54,6 +54,9 @@ namespace Services.Implementations
         {
             try
             {
+                if (IsWithinWorkingHours(request.DeliveredAt) == false)
+                    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không thể tạo đơn thuốc phụ huynh giao ngoài giờ làm việc."));
+
                 if (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId) == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
 
@@ -121,6 +124,8 @@ namespace Services.Implementations
                 var update = await _unitOfWork.ParentMedicationDeliveryRepository.GetByIdAsync(request.ParentMedicationDeliveryId);
                 if (update == null)
                     return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy đơn thuốc phụ huynh giao với ID: " + request.ParentMedicationDeliveryId));
+                if (request.DeliveredAt != null && IsWithinWorkingHours(request.DeliveredAt.Value) == false)
+                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không thể cập nhật đơn thuốc phụ huynh giao ngoài giờ làm việc."));
 
                 if (request.StudentId.HasValue && await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId.Value) == null)
                     return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));

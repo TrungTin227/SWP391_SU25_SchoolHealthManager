@@ -75,6 +75,9 @@ namespace Services.Implementations
         {
             try
             {
+                if (!IsWithinWorkingHours(request.AppointmentDate))
+                    return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn phải nằm trong giờ làm việc của y tá từ 7h-18h"));
+
                 if (request == null)
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new ArgumentNullException(nameof(request)));
 
@@ -251,7 +254,10 @@ namespace Services.Implementations
                 if (appointment == null || appointment.IsDeleted)
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
 
-                 if (appointment.Status != ScheduleStatus.Pending) 
+                if (request.AppointmentDate!= null &&! IsWithinWorkingHours(request.AppointmentDate.Value))
+                    return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn phải nằm trong giờ làm việc của y tá từ 7h-18h"));
+
+                if (appointment.Status != ScheduleStatus.Pending) 
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn chỉ có thể cập nhật khi trong trạng thái chưa giải quyết, không thể cập nhật."));
                 
                  // 👉 Update Student nếu có
