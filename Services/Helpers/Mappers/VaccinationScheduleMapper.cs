@@ -11,7 +11,7 @@
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,
                 TotalStudents = schedule.SessionStudents?.Count ?? 0,
-                CompletedRecords = schedule.Records?.Count ?? 0
+                CompletedRecords = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Count() ?? 0 
             };
         }
 
@@ -25,10 +25,10 @@
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,
                 TotalStudents = schedule.SessionStudents?.Count ?? 0,
-                CompletedRecords = schedule.Records?.Count ?? 0,
+                CompletedRecords = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Count() ?? 0,
                 CampaignName = schedule.Campaign?.Name ?? string.Empty,
                 SessionStudents = schedule.SessionStudents?.Select(MapToSessionStudentResponseDTO).ToList() ?? new List<SessionStudentResponseDTO>(),
-                Records = schedule.Records?.Select(MapToVaccinationRecordSummaryDTO).ToList() ?? new List<VaccinationRecordSummaryDTO>()
+                Records = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Select(MapToVaccinationRecordSummaryDTO).ToList() ?? new List<VaccinationRecordSummaryDTO>()
             };
         }
 
