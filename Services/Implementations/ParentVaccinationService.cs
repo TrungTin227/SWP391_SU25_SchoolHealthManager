@@ -211,7 +211,11 @@ namespace Services.Implementations
                     .GetParentVaccinationHistoryAsync(currentUserId);
 
                 var groupedByStudent = records
-                    .GroupBy(vr => new { vr.StudentId, vr.Student.FullName, vr.Student.StudentCode })
+                    .GroupBy(vr => new {
+                        StudentId = vr.SessionStudent.StudentId, // ✅ Sửa
+                        vr.SessionStudent.Student.FullName,
+                        vr.SessionStudent.Student.StudentCode
+                    })
                     .Select(g => new ParentVaccinationHistoryResponseDTO
                     {
                         StudentId = g.Key.StudentId,

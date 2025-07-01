@@ -90,7 +90,7 @@
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,
                 TotalStudents = schedule.SessionStudents?.Count ?? 0,
-                CompletedRecords = schedule.Records?.Count ?? 0
+                CompletedRecords = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Count() ?? 0 
             };
         }
 
