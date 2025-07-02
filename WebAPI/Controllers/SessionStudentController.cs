@@ -50,5 +50,12 @@ namespace WebAPI.Controllers
             var result = await _sessionStudentService.UpdateSessionStudentStatus(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        [HttpPost("restore-session-students")]
+        public async Task<IActionResult> RestoreSessionStudents([FromBody] List<Guid> ids)
+        {
+            var result = await _sessionStudentService.RestoreSessionStudentRangeAsync(ids, null);
+            return Ok(result);
+        }
     }
 }

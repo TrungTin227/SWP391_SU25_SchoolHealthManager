@@ -80,5 +80,12 @@ namespace WebAPI.Controllers
             var result = await _studentService.SoftDeleteStudentByCodesAsync(studentCodes);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        [HttpPost("restore-students")]
+        public async Task<IActionResult> RestoreStudents([FromBody] List<Guid> ids)
+        {
+            var result = await _studentService.RestoreStudentRangeAsync(ids, null);
+            return Ok(result);
+        }
     }
 }

@@ -38,14 +38,20 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteHealthProfileById(Guid id)
+        [HttpDelete("soft-delete-range")]
+        public async Task<IActionResult> DeleteHealthProfileById([FromBody] List<Guid> ids)
         {
-            if (id == Guid.Empty)
+            if (ids == null || !ids.Any())
                 return BadRequest("Id của hồ sơ sức khỏe không được null!!");
 
-            var result = await _healProfileService.SoftDeleteHealProfileAsync(id);
+            var result = await _healProfileService.SoftDeleteHealthProfilesAsync(ids);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        [HttpPost("restore-health-profiles")]
+        public async Task<IActionResult> RestoreHealthProfiles([FromBody] List<Guid> ids)
+        {
+            var result = await _healProfileService.RestoreHealthProfileRangeAsync(ids, null);
+            return Ok(result);
         }
 
         [HttpGet("student/{code}")]

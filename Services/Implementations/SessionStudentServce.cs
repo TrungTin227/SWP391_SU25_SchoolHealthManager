@@ -317,8 +317,8 @@ namespace Services.Implementations
         }
 
         #endregion
-        #region Private Methods
-        private async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
+        #region Others Methods
+        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
         {
             try
             {
@@ -363,7 +363,7 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(new Exception($"Error processing batch student notifications: {ex.Message}"));
             }
         }
-        private async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(Guid studentId, string VaccineName, VaccinationSchedule schedule)
+        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(Guid studentId, string VaccineName, VaccinationSchedule schedule)
         {
             return await SendVaccinationNotificationEmailToParents(new List<Guid> { studentId }, VaccineName, schedule);
         }

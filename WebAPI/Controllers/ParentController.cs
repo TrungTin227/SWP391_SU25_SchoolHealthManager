@@ -1,6 +1,7 @@
 ﻿using DTOs.ParentDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Request;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Crypto;
 
 namespace WebAPI.Controllers
 {
@@ -58,13 +59,20 @@ namespace WebAPI.Controllers
         }
 
         [HttpDelete("soft-delete")]
-        public async Task<IActionResult> SoftDeleteByParentId([FromBody] Guid parentId)
+        public async Task<IActionResult> SoftDeleteByParentId([FromBody] List<Guid> ids)
         {
-            if (parentId == Guid.Empty)
+            if (ids == null || !ids.Any())
                 return BadRequest(new { Message = "Parent ID is required" });
 
-            var result = await _parentService.SoftDeleteByParentIdAsync(parentId);
+            var result = await _parentService.SoftDeleteByParentIdListAsync(ids);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("restore-parents")]
+        public async Task<IActionResult> RestoreParents([FromBody] List<Guid> ids)
+        {
+            var result = await _parentService.RestoreParentRangeAsync(ids, null);
+            return Ok(result);
         }
 
         [HttpPost("medication-deliveries")]
@@ -126,5 +134,6 @@ namespace WebAPI.Controllers
             var result = await _ParentMedicationDeliveryService.AcptDelivery(parentMedicationDeliveryid, receiverId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
     }
 }

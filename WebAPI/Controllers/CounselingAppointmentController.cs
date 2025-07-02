@@ -113,5 +113,11 @@ namespace WebAPI.Controllers
             var result = await _counselingAppointmentService.SoftDeleteRangeAsync(appointmentIds);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+        [HttpPost("restore-counseling-appointments")]
+        public async Task<IActionResult> RestoreCounselingAppointments([FromBody] List<Guid> ids)
+        {
+            var result = await _counselingAppointmentService.RestoreCounselingAppointmentRangeAsync(ids, null);
+            return Ok(result);
+        }
     }
 }
