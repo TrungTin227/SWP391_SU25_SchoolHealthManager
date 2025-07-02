@@ -1,5 +1,6 @@
 ﻿using DTOs.CheckUpRecordDTOs.Requests;
 using DTOs.CheckUpRecordDTOs.Responds;
+using DTOs.GlobalDTO.Respond;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,8 @@ namespace Services.Interfaces
         public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentCode);
         public Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
         public Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> ids);
+        Task<RestoreResponseDTO> RestoreCheckupRecordAsync(Guid id, Guid? userId);
+        Task<List<RestoreResponseDTO>> RestoreCheckupRecordRangeAsync(List<Guid> ids, Guid? userId);
 
     }
 }

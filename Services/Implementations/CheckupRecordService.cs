@@ -4,6 +4,7 @@ using DTOs.CheckUpRecordDTOs.Requests;
 using DTOs.CheckUpRecordDTOs.Responds;
 using DTOs.CounselingAppointmentDTOs.Requests;
 using DTOs.CounselingAppointmentDTOs.Responds;
+using DTOs.GlobalDTO.Respond;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto;
@@ -36,6 +37,7 @@ namespace Services.Implementations
             _counselingAppointmentService = counselingAppointmentService;
             _logger = logger;
         }
+        #region create
         public async Task<ApiResult<CheckupRecordRespondDTO>> CreateCheckupRecordAsync(CreateCheckupRecordRequestDTO request)
         {
             await _unitOfWork.BeginTransactionAsync();
@@ -124,7 +126,8 @@ namespace Services.Implementations
                 return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Tạo hồ sơ kiểm tra thất bại!! " + e.Message));
             }
         }
-
+#endregion
+        #region get
         public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
         {
             try
@@ -198,7 +201,8 @@ namespace Services.Implementations
                 return ApiResult<CheckupRecordRespondDTO?>.Failure(new Exception("Lỗi khi lấy hồ sơ kiểm tra theo ID: " + ex.Message));
             }
         }
-
+#endregion
+        #region delete and restore
         public async Task<ApiResult<bool>> SoftDeleteAsync(Guid id)
         {
             try
@@ -275,5 +279,35 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(new Exception("Lỗi khi xoá mềm hàng loạt hồ sơ: " + ex.Message));
             }
         }
+
+        public async Task<RestoreResponseDTO> RestoreCheckupRecordAsync(Guid id, Guid? userId)
+        {
+            try
+            {
+                var restored = await _repository.RestoreAsync(id, userId);
+                return new RestoreResponseDTO
+                {
+                    Id = id,
+                    IsSuccess = restored,
+                    Message = restored ? "Khôi phục hồ sơ khám thành công" : "Không thể khôi phục hồ sơ khám"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+            }
+        }
+
+        public async Task<List<RestoreResponseDTO>> RestoreCheckupRecordRangeAsync(List<Guid> ids, Guid? userId)
+        {
+            var results = new List<RestoreResponseDTO>();
+            foreach (var id in ids)
+            {
+                results.Add(await RestoreCheckupRecordAsync(id, userId));
+            }
+            return results;
+        }
+
+        #endregion
     }
 }
