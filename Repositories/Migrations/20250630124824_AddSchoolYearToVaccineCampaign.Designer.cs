@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories;
 
@@ -11,9 +12,11 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    partial class SchoolHealthManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250630124824_AddSchoolYearToVaccineCampaign")]
+    partial class AddSchoolYearToVaccineCampaign
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -265,6 +268,7 @@ namespace Repositories.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Purpose")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -476,9 +480,6 @@ namespace Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("CheckupRecordId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -535,8 +536,6 @@ namespace Repositories.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CheckupRecordId");
 
                     b.HasIndex("ReportedUserId");
 
@@ -1624,10 +1623,13 @@ namespace Repositories.Migrations
                         .IsUnicode(true)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("SessionStudentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("StudentId")
+                    b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1645,18 +1647,19 @@ namespace Repositories.Migrations
                     b.Property<Guid>("VaccineLotId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AdministeredDate")
-                        .HasDatabaseName("IX_VaccinationRecords_AdministeredDate");
+                    b.HasIndex("ScheduleId")
+                        .HasDatabaseName("IX_VaccinationRecords_ScheduleId");
 
                     b.HasIndex("SessionStudentId")
                         .HasDatabaseName("IX_VaccinationRecords_SessionStudentId");
 
-                    b.HasIndex("StudentId");
-
-                    b.HasIndex("VaccinatedAt")
-                        .HasDatabaseName("IX_VaccinationRecords_VaccinatedAt");
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_VaccinationRecords_StudentId");
 
                     b.HasIndex("VaccinatedById")
                         .HasDatabaseName("IX_VaccinationRecords_VaccinatedById");
@@ -1664,8 +1667,8 @@ namespace Repositories.Migrations
                     b.HasIndex("VaccineLotId")
                         .HasDatabaseName("IX_VaccinationRecords_VaccineLotId");
 
-                    b.HasIndex("SessionStudentId", "AdministeredDate")
-                        .HasDatabaseName("IX_VaccinationRecords_SessionStudent_Date");
+                    b.HasIndex("VaccineTypeId")
+                        .HasDatabaseName("IX_VaccinationRecords_VaccineTypeId");
 
                     b.ToTable("VaccinationRecords");
                 });
@@ -2070,11 +2073,6 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("BusinessObjects.HealthEvent", b =>
                 {
-                    b.HasOne("BusinessObjects.CheckupRecord", "CheckupRecord")
-                        .WithMany("HealthEvents")
-                        .HasForeignKey("CheckupRecordId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("BusinessObjects.User", "ReportedUser")
                         .WithMany()
                         .HasForeignKey("ReportedUserId")
@@ -2088,11 +2086,9 @@ namespace Repositories.Migrations
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.VaccinationRecord", "VaccinationRecord")
-                        .WithMany("HealthEvents")
+                        .WithMany()
                         .HasForeignKey("VaccinationRecordId")
                         .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("CheckupRecord");
 
                     b.Navigation("ReportedUser");
 
@@ -2317,15 +2313,23 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("BusinessObjects.VaccinationRecord", b =>
                 {
+                    b.HasOne("BusinessObjects.VaccinationSchedule", "Schedule")
+                        .WithMany("Records")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("BusinessObjects.SessionStudent", "SessionStudent")
                         .WithMany("VaccinationRecords")
                         .HasForeignKey("SessionStudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("BusinessObjects.Student", null)
+                    b.HasOne("BusinessObjects.Student", "Student")
                         .WithMany("VaccinationRecords")
-                        .HasForeignKey("StudentId");
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("BusinessObjects.User", "VaccinatedBy")
                         .WithMany()
@@ -2339,11 +2343,23 @@ namespace Repositories.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("BusinessObjects.VaccinationType", "VaccineType")
+                        .WithMany()
+                        .HasForeignKey("VaccineTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Schedule");
+
                     b.Navigation("SessionStudent");
+
+                    b.Navigation("Student");
 
                     b.Navigation("VaccinatedBy");
 
                     b.Navigation("VaccineLot");
+
+                    b.Navigation("VaccineType");
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationSchedule", b =>
@@ -2351,7 +2367,7 @@ namespace Repositories.Migrations
                     b.HasOne("BusinessObjects.VaccinationCampaign", "Campaign")
                         .WithMany("Schedules")
                         .HasForeignKey("CampaignId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.VaccinationType", "VaccinationType")
@@ -2442,8 +2458,6 @@ namespace Repositories.Migrations
             modelBuilder.Entity("BusinessObjects.CheckupRecord", b =>
                 {
                     b.Navigation("CounselingAppointments");
-
-                    b.Navigation("HealthEvents");
                 });
 
             modelBuilder.Entity("BusinessObjects.HealthEvent", b =>
@@ -2532,12 +2546,12 @@ namespace Repositories.Migrations
             modelBuilder.Entity("BusinessObjects.VaccinationRecord", b =>
                 {
                     b.Navigation("CounselingAppointments");
-
-                    b.Navigation("HealthEvents");
                 });
 
             modelBuilder.Entity("BusinessObjects.VaccinationSchedule", b =>
                 {
+                    b.Navigation("Records");
+
                     b.Navigation("SessionStudents");
                 });
 

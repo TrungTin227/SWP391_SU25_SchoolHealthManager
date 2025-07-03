@@ -1,5 +1,6 @@
 ﻿using BusinessObjects.Common;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
@@ -17,7 +18,14 @@ namespace BusinessObjects
 
         // Nếu là sự cố tiêm chủng, liên kết đến bản ghi tiêm
         public Guid? VaccinationRecordId { get; set; }
-        public VaccinationRecord? VaccinationRecord { get; set; }
+
+        [ForeignKey(nameof(VaccinationRecordId))]
+        public virtual VaccinationRecord? VaccinationRecord { get; set; }
+
+        public Guid? CheckupRecordId { get; set; }
+
+        [ForeignKey(nameof(CheckupRecordId))]
+        public virtual CheckupRecord? CheckupRecord { get; set; }
 
         // Mô tả chi tiết sự kiện (tai nạn, sốt, phản ứng dị ứng…)
         public EventType EventType { get; set; }

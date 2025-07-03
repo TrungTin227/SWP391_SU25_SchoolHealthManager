@@ -457,7 +457,6 @@ namespace Services.Implementations
                     Id = schedule.Campaign.Id,
                     Name = schedule.Campaign.Name,
                     SchoolYear = schedule.Campaign.SchoolYear,
-                    ScheduledDate = schedule.Campaign.ScheduledDate,
                     Status = schedule.Campaign.Status
                 } : new CheckupCampaignBasicInfoDTO(),
                 Record = schedule.Record != null ? new CheckupRecordBasicInfoDTO

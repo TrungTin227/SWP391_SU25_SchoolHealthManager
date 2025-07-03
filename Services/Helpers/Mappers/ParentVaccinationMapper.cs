@@ -86,8 +86,8 @@ namespace Services.Helpers.Mappers
             return new VaccinationHistoryRecordDTO
             {
                 RecordId = record.Id,
-                VaccineName = record.VaccineType?.Name ?? "",
-                CampaignName = record.Schedule?.Campaign?.Name ?? "",
+                VaccineName = record.SessionStudent.VaccinationSchedule.VaccinationType?.Name ?? "", 
+                CampaignName = record.SessionStudent.VaccinationSchedule.Campaign?.Name ?? "", 
                 VaccinatedAt = record.VaccinatedAt,
                 VaccinatedBy = record.VaccinatedBy?.FullName ?? "",
                 ReactionSeverity = record.ReactionSeverity,

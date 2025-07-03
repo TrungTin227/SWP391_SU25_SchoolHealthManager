@@ -1,5 +1,6 @@
 ﻿using DTOs.CounselingAppointmentDTOs.Requests;
 using DTOs.CounselingAppointmentDTOs.Responds;
+using DTOs.GlobalDTO.Respond;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -28,53 +29,16 @@ namespace Services.Implementations
             _logger = logger;
         }
 
-        public async Task<ApiResult<AddNoteAndRecommendRequestDTO>> AddNoteAndRecommend(AddNoteAndRecommendRequestDTO request)
-        {
-            try
-            {
-                if (request == null)
-                {
-                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
-                        new ArgumentNullException(nameof(request), "Dữ liệu gửi lên không được để trống."));
-                }
-
-                if (request.CounselingAppointmentId == Guid.Empty)
-                {
-                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
-                        new ArgumentException("ID lịch tư vấn không hợp lệ."));
-                }
-
-                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(request.CounselingAppointmentId);
-                if (appointment == null || appointment.IsDeleted)
-                {
-                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
-                        new Exception("Không tìm thấy lịch tư vấn."));
-                }
-
-                // Cập nhật ghi chú và lời khuyên
-                appointment.Notes = request.Notes;
-                appointment.Recommendations = request.Recommendations;
-                appointment.Status = ScheduleStatus.Completed; // Cập nhật trạng thái nếu cần
-                appointment.UpdatedAt = _currentTime.GetVietnamTime();
-                appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
-
-                await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
-                await _unitOfWork.SaveChangesAsync();
-
-                return ApiResult<AddNoteAndRecommendRequestDTO>.Success(request, "Cập nhật ghi chú và lời khuyên thành công!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi thêm ghi chú và lời khuyên cho tư vấn");
-                return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
-                    new Exception("Tạo ghi chú và lời khuyên thất bại: " + ex.Message));
-            }
-        }
+       
+        #region Create, Update Counseling Appointment
 
         public async Task<ApiResult<CounselingAppointmentRespondDTO>> CreateCounselingAppointmentAsync(CreateCounselingAppointmentRequestDTO request)
         {
             try
             {
+                if (!IsWithinWorkingHours(request.AppointmentDate))
+                    return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn phải nằm trong giờ làm việc của y tá từ 7h-18h"));
+
                 if (request == null)
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new ArgumentNullException(nameof(request)));
 
@@ -149,98 +113,6 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<CounselingAppointmentRespondDTO?>> GetByIdAsync(Guid id)
-        {
-            try
-            {
-                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(id);
-
-                if (appointment == null || appointment.IsDeleted)
-                    return ApiResult<CounselingAppointmentRespondDTO?>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
-
-                var response = CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO(appointment);
-                return ApiResult<CounselingAppointmentRespondDTO?>.Success(response, "Lấy lịch tư vấn theo Id thành công!!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy lịch tư vấn theo Id");
-                return ApiResult<CounselingAppointmentRespondDTO?>.Failure(new Exception("Lấy lịch tư vấn thất bại: " + ex.Message));
-            }
-        }
-
-        public async Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
-        {
-            try
-            {
-                // Check nhân viên tồn tại
-                var staff = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(id);
-                if (staff == null)
-                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Không tìm thấy nhân viên."));
-
-                var isNurse = await _unitOfWork.NurseProfileRepository.AnyAsync(n => n.UserId == id);
-                if (!isNurse)
-                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Nhân viên không phải là y tá."));
-
-                var appointments = await _unitOfWork.CounselingAppointmentRepository
-                    .GetQueryable()
-                    .Where(a => a.StaffUserId == id && !a.IsDeleted)
-                    .OrderByDescending(a => a.AppointmentDate)
-                    .ToListAsync();
-
-                if (appointments == null || !appointments.Any())
-                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
-
-                var responseList = appointments
-                    .Select(CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO)
-                    .ToList();
-
-                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Success(responseList, "Lấy danh sách lịch tư vấn theo staff thành công!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch tư vấn theo StaffId");
-                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Lấy lịch tư vấn thất bại: " + ex.Message));
-            }
-        }
-
-
-        //public async Task<ApiResult<bool>> StartAppointment(Guid AppointmentId)
-        //{
-        //    try
-        //    {
-
-        //        if (AppointmentId == Guid.Empty)
-        //        {
-        //            return ApiResult<bool>.Failure(
-        //                new ArgumentException("ID lịch tư vấn không hợp lệ."));
-        //        }
-
-        //        var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(AppointmentId);
-        //        if (appointment == null || appointment.IsDeleted)
-        //        {
-        //            return ApiResult<bool>.Failure(
-        //                new Exception("Không tìm thấy lịch tư vấn."));
-        //        }
-        //        if (appointment.Status != ScheduleStatus.Pending)
-        //        {
-        //            return ApiResult<bool>.Failure(
-        //                new Exception("Lịch tư vấn không ở trạng thái chờ."));
-        //        }
-        //        // Cập nhật trạng thái
-        //        appointment.Status = ScheduleStatus.InProgress;
-        //        appointment.UpdatedAt = _currentTime.GetVietnamTime();
-        //        appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
-        //        await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
-        //        await _unitOfWork.SaveChangesAsync();
-        //        return ApiResult<bool>.Success(true, "Bắt đầu lịch tư vấn thành công!");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Lỗi khi tạo lịch tư vấn");
-        //        return ApiResult<bool>.Failure(new Exception("Tạo lịch tư vấn thất bại: " + ex.Message));
-        //    }
-        //}
-
         public async Task<ApiResult<CounselingAppointmentRespondDTO>> UpdateAppointmentAsync(UpdateCounselingAppointmentRequestDTO request)
         {
             try
@@ -251,10 +123,13 @@ namespace Services.Implementations
                 if (appointment == null || appointment.IsDeleted)
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
 
-                 if (appointment.Status != ScheduleStatus.Pending) 
+                if (request.AppointmentDate != null && !IsWithinWorkingHours(request.AppointmentDate.Value))
+                    return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn phải nằm trong giờ làm việc của y tá từ 7h-18h"));
+
+                if (appointment.Status != ScheduleStatus.Pending)
                     return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Lịch tư vấn chỉ có thể cập nhật khi trong trạng thái chưa giải quyết, không thể cập nhật."));
-                
-                 // 👉 Update Student nếu có
+
+                // 👉 Update Student nếu có
                 if (request.StudentId != null)
                 {
                     var student = await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId.Value);
@@ -328,6 +203,63 @@ namespace Services.Implementations
                 return ApiResult<CounselingAppointmentRespondDTO>.Failure(new Exception("Cập nhật lịch tư vấn thất bại: " + ex.Message));
             }
         }
+#endregion
+        #region Get Counseling Appointment
+
+        public async Task<ApiResult<CounselingAppointmentRespondDTO?>> GetByIdAsync(Guid id)
+        {
+            try
+            {
+                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(id);
+
+                if (appointment == null || appointment.IsDeleted)
+                    return ApiResult<CounselingAppointmentRespondDTO?>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
+
+                var response = CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO(appointment);
+                return ApiResult<CounselingAppointmentRespondDTO?>.Success(response, "Lấy lịch tư vấn theo Id thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy lịch tư vấn theo Id");
+                return ApiResult<CounselingAppointmentRespondDTO?>.Failure(new Exception("Lấy lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+
+        public async Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
+        {
+            try
+            {
+                // Check nhân viên tồn tại
+                var staff = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(id);
+                if (staff == null)
+                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Không tìm thấy nhân viên."));
+
+                var isNurse = await _unitOfWork.NurseProfileRepository.AnyAsync(n => n.UserId == id);
+                if (!isNurse)
+                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Nhân viên không phải là y tá."));
+
+                var appointments = await _unitOfWork.CounselingAppointmentRepository
+                    .GetQueryable()
+                    .Where(a => a.StaffUserId == id && !a.IsDeleted)
+                    .OrderByDescending(a => a.AppointmentDate)
+                    .ToListAsync();
+
+                if (appointments == null || !appointments.Any())
+                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Không tìm thấy lịch tư vấn."));
+
+                var responseList = appointments
+                    .Select(CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO)
+                    .ToList();
+
+                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Success(responseList, "Lấy danh sách lịch tư vấn theo staff thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch tư vấn theo StaffId");
+                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(new Exception("Lấy lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+
 
         public async Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllPendingByStaffIdAsync(Guid id)
         {
@@ -413,69 +345,50 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<bool>> SoftDeleteAsync(Guid id)
+        #endregion
+        #region Accept, Reject, Add Note and Recommend
+        public async Task<ApiResult<AddNoteAndRecommendRequestDTO>> AddNoteAndRecommend(AddNoteAndRecommendRequestDTO request)
         {
             try
             {
-                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(id);
-                if (appointment == null || appointment.IsDeleted)
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tư vấn để xóa."));
+                if (request == null)
+                {
+                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
+                        new ArgumentNullException(nameof(request), "Dữ liệu gửi lên không được để trống."));
+                }
 
-                appointment.IsDeleted = true;
-                appointment.DeletedAt = _currentTime.GetVietnamTime();
-                appointment.DeletedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+                if (request.CounselingAppointmentId == Guid.Empty)
+                {
+                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
+                        new ArgumentException("ID lịch tư vấn không hợp lệ."));
+                }
+
+                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(request.CounselingAppointmentId);
+                if (appointment == null || appointment.IsDeleted)
+                {
+                    return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
+                        new Exception("Không tìm thấy lịch tư vấn."));
+                }
+
+                // Cập nhật ghi chú và lời khuyên
+                appointment.Notes = request.Notes;
+                appointment.Recommendations = request.Recommendations;
+                appointment.Status = ScheduleStatus.Completed; // Cập nhật trạng thái nếu cần
+                appointment.UpdatedAt = _currentTime.GetVietnamTime();
+                appointment.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
 
                 await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
                 await _unitOfWork.SaveChangesAsync();
 
-                return ApiResult<bool>.Success(true, "Xóa mềm lịch tư vấn thành công!");
+                return ApiResult<AddNoteAndRecommendRequestDTO>.Success(request, "Cập nhật ghi chú và lời khuyên thành công!");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi xóa mềm lịch tư vấn");
-                return ApiResult<bool>.Failure(new Exception("Xóa mềm lịch tư vấn thất bại: " + ex.Message));
+                _logger.LogError(ex, "Lỗi khi thêm ghi chú và lời khuyên cho tư vấn");
+                return ApiResult<AddNoteAndRecommendRequestDTO>.Failure(
+                    new Exception("Tạo ghi chú và lời khuyên thất bại: " + ex.Message));
             }
         }
-
-
-        public async Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> idList)
-        {
-            try
-            {
-                if (idList == null || !idList.Any())
-                    return ApiResult<bool>.Failure(new Exception("Danh sách ID trống."));
-
-                var appointments = await _unitOfWork.CounselingAppointmentRepository
-                    .GetQueryable()
-                    .Where(a => idList.Contains(a.Id) && !a.IsDeleted)
-                    .ToListAsync();
-
-                if (!appointments.Any())
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tư vấn nào để xóa."));
-
-                var now = _currentTime.GetVietnamTime();
-                var userId = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
-
-                foreach (var appointment in appointments)
-                {
-                    appointment.IsDeleted = true;
-                    appointment.DeletedAt = now;
-                    appointment.DeletedBy = userId;
-
-                    await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-
-                return ApiResult<bool>.Success(true, "Xóa mềm danh sách lịch tư vấn thành công!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi xóa mềm danh sách lịch tư vấn");
-                return ApiResult<bool>.Failure(new Exception("Xóa mềm danh sách lịch tư vấn thất bại: " + ex.Message));
-            }
-        }
-
         public async Task<ApiResult<bool>> AcceptAppointmentAsync(Guid appointmentId)
         {
             try
@@ -549,5 +462,98 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(new Exception("Hủy lịch tư vấn thất bại: " + ex.Message));
             }
         }
+#endregion
+        #region Restore, Delete Counseling Appointment
+        public async Task<RestoreResponseDTO> RestoreCounselingAppointmentAsync(Guid id, Guid? userId)
+        {
+            try
+            {
+                var restored = await _repository.RestoreAsync(id, userId);
+                return new RestoreResponseDTO
+                {
+                    Id = id,
+                    IsSuccess = restored,
+                    Message = restored ? "Khôi phục cuộc hẹn tư vấn thành công" : "Không thể khôi phục cuộc hẹn tư vấn"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+            }
+        }
+
+        public async Task<List<RestoreResponseDTO>> RestoreCounselingAppointmentRangeAsync(List<Guid> ids, Guid? userId)
+        {
+            var results = new List<RestoreResponseDTO>();
+            foreach (var id in ids)
+            {
+                results.Add(await RestoreCounselingAppointmentAsync(id, userId));
+            }
+            return results;
+        }
+
+        public async Task<ApiResult<bool>> SoftDeleteAsync(Guid id)
+        {
+            try
+            {
+                var appointment = await _unitOfWork.CounselingAppointmentRepository.GetByIdAsync(id);
+                if (appointment == null || appointment.IsDeleted)
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tư vấn để xóa."));
+
+                appointment.IsDeleted = true;
+                appointment.DeletedAt = _currentTime.GetVietnamTime();
+                appointment.DeletedBy = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+                await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, "Xóa mềm lịch tư vấn thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa mềm lịch tư vấn");
+                return ApiResult<bool>.Failure(new Exception("Xóa mềm lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+
+
+        public async Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> idList)
+        {
+            try
+            {
+                if (idList == null || !idList.Any())
+                    return ApiResult<bool>.Failure(new Exception("Danh sách ID trống."));
+
+                var appointments = await _unitOfWork.CounselingAppointmentRepository
+                    .GetQueryable()
+                    .Where(a => idList.Contains(a.Id) && !a.IsDeleted)
+                    .ToListAsync();
+
+                if (!appointments.Any())
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy lịch tư vấn nào để xóa."));
+
+                var now = _currentTime.GetVietnamTime();
+                var userId = _currentUserService.GetUserId() ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+                foreach (var appointment in appointments)
+                {
+                    appointment.IsDeleted = true;
+                    appointment.DeletedAt = now;
+                    appointment.DeletedBy = userId;
+
+                    await _unitOfWork.CounselingAppointmentRepository.UpdateAsync(appointment);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, "Xóa mềm danh sách lịch tư vấn thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa mềm danh sách lịch tư vấn");
+                return ApiResult<bool>.Failure(new Exception("Xóa mềm danh sách lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+        #endregion
     }
 }

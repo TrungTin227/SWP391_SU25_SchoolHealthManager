@@ -140,8 +140,13 @@ namespace Repositories
 
                 // Relationship với VaccinationRecord (nếu có)
                 entity.HasOne(he => he.VaccinationRecord)
-                      .WithMany()
+                      .WithMany(vr => vr.HealthEvents)
                       .HasForeignKey(he => he.VaccinationRecordId)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(he => he.CheckupRecord)
+                      .WithMany(cr => cr.HealthEvents)    
+                      .HasForeignKey(he => he.CheckupRecordId)
                       .OnDelete(DeleteBehavior.NoAction);
             });
 
@@ -246,22 +251,11 @@ namespace Repositories
 
             builder.Entity<VaccinationRecord>(entity =>
             {
-                // Direct relationship với Student (CASCADE)
-                entity.HasOne(vr => vr.Student)
-                      .WithMany(s => s.VaccinationRecords)
-                      .HasForeignKey(vr => vr.StudentId)
-                      .OnDelete(DeleteBehavior.Cascade);
-              
+                // Chỉ giữ relationship qua SessionStudent
                 entity.HasOne(vr => vr.SessionStudent)
                       .WithMany(ss => ss.VaccinationRecords)
                       .HasForeignKey(vr => vr.SessionStudentId)
-                      .OnDelete(DeleteBehavior.NoAction);
-
-                entity.HasOne(vr => vr.Schedule)
-                      .WithMany(vs => vs.Records)
-                      .HasForeignKey(vr => vr.ScheduleId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
+                      .OnDelete(DeleteBehavior.Restrict); //  Thay đổi thành Restrict để tránh cascade conflicts
                 entity.HasOne(vr => vr.VaccineLot)
                       .WithMany(ml => ml.VaccinationRecords)
                       .HasForeignKey(vr => vr.VaccineLotId)
@@ -270,26 +264,27 @@ namespace Repositories
                 entity.HasOne(vr => vr.VaccinatedBy)
                       .WithMany()
                       .HasForeignKey(vr => vr.VaccinatedById)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(vr => vr.VaccineType)
-                      .WithMany()
-                      .HasForeignKey(vr => vr.VaccineTypeId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                      .OnDelete(DeleteBehavior.Restrict);             
             });
 
-            // VaccinationSchedule configuration
             builder.Entity<VaccinationSchedule>(entity =>
             {
+                // Relationships với Campaign và VaccinationType
                 entity.HasOne(vs => vs.Campaign)
-                      .WithMany(vc => vc.Schedules)
+                      .WithMany(c => c.Schedules)
                       .HasForeignKey(vs => vs.CampaignId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                      .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(vs => vs.VaccinationType)
-                      .WithMany(vt => vt.Schedules)
+                      .WithMany(vt => vt.Schedules)   // <-- chỉ rõ nav collection
                       .HasForeignKey(vs => vs.VaccinationTypeId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                // Relationship với SessionStudents
+                entity.HasMany(vs => vs.SessionStudents)
+                      .WithOne(ss => ss.VaccinationSchedule)
+                      .HasForeignKey(ss => ss.VaccinationScheduleId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
         #endregion
@@ -402,12 +397,6 @@ namespace Repositories
             // VaccinationRecord indexes
             builder.Entity<VaccinationRecord>(entity =>
             {
-                entity.HasIndex(vr => vr.StudentId)
-                      .HasDatabaseName("IX_VaccinationRecords_StudentId");
-
-                entity.HasIndex(vr => vr.ScheduleId)
-                      .HasDatabaseName("IX_VaccinationRecords_ScheduleId");
-
                 entity.HasIndex(vr => vr.SessionStudentId)
                       .HasDatabaseName("IX_VaccinationRecords_SessionStudentId");
 
@@ -416,9 +405,14 @@ namespace Repositories
 
                 entity.HasIndex(vr => vr.VaccinatedById)
                       .HasDatabaseName("IX_VaccinationRecords_VaccinatedById");
+                entity.HasIndex(vr => new { vr.SessionStudentId, vr.AdministeredDate })
+                      .HasDatabaseName("IX_VaccinationRecords_SessionStudent_Date");
 
-                entity.HasIndex(vr => vr.VaccineTypeId)
-                      .HasDatabaseName("IX_VaccinationRecords_VaccineTypeId");
+                entity.HasIndex(vr => vr.AdministeredDate)
+                      .HasDatabaseName("IX_VaccinationRecords_AdministeredDate");
+
+                entity.HasIndex(vr => vr.VaccinatedAt)
+                      .HasDatabaseName("IX_VaccinationRecords_VaccinatedAt");
             });
 
             // MedicationLot indexes

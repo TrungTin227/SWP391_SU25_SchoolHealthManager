@@ -1,128 +1,43 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DTOs.GlobalDTO.Respond;
 using DTOs.ParentDTOs.Request;
 using DTOs.ParentDTOs.Response;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Services.Implementations
 {
-    public class ParentService : IParentService
+    public class ParentService : BaseService<Parent,Guid>, IParentService
     {
         private readonly IParentRepository _parentRepository;
         private readonly UserManager<User> _userManager;
-        private readonly ICurrentUserService _currentUserService;
         private readonly IUserService _userService;
-        private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         private readonly ILogger<ParentService> _logger;
 
-        public ParentService(IParentRepository parentRepository, UserManager<User> userManager, ICurrentUserService currentUserService, IUserService userService, ILogger<ParentService> logger)
+        private static readonly Guid SystemGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        public ParentService(
+            IGenericRepository<Parent, Guid> repository,
+            ICurrentUserService currentUserService,
+            IUnitOfWork unitOfWork,
+            ICurrentTime currentTime,
+            IParentRepository parentRepository,
+            UserManager<User> userManager,
+            IUserService userService,
+            ILogger<ParentService> logger
+        ) : base(repository, currentUserService, unitOfWork, currentTime)
         {
             _parentRepository = parentRepository;
             _userManager = userManager;
-            _currentUserService = currentUserService;
             _userService = userService;
             _logger = logger;
         }
-
-        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user)
-        {
-            try
-            {
-                var existing = await _parentRepository.FindByEmailAsync(user.Email);
-                if (existing == true)
-                {
-                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Mail đã được sử dụng, vui lòng sử dụng mail khác!!"));
-                }
-                var currentUserId = _currentUserService.GetUserId() ?? SystemGuid;
-
-                //if (currentUserId == SystemGuid)
-                //{
-                //    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Current user is not authenticated."));
-                //}
-
-                var newUser = new User
-                {
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Email = user.Email,
-                    UserName = user.Email,
-                    Gender = user.Gender,
-                    CreatedAt = DateTime.UtcNow,
-                    CreatedBy = currentUserId,
-                    UpdatedAt = DateTime.UtcNow,
-                    UpdatedBy = currentUserId,
-                    IsDeleted = false,
-                    EmailConfirmed = false  // optional
-                };
-
-                var result = await _userManager.CreateAsync(newUser, user.Password);
-
-                if (!result.Succeeded)
-                {
-                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
-                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception($"Đăng kí thất bại!!! Lỗi: {errors}"));
-                }
-                else if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(newUser, "Parent");
-                    await _userService.SendWelcomeEmailsAsync(newUser.Email);
-                }
-
-                return ApiResult<UserRegisterRespondDTO>.Success(UserMappings.ToUserRegisterResponse(newUser), "Đăng kí user thành công!!!");
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<UserRegisterRespondDTO>.Failure(ex);
-            }
-        }
-
-        public async Task<ApiResult<AddParentRequestDTO>> CreateParentAsync(AddParentRequestDTO request)
-        {
-            try
-            {
-                if (request == null || request.Id == Guid.Empty)
-                {
-                    return ApiResult<AddParentRequestDTO>.Failure(new Exception("Yêu cầu nhập User ID!!"));
-                }
-
-                if (await _userManager.FindByIdAsync(request.Id.ToString()) == null)
-                {
-                    return ApiResult<AddParentRequestDTO>.Failure(new Exception("Không tìm thấy User"));
-                }
-
-                if (await _parentRepository.GetParentByUserIdAsync(request.Id) != null)
-                {
-                    return ApiResult<AddParentRequestDTO>.Failure(new Exception("User này đã đăng kí phụ huynh!!"));
-                }
-
-                var parent = new Parent
-                {
-                    UserId = request.Id,
-                    Relationship = Relationship.Other,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    CreatedBy = _currentUserService.GetUserId() ?? SystemGuid,
-                    UpdatedBy = _currentUserService.GetUserId() ?? SystemGuid
-
-                };
-                var result = _parentRepository.CreateParentAsync(parent);
-                if (result == null)
-                {
-                    return ApiResult<AddParentRequestDTO>.Failure(new Exception("Gặp lỗi khi tạo phụ huynh!!"));
-                }
-                return ApiResult<AddParentRequestDTO>.Success(request, "Tạo phụ huynh thành công!!");
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<AddParentRequestDTO>.Failure(ex);
-            }
-        }
-
+        #region get parent
         public async Task<ApiResult<List<GetAllParentDTO>>> GetAllParentsAsync()
         {
             try
@@ -140,6 +55,8 @@ namespace Services.Implementations
             }
         }
 
+        #endregion
+        #region Create, Update relationship Parent
         public async Task<ApiResult<bool>> UpdateRelationshipByParentIdAsync(UpdateRelationshipByParentId request)
         {
             try
@@ -176,34 +93,6 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<bool>> SoftDeleteByParentIdAsync(Guid parentId)
-        {
-            try
-            {
-                if (parentId == Guid.Empty)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Yêu cầu nhập Parent ID!!"));
-                }
-                var parent = await _parentRepository.GetParentByUserIdAsync(parentId);
-                if (parent == null)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy phụ huynh với ID này: " + parentId + " !!"));
-                }
-                parent.DeletedAt = DateTime.UtcNow;
-                parent.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
-                var result = await _parentRepository.SoftDeleteByParentId(parentId);
-                if (!result)
-                {
-                    return ApiResult<bool>.Failure(new Exception("Xóa phụ huynh thất bại!!"));
-                }
-                return ApiResult<bool>.Success(true, "Xóa phụ huynh thành công!!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi xóa phụ huynh");
-                return ApiResult<bool>.Failure(ex);
-            }
-        }
         public async Task<ApiResult<UserRegisterRespondDTO>> RegisterParentUserAsync(UserRegisterRequestDTO user)
         {
             try
@@ -268,6 +157,141 @@ namespace Services.Implementations
                 return ApiResult<UserRegisterRespondDTO>.Failure(ex);
             }
         }
+        #endregion
+        #region delete and restore parent
 
+        public async Task<ApiResult<bool>> SoftDeleteByParentIdAsync(Guid parentId)
+        {
+            try
+            {
+                if (parentId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Yêu cầu nhập Parent ID!!"));
+                }
+                var parent = await _parentRepository.GetParentByUserIdAsync(parentId);
+                if (parent == null)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy phụ huynh với ID này: " + parentId + " !!"));
+                }
+                parent.DeletedAt = DateTime.UtcNow;
+                parent.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
+                var result = await _parentRepository.SoftDeleteByParentId(parentId);
+                if (!result)
+                {
+                    return ApiResult<bool>.Failure(new Exception("Xóa phụ huynh thất bại!!"));
+                }
+                return ApiResult<bool>.Success(true, "Xóa phụ huynh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa phụ huynh");
+                return ApiResult<bool>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<List<RestoreResponseDTO>>> SoftDeleteByParentIdListAsync(List<Guid> parentIds)
+        {
+            try
+            {
+                var responseList = new List<RestoreResponseDTO>();
+
+                foreach (var parentId in parentIds)
+                {
+                    try
+                    {
+                        if (parentId == Guid.Empty)
+                        {
+                            responseList.Add(new RestoreResponseDTO
+                            {
+                                Id = parentId,
+                                IsSuccess = false,
+                                Message = "Parent ID không hợp lệ!!"
+                            });
+                            continue;
+                        }
+
+                        var parent = await _parentRepository.GetParentByUserIdAsync(parentId);
+                        if (parent == null)
+                        {
+                            responseList.Add(new RestoreResponseDTO
+                            {
+                                Id = parentId,
+                                IsSuccess = false,
+                                Message = $"Không tìm thấy phụ huynh với ID: {parentId}"
+                            });
+                            continue;
+                        }
+
+                        parent.DeletedAt = DateTime.UtcNow;
+                        parent.DeletedBy = _currentUserService.GetUserId() ?? SystemGuid;
+
+                        var result = await _parentRepository.SoftDeleteByParentId(parentId);
+                        if (!result)
+                        {
+                            responseList.Add(new RestoreResponseDTO
+                            {
+                                Id = parentId,
+                                IsSuccess = false,
+                                Message = "Xóa phụ huynh thất bại!!"
+                            });
+                            continue;
+                        }
+
+                        responseList.Add(new RestoreResponseDTO
+                        {
+                            Id = parentId,
+                            IsSuccess = true,
+                            Message = "Xóa phụ huynh thành công!!"
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Lỗi khi xóa phụ huynh ID: {ParentId}", parentId);
+                        responseList.Add(new RestoreResponseDTO
+                        {
+                            Id = parentId,
+                            IsSuccess = false,
+                            Message = "Lỗi hệ thống: " + ex.Message
+                        });
+                    }
+                }
+                return ApiResult<List<RestoreResponseDTO>>.Success(responseList, "Xử lý xóa danh sách phụ huynh hoàn tất");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa danh sách phụ huynh");
+                return ApiResult<List<RestoreResponseDTO>>.Failure(ex);
+            }
+        }
+
+
+        public async Task<RestoreResponseDTO> RestoreParentAsync(Guid id, Guid? userId)
+        {
+            try
+            {
+                var restored = await _repository.RestoreAsync(id, userId);
+                return new RestoreResponseDTO
+                {
+                    Id = id,
+                    IsSuccess = restored,
+                    Message = restored ? "Khôi phục phụ huynh thành công" : "Không tìm thấy hoặc không thể khôi phục phụ huynh"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+            }
+        }
+
+        public async Task<List<RestoreResponseDTO>> RestoreParentRangeAsync(List<Guid> ids, Guid? userId)
+        {
+            var results = new List<RestoreResponseDTO>();
+            foreach (var id in ids)
+            {
+                results.Add(await RestoreParentAsync(id, userId));
+            }
+            return results;
+        }
+        #endregion
     }
 }

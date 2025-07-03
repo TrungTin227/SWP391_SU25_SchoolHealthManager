@@ -1,5 +1,6 @@
 ﻿using DTOs.CounselingAppointmentDTOs.Requests;
 using DTOs.CounselingAppointmentDTOs.Responds;
+using DTOs.GlobalDTO.Respond;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,5 +24,8 @@ namespace Services.Interfaces
 
         Task<ApiResult<bool>> AcceptAppointmentAsync(Guid appointmentId);
         Task<ApiResult<bool>> RejectAppointmentAsync(Guid appointmentId);
+
+        Task<RestoreResponseDTO> RestoreCounselingAppointmentAsync(Guid id, Guid? userId);
+        Task<List<RestoreResponseDTO>> RestoreCounselingAppointmentRangeAsync(List<Guid> ids, Guid? userId);
     }
 }
