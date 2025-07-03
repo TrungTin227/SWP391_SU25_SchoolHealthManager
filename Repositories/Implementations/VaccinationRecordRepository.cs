@@ -22,21 +22,31 @@ namespace Repositories.Implementations
             _currentTime = currentTime;
         }
 
-        public async Task<PagedList<VaccinationRecord>> GetRecordsAsync(Guid? studentId, Guid? scheduleId, Guid? vaccineTypeId, DateTime? from, DateTime? to, int pageNumber, int pageSize, string? searchTerm = null)
+        public async Task<PagedList<VaccinationRecord>> GetRecordsAsync(
+            Guid? studentId, Guid? scheduleId, Guid? vaccineTypeId,
+            DateTime? from, DateTime? to, int pageNumber, int pageSize, string? searchTerm = null)
         {
             var query = _context.VaccinationRecords
-                .Include(vr => vr.Student)
-                .Include(vr => vr.Schedule)
-                .Include(vr => vr.VaccineType)
+                .AsSplitQuery() // ✅ Tối ưu performance
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student) // ✅ Student thông qua SessionStudent
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule) // ✅ Schedule thông qua SessionStudent
+                        .ThenInclude(vs => vs.Campaign)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.VaccinationType) // ✅ VaccinationType thông qua Schedule
                 .Include(vr => vr.VaccinatedBy)
+                .Include(vr => vr.VaccineLot)
                 .Where(vr => !vr.IsDeleted);
 
+            // ✅ Filter thông qua SessionStudent relationships
             if (studentId.HasValue)
-                query = query.Where(vr => vr.StudentId == studentId);
+                query = query.Where(vr => vr.SessionStudent.StudentId == studentId);
             if (scheduleId.HasValue)
-                query = query.Where(vr => vr.ScheduleId == scheduleId);
+                query = query.Where(vr => vr.SessionStudent.VaccinationScheduleId == scheduleId);
             if (vaccineTypeId.HasValue)
-                query = query.Where(vr => vr.VaccineTypeId == vaccineTypeId);
+                query = query.Where(vr => vr.SessionStudent.VaccinationSchedule.VaccinationTypeId == vaccineTypeId);
             if (from.HasValue)
                 query = query.Where(vr => vr.AdministeredDate >= from);
             if (to.HasValue)
@@ -44,11 +54,107 @@ namespace Repositories.Implementations
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.Trim().ToLower();
-                query = query.Where(vr => vr.Student.FullName.ToLower().Contains(term));
+                query = query.Where(vr => vr.SessionStudent.Student.FullName.ToLower().Contains(term));
             }
 
             query = query.OrderByDescending(vr => vr.AdministeredDate);
             return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
+        }
+
+        public async Task<PagedList<VaccinationRecord>> GetRecordsByStudentAsync(
+            Guid studentId, int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            var query = _context.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.Campaign)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.VaccinationType)
+                .Include(vr => vr.VaccinatedBy)
+                .Where(vr => vr.SessionStudent.StudentId == studentId && !vr.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                query = query.Where(vr =>
+                    vr.SessionStudent.Student.FullName.ToLower().Contains(term) ||
+                    vr.SessionStudent.VaccinationSchedule.VaccinationType.Name.ToLower().Contains(term) ||
+                    vr.SessionStudent.VaccinationSchedule.Campaign.Name.ToLower().Contains(term)
+                );
+            }
+
+            query = query.OrderByDescending(vr => vr.VaccinatedAt);
+            return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
+        }
+
+        public async Task<PagedList<VaccinationRecord>> GetRecordsByScheduleAsync(
+            Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            var query = _context.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.VaccinatedBy)
+                .Include(vr => vr.VaccineLot)
+                .Where(vr => vr.SessionStudent.VaccinationScheduleId == scheduleId && !vr.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                query = query.Where(vr => vr.SessionStudent.Student.FullName.ToLower().Contains(searchTerm.ToLower()));
+
+            query = query.OrderByDescending(vr => vr.VaccinatedAt);
+            return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
+        }
+
+        public async Task<List<VaccinationRecord>> GetRecordsByDateAsync(DateTime from, DateTime to, string? searchTerm = null)
+        {
+            var query = _context.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                .Where(vr => vr.AdministeredDate >= from && vr.AdministeredDate <= to && !vr.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                query = query.Where(vr => vr.SessionStudent.Student.FullName.ToLower().Contains(searchTerm.ToLower()));
+
+            return await query.OrderByDescending(vr => vr.AdministeredDate).ToListAsync();
+        }
+
+        public async Task<VaccinationRecord?> GetRecordWithDetailsAsync(Guid id)
+        {
+            return await _context.VaccinationRecords
+                .AsSplitQuery()
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.Campaign)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.VaccinationType)
+                .Include(vr => vr.VaccineLot)
+                .Include(vr => vr.VaccinatedBy)
+                .Include(vr => vr.CounselingAppointments)
+                .Include(vr => vr.HealthEvents)
+                .FirstOrDefaultAsync(vr => vr.Id == id && !vr.IsDeleted);
+        }
+
+        public async Task<List<VaccinationRecord>> GetRecordsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
+        {
+            var query = _context.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                .Include(vr => vr.VaccinatedBy)
+                .Where(vr => ids.Contains(vr.Id));
+
+            if (!includeDeleted)
+                query = query.Where(vr => !vr.IsDeleted);
+
+            return await query.ToListAsync();
         }
 
         public async Task<bool> UpdateReactionFollowUpAsync(Guid id, bool followup24h, bool followup72h)
@@ -95,30 +201,39 @@ namespace Repositories.Implementations
             }
         }
 
+        // ✅ Cập nhật HasDuplicateEntryAsync
         public async Task<bool> HasDuplicateEntryAsync(Guid studentId, Guid scheduleId)
         {
             return await _context.VaccinationRecords
-                .AnyAsync(r => r.StudentId == studentId && r.ScheduleId == scheduleId && !r.IsDeleted);
+                .AnyAsync(vr => vr.SessionStudent.StudentId == studentId &&
+                              vr.SessionStudent.VaccinationScheduleId == scheduleId &&
+                              !vr.IsDeleted);
         }
 
         public async Task<PagedList<VaccinationRecord>> GetSoftDeletedRecordsAsync(int pageNumber, int pageSize, string? searchTerm = null)
         {
             var query = _context.VaccinationRecords
                 .IgnoreQueryFilters()
-                .Where(r => r.IsDeleted);
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Where(vr => vr.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.ToLower();
-                query = query.Where(r => r.Student.FullName.ToLower().Contains(term));
+                query = query.Where(vr => vr.SessionStudent.Student.FullName.ToLower().Contains(term));
             }
 
+            query = query.OrderByDescending(vr => vr.DeletedAt);
             return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
         public async Task<bool> RestoreRecordAsync(Guid id, Guid restoredBy)
         {
-            var record = await _context.VaccinationRecords.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == id && r.IsDeleted);
+            var record = await _context.VaccinationRecords
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(vr => vr.Id == id && vr.IsDeleted);
+
             if (record == null) return false;
 
             record.IsDeleted = false;
@@ -134,7 +249,7 @@ namespace Repositories.Implementations
         {
             var records = await _context.VaccinationRecords
                 .IgnoreQueryFilters()
-                .Where(r => ids.Contains(r.Id) && r.IsDeleted)
+                .Where(vr => ids.Contains(vr.Id) && vr.IsDeleted)
                 .ToListAsync();
 
             if (!records.Any()) return false;
@@ -151,70 +266,5 @@ namespace Repositories.Implementations
 
             return await _context.SaveChangesAsync() > 0;
         }
-
-        public async Task<VaccinationRecord?> GetRecordWithDetailsAsync(Guid id)
-        {
-            return await _context.VaccinationRecords
-                .Include(r => r.Student)
-                .Include(r => r.SessionStudent)
-                .Include(r => r.Schedule)
-                .Include(r => r.VaccineLot)
-                .Include(r => r.VaccinatedBy)
-                .Include(r => r.VaccineType)
-                .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
-        }
-
-        public async Task<List<VaccinationRecord>> GetRecordsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
-        {
-            var query = _context.VaccinationRecords.AsQueryable();
-
-            if (!includeDeleted)
-                query = query.Where(r => !r.IsDeleted);
-
-            return await query.Where(r => ids.Contains(r.Id)).ToListAsync();
-        }
-
-        public async Task<PagedList<VaccinationRecord>> GetRecordsByStudentAsync(Guid studentId, int pageNumber, int pageSize, string? searchTerm = null)
-        {
-            var query = _context.VaccinationRecords
-                .Include(r => r.Schedule)
-                .Where(r => r.StudentId == studentId && !r.IsDeleted);
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var term = searchTerm.ToLower();
-                query = query.Where(r =>
-                    r.Student.FullName.ToLower().Contains(term) ||
-                    r.VaccineType.Name.ToLower().Contains(term) ||
-                    r.Schedule.Campaign.Name.ToLower().Contains(term)
-                );
-            }
-
-            return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
-        }
-
-        public async Task<PagedList<VaccinationRecord>> GetRecordsByScheduleAsync(Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
-        {
-            var query = _context.VaccinationRecords
-                .Include(r => r.Student)
-                .Where(r => r.ScheduleId == scheduleId && !r.IsDeleted);
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-                query = query.Where(r => r.Student.FullName.ToLower().Contains(searchTerm.ToLower()));
-
-            return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
-        }
-
-        public async Task<List<VaccinationRecord>> GetRecordsByDateAsync(DateTime from, DateTime to, string? searchTerm = null)
-        {
-            var query = _context.VaccinationRecords
-                .Where(r => r.AdministeredDate >= from && r.AdministeredDate <= to && !r.IsDeleted);
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-                query = query.Where(r => r.Student.FullName.ToLower().Contains(searchTerm.ToLower()));
-
-            return await query.ToListAsync();
-        }
-
-       
     }
 }
