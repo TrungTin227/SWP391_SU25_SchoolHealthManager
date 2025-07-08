@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BusinessObjects.Common;
 using DTOs.ParentMedicationDeliveryDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Respond;
 using Repositories;
 using Repositories.Interfaces;
 using Services.Commons;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Services.Implementations
 {
@@ -29,26 +30,49 @@ namespace Services.Implementations
             _dbContext = dbContext;
         }
 
-        public async Task<ApiResult<bool>> AcptDelivery(Guid parentMedicationDeliveryid, Guid receiverId )
+        public async Task<ApiResult<bool>> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
         {
             try
             {
-                if (parentMedicationDeliveryid == Guid.Empty || receiverId == Guid.Empty)
-                    return ApiResult<bool>.Failure(new Exception("ID đơn giao thuốc phụ huynh hoặc người nhận không hợp lệ."));
-                if (await _unitOfWork.UserRepository.GetByIdAsync(receiverId ) == null)
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy người nhận với ID: " + receiverId ));
-                var parentMedicationDelivery = await _unitOfWork.ParentMedicationDeliveryRepository.GetByIdAsync(parentMedicationDeliveryid);   
+                var currentUserId = _currentUserService.GetUserId();
+
+                if (parentMedicationDeliveryid == Guid.Empty)
+                    return ApiResult<bool>.Failure(new Exception("ID đơn giao thuốc phụ huynh không hợp lệ."));
+
+
+                if (currentUserId == null)
+                    return ApiResult<bool>.Failure(new Exception("Đăng nhập trước khi thực hiện thao tác này!"));
+                else
+                    if (await _unitOfWork.NurseProfileRepository.GetByIdAsync(currentUserId.Value)==null)
+                        return ApiResult<bool>.Failure(new Exception("ID người dùng không phải là nurse!!."));
+
+                if (!Enum.IsDefined(typeof(StatusMedicationDelivery), status))
+                    return ApiResult<bool>.Failure(new Exception("Trạng thái không hợp lệ."));
+
+                var parentMedicationDelivery = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetByIdAsync(parentMedicationDeliveryid);
+
                 if (parentMedicationDelivery == null)
-                    return ApiResult<bool>.Failure(new Exception("Không tìm thấy đơn giao thuốc phụ huynh với ID: " + parentMedicationDeliveryid));
-                parentMedicationDelivery.ReceivedBy = receiverId ;
-                await _unitOfWork.SaveChangesAsync(); // gọi base service để cập nhật entity
-                return ApiResult<bool>.Success(true, "Xác nhận giao thuốc phụ huynh thành công!!!");
+                    return ApiResult<bool>.Failure(new Exception($"Không tìm thấy đơn giao thuốc phụ huynh với ID: {parentMedicationDeliveryid}"));
+
+                if ((int)status < (int)parentMedicationDelivery.Status)
+                    return ApiResult<bool>.Failure(new Exception($"Không thể cập nhật trạng thái từ {parentMedicationDelivery.Status} về {status}."));
+
+                parentMedicationDelivery.Status = status;
+                parentMedicationDelivery.UpdatedAt = _currentTime.GetVietnamTime();
+                parentMedicationDelivery.UpdatedBy = currentUserId.Value;
+                parentMedicationDelivery.ReceivedBy = currentUserId.Value;
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, "Cập nhật trạng thái giao thuốc phụ huynh thành công!");
             }
             catch (Exception ex)
             {
-                return ApiResult<bool>.Failure(new Exception("Xác nhận giao thuốc phụ huynh thất bại với exception: " + ex.Message));
+                return ApiResult<bool>.Failure(new Exception($"Cập nhật trạng thái thất bại. Lỗi: {ex.Message}"));
             }
         }
+
 
         public async Task<ApiResult<CreateParentMedicationDeliveryRequestDTO>> CreateAsync(CreateParentMedicationDeliveryRequestDTO request)
         {
@@ -109,6 +133,26 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllPendingAsync()
+        {
+            try
+            {
+                var list = await _unitOfWork.ParentMedicationDeliveryRepository.GetAllAsync(x => x.Status == StatusMedicationDelivery.Pending);
+                if (list == null || !list.Any())
+                {
+                    return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Không có đơn thuốc phụ huynh giao nào được tìm thấy."));
+                }
+
+                var responds = list.Select(x => ParentMedicationDeliveryMappings.ToResponds(x)).ToList();
+
+                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Success(responds, "Lấy danh sách đơn thuốc phụ huynh giao thành công.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
+            }
+        }
+
         public async Task<ApiResult<GetParentMedicationDeliveryRespondDTO?>> GetByIdAsync(Guid id)
         {
             var results = await _unitOfWork.ParentMedicationDeliveryRepository.GetParentMedicationDeliveryByIdDTO(id);
@@ -136,6 +180,9 @@ namespace Services.Implementations
                 if (request.ParentId.HasValue && await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId.Value) == null)
                     return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
                 ParentMedicationDeliveryMappings.ToUpdateParentMedicationDelivery(request, update);
+                var currentUserId = _currentUserService.GetUserId();
+                update.UpdatedAt = _currentTime.GetVietnamTime();
+                update.UpdatedBy = currentUserId ?? Guid.Empty;
                 // map DTO thành entity
                 //await base.UpdateAsync(entity); 
                 await _dbContext.SaveChangesAsync(); // Tự động update vào DB
