@@ -42,8 +42,7 @@ namespace Services.Implementations
 
                 if (currentUserId == null)
                     return ApiResult<bool>.Failure(new Exception("Đăng nhập trước khi thực hiện thao tác này!"));
-                else
-                    if (await _unitOfWork.NurseProfileRepository.GetByIdAsync(currentUserId.Value)==null)
+                if (await _unitOfWork.NurseProfileRepository.GetByUserIdAsync(currentUserId.Value)==null)
                         return ApiResult<bool>.Failure(new Exception("ID người dùng không phải là nurse!!."));
 
                 if (!Enum.IsDefined(typeof(StatusMedicationDelivery), status))
