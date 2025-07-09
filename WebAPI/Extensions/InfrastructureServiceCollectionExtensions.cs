@@ -142,6 +142,7 @@ namespace WebAPI.Extensions
             services.AddScoped<ICounselingAppointmentService, CounselingAppointmentService>();
             services.AddScoped<ICheckupRecordService, CheckupRecordService>();
             services.AddScoped<IVaccinationRecordService, VaccinationRecordService>();
+            services.AddScoped<INurseProfileService, NurseProfileService>();
             // 5. Email + Quartz
             services.AddEmailServices(options =>
             {
