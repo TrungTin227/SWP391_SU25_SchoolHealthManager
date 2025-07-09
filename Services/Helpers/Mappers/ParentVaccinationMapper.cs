@@ -118,5 +118,27 @@ namespace Services.Helpers.Mappers
                 _ => ParentActionStatus.Completed
             };
         }
+
+        public static ParentVaccinationRespondDTO ToDTO(ParentVaccinationRecord entity)
+        {
+            if (entity == null) return null;
+
+            return new ParentVaccinationRespondDTO
+            {
+                Id = entity.Id,
+                StudentId = entity.StudentId,
+                ParentUserId = entity.ParentUserId,
+                VaccineTypeId = entity.VaccineTypeId,
+                DoseNumber = entity.DoseNumber,
+                AdministeredAt = entity.AdministeredAt
+            };
+        }
+
+        public static List<ParentVaccinationRespondDTO> ToDTOList(List<ParentVaccinationRecord> entities)
+        {
+            if (entities == null) return new List<ParentVaccinationRespondDTO>();
+
+            return entities.Select(ToDTO).ToList();
+        }
     }
 }

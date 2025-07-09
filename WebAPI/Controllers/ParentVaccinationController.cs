@@ -1,5 +1,6 @@
 ﻿using DTOs.ParentVaccinationDTOs.Request;
 using DTOs.ParentVaccinationDTOs.Response;
+using DTOs.VaccinationRecordDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Interfaces;
@@ -20,6 +21,70 @@ namespace WebAPI.Controllers
         {
             _parentVaccinationService = parentVaccinationService;
             _logger = logger;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateParentVaccinationRecord([FromBody] List<CreateParentVaccinationRequestDTO> requests)
+        {
+            if (requests == null || !requests.Any())
+                return BadRequest("Danh sách tiêm chủng không được để trống.");
+
+            var result = await _parentVaccinationService.CreateParentVaccinationListAsync(requests);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        // 2. Cập nhật danh sách tiêm chủng
+        [HttpPut]
+        public async Task<IActionResult> UpdateParentVaccinationRecord([FromBody] List<UpdateParentVaccinationRequestDTO> requests)
+        {
+            if (requests == null || !requests.Any())
+                return BadRequest("Danh sách cần cập nhật không được để trống.");
+
+            var result = await _parentVaccinationService.UpdateParentVaccinationListAsync(requests);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        // 3. Xoá mềm danh sách tiêm chủng
+        [HttpDelete]
+        public async Task<IActionResult> SoftDeleteParentVaccinationRecord([FromBody] List<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+                return BadRequest("Danh sách ID cần xoá không được để trống.");
+
+            var result = await _parentVaccinationService.SoftDeleteParentVaccinationRangeAsync(ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        // 4. Khôi phục danh sách tiêm chủng
+        [HttpPut("restore")]
+        public async Task<IActionResult> RestoreParentVaccinationRecord([FromBody] List<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+                return BadRequest("Danh sách ID cần khôi phục không được để trống.");
+
+            var result = await _parentVaccinationService.RestoreParentVaccinationRangeAsync(ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("student-id/{studentId}")]
+        public async Task<IActionResult> GetByStudentId(Guid studentId)
+        {
+            var result = await _parentVaccinationService.GetByStudentIdAsync(studentId);
+            return result.IsSuccess ? Ok(result) : NotFound(result);
+        }
+
+        [HttpGet("student-code/{studentCode}")]
+        public async Task<IActionResult> GetByStudentCode(string studentCode)
+        {
+            var result = await _parentVaccinationService.GetByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : NotFound(result);
+        }
+
+        [HttpGet("parent-user/{userId}")]
+        public async Task<IActionResult> GetByParentUserId(Guid userId)
+        {
+            var result = await _parentVaccinationService.GetByParentUserIdAsync(userId);
+            return result.IsSuccess ? Ok(result) : NotFound(result);
         }
 
         #region Lấy danh sách lịch tiêm

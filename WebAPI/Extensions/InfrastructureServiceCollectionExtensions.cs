@@ -116,6 +116,7 @@ namespace WebAPI.Extensions
             services.AddScoped<ICheckupRecordRepository, CheckupRecordRepository>();
             services.AddScoped<INurseProfileRepository, NurseProfileRepository>();
             services.AddScoped<IVaccinationRecordRepository, VaccinationRecordRepository>();
+            services.AddScoped<IParentVaccinationRecordRepository, ParentVaccinationRecordRepository>();
 
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ITokenService, TokenService>();
