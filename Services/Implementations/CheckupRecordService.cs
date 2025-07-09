@@ -44,53 +44,54 @@ namespace Services.Implementations
 
             try
             {
-                // 1. Kiểm tra lịch khám tồn tại
+                // 1. Kiểm tra lịch khám
                 var schedule = await _unitOfWork.CheckupScheduleRepository.GetByIdAsync(request.ScheduleId);
-                if (schedule == null)
+                if (schedule == null || schedule.IsDeleted)
                 {
-                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám không tồn tại!!"));
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám không tồn tại hoặc đã bị xóa!!"));
                 }
 
                 if (!IsWithinWorkingHours(request.ExaminedAt))
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám không nằm trong giờ làm việc của trường!!"));
                 }
-                if (schedule.IsDeleted)
-                {
-                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám đã bị xóa!!"));
-                }
+
                 if (schedule.ParentConsentStatus != CheckupScheduleStatus.Approved)
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Phụ huynh chưa đồng ý lịch khám này!!"));
                 }
-                var existingRecord = await _unitOfWork.CheckupRecordRepository
-                                    .AnyAsync(x => x.ScheduleId == request.ScheduleId);
-                if (existingRecord)
+
+                var recordExists = await _unitOfWork.CheckupRecordRepository
+                    .AnyAsync(x => x.ScheduleId == request.ScheduleId);
+                if (recordExists)
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Lịch khám này đã có hồ sơ học sinh rồi!"));
                 }
 
-                
+                // 2. Kiểm tra học sinh
                 var student = await _unitOfWork.StudentRepository.GetByIdAsync(schedule.StudentId);
                 if (student == null || student.IsDeleted)
                 {
                     return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Học sinh không tồn tại hoặc đã bị xóa!"));
                 }
 
-
-                // 2. Tạo CheckupRecord
+                // 3. Tạo hồ sơ khám
                 var checkupRecord = CheckupRecordMappings.MapToEntity(request, student);
-                checkupRecord.Id = Guid.NewGuid(); // đảm bảo có ID trước khi dùng
+                checkupRecord.Id = Guid.NewGuid();
                 await _unitOfWork.CheckupRecordRepository.AddAsync(checkupRecord);
 
-                // 3. Nếu cần tư vấn → tạo CounselingAppointment
-                if (request.Status == CheckupRecordStatus.RequiresFollowUp &&
-                    request.CounselingAppointment != null &&
-                    request.CounselingAppointment.Any())
+                // ✅ Xoá mềm lịch khám đã xử lý
+                schedule.IsDeleted = true;
+                await _unitOfWork.CheckupScheduleRepository.UpdateAsync(schedule);
+
+                // 4. Tạo lịch tư vấn nếu cần
+                var counselingRequired = request.Status == CheckupRecordStatus.RequiresFollowUp;
+                var hasAppointments = request.CounselingAppointment?.Any() == true;
+
+                if (counselingRequired && hasAppointments)
                 {
                     foreach (var caDto in request.CounselingAppointment)
                     {
-                        // Clone DTO để tránh reference bug
                         var appointmentDto = new CreateCounselingAppointmentRequestDTO
                         {
                             StudentId = student.Id,
@@ -102,11 +103,9 @@ namespace Services.Implementations
                             CheckupRecordId = checkupRecord.Id
                         };
 
-                        _logger.LogWarning("🐛 Tạo entity với Purpose = {Purpose}", appointmentDto.Purpose);
-
+                        _logger.LogInformation("📅 Tạo lịch hẹn tư vấn với purpose = {Purpose}", appointmentDto.Purpose);
 
                         var result = await _counselingAppointmentService.CreateCounselingAppointmentAsync(appointmentDto);
-
                         if (!result.IsSuccess)
                         {
                             await _unitOfWork.RollbackTransactionAsync();
@@ -114,10 +113,19 @@ namespace Services.Implementations
                         }
                     }
                 }
+
                 await _unitOfWork.CommitTransactionAsync();
                 var response = CheckupRecordMappings.MapToRespondDTO(checkupRecord);
-                if (request.Status != CheckupRecordStatus.RequiresFollowUp && request.CounselingAppointment!= null && request.CounselingAppointment.Any()) 
-                        return ApiResult<CheckupRecordRespondDTO>.Success(response, "Tạo hồ sơ kiểm tra và lịch hẹn tư vấn thất bại vì status phải là RequiresFollowUp!!");
+
+                // 5. Nếu không cần tư vấn mà vẫn truyền lịch tư vấn → cảnh báo
+                if (!counselingRequired && hasAppointments)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Success(
+                        response,
+                        "Tạo hồ sơ thành công, nhưng không tạo lịch hẹn tư vấn vì status không phải RequiresFollowUp!!"
+                    );
+                }
+
                 return ApiResult<CheckupRecordRespondDTO>.Success(response, "Tạo hồ sơ kiểm tra thành công!!");
             }
             catch (Exception e)
@@ -126,7 +134,9 @@ namespace Services.Implementations
                 return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Tạo hồ sơ kiểm tra thất bại!! " + e.Message));
             }
         }
-#endregion
+
+
+        #endregion
         #region get
         public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
         {
