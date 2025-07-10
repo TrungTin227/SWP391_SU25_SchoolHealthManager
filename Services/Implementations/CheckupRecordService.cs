@@ -137,7 +137,7 @@ namespace Services.Implementations
 
 
         #endregion
-        #region get
+        #region Get
         public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
         {
             try
@@ -182,6 +182,9 @@ namespace Services.Implementations
                     .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();
 
+                if (records == null || !records.Any())
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Không có hồ sơ sức khỏe nào với mã sinh viên :"+studentCode));
+
                 var result = records.Select(CheckupRecordMappings.MapToRespondDTO).ToList();
                 return ApiResult<List<CheckupRecordRespondDTO?>>.Success(result, "lấy hồ sơ theo mã học sinh thành công!!");
             }
@@ -190,6 +193,37 @@ namespace Services.Implementations
                 return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Lỗi khi lấy hồ sơ theo mã học sinh: " + ex.Message));
             }
         }
+
+        public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentIdAsync(Guid studentId)
+        {
+            try
+            {
+                var student = await _unitOfWork.StudentRepository
+                    .GetQueryable()
+                    .FirstOrDefaultAsync(s => s.Id == studentId && !s.IsDeleted);
+
+                if (student == null)
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Không tìm thấy học sinh!"));
+
+                var records = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .Include(r => r.CounselingAppointments)
+                    .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
+                    .ToListAsync();
+
+                var result = records.Select(CheckupRecordMappings.MapToRespondDTO).ToList();
+
+                if (result == null || !result.Any())
+                    return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Không có hồ sơ kiểm tra nào được tìm thấy cho học sinh này."));
+
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Success(result, "Lấy hồ sơ theo ID học sinh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Lỗi khi lấy hồ sơ theo ID học sinh: " + ex.Message));
+            }
+        }
+
 
         public async Task<ApiResult<CheckupRecordRespondDTO?>> GetByIdAsync(Guid id)
         {
