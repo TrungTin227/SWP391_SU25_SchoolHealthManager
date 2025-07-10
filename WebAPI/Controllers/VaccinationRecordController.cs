@@ -6,7 +6,7 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]
+    // [Authorize]
     public class VaccinationRecordController : ControllerBase
     {
         private readonly IVaccinationRecordService _vaccinationRecordService;
@@ -16,42 +16,52 @@ namespace WebAPI.Controllers
             _vaccinationRecordService = vaccinationRecordService;
         }
 
-        #region CRUD
-
         /// <summary>
         /// Tạo phiếu tiêm chủng mới
         /// </summary>
         [HttpPost]
-        //[Authorize(Roles = "Admin,Nurse")]
+        // [Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> Create([FromBody] CreateVaccinationRecordRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var result = await _vaccinationRecordService.CreateAsync(request);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            if (result.IsSuccess)
+                return Ok(result);
+
+            return BadRequest(result);
         }
 
         /// <summary>
         /// Cập nhật thông tin phiếu tiêm
         /// </summary>
         [HttpPut("{id}")]
-        //[Authorize(Roles = "Admin,Nurse")]
+        // [Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVaccinationRecordRequest request)
         {
+            if (id != request.Id)
+                return BadRequest("Id trên URL và body không khớp.");
+
             var result = await _vaccinationRecordService.UpdateAsync(id, request);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            if (result.IsSuccess)
+                return Ok(result);
+
+            return BadRequest(result);
         }
 
         /// <summary>
         /// Xóa mềm phiếu tiêm
         /// </summary>
         [HttpDelete("{id}")]
-        //[Authorize(Roles = "Admin,Nurse")]
+        // [Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> Delete(Guid id, [FromQuery] Guid deletedBy)
         {
             var result = await _vaccinationRecordService.DeleteAsync(id, deletedBy);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            if (result.IsSuccess)
+                return Ok(result);
+
+            return BadRequest(result);
         }
 
         /// <summary>
@@ -61,12 +71,11 @@ namespace WebAPI.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _vaccinationRecordService.GetByIdAsync(id);
-            return result.IsSuccess ? Ok(result) : NotFound(result);
+            if (result.IsSuccess)
+                return Ok(result);
+
+            return NotFound(result);
         }
-
-        #endregion
-
-        #region Queries
 
         /// <summary>
         /// Lấy danh sách phiếu tiêm theo lịch tiêm
@@ -79,7 +88,10 @@ namespace WebAPI.Controllers
             [FromQuery] string? searchTerm = null)
         {
             var result = await _vaccinationRecordService.GetRecordsByScheduleAsync(scheduleId, pageNumber, pageSize, searchTerm);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
+            if (result.IsSuccess)
+                return Ok(result);
+
+            return BadRequest(result);
         }
 
         /// <summary>
@@ -93,9 +105,10 @@ namespace WebAPI.Controllers
             [FromQuery] string? searchTerm = null)
         {
             var result = await _vaccinationRecordService.GetRecordsByStudentAsync(studentId, pageNumber, pageSize, searchTerm);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+            if (result.IsSuccess)
+                return Ok(result);
 
-        #endregion
+            return BadRequest(result);
+        }
     }
 }
