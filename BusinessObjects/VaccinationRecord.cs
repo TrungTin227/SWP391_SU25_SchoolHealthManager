@@ -7,20 +7,10 @@ namespace BusinessObjects
     {
         [Key]
         public Guid Id { get; set; }
-
-        // Liên kết trực tiếp với học sinh
-        public Guid StudentId { get; set; }
-        [ForeignKey(nameof(StudentId))]
-        public virtual Student Student { get; set; }
-
         // Liên kết với session (chứa thông tin consent)
         public Guid SessionStudentId { get; set; }
         [ForeignKey(nameof(SessionStudentId))]
         public virtual SessionStudent SessionStudent { get; set; }
-
-        public Guid ScheduleId { get; set; }
-        [ForeignKey(nameof(ScheduleId))]
-        public virtual VaccinationSchedule Schedule { get; set; }
 
         // Lô vắc-xin sử dụng
         public Guid VaccineLotId { get; set; }
@@ -39,13 +29,17 @@ namespace BusinessObjects
         public bool ReactionFollowup72h { get; set; }
         public VaccinationReactionSeverity ReactionSeverity { get; set; }
 
-
-        // Loại vắc-xin (có thể suy từ VaccineLot, nhưng để trực tiếp cho query dễ)
-        public Guid VaccineTypeId { get; set; }
-        [ForeignKey(nameof(VaccineTypeId))]
-        public virtual VaccinationType VaccineType { get; set; }
-
         public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; }
             = new List<CounselingAppointment>();
+        // Computed properties để truy cập dễ dàng
+
+        public virtual ICollection<HealthEvent> HealthEvents { get; set; } = new List<HealthEvent>();
+
+        [NotMapped]
+        public Student Student => SessionStudent?.Student;
+
+        [NotMapped]
+        public VaccinationSchedule Schedule => SessionStudent?.VaccinationSchedule;
+
     }
 }

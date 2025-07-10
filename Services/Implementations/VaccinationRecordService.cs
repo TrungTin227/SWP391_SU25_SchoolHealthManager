@@ -58,9 +58,6 @@ namespace Services.Implementations
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
-                    StudentId = request.StudentId,
-                    ScheduleId = request.ScheduleId,
-                    SessionStudentId = request.SessionStudentId,
                     VaccineLotId = request.VaccineLotId,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,
@@ -68,7 +65,6 @@ namespace Services.Implementations
                     ReactionFollowup24h = request.ReactionFollowup24h,
                     ReactionFollowup72h = request.ReactionFollowup72h,
                     ReactionSeverity = (VaccinationReactionSeverity)request.ReactionSeverity,
-                    VaccineTypeId = request.VaccineTypeId,
                     CreatedAt = _currentTime.GetCurrentTime(),
                     UpdatedAt = _currentTime.GetCurrentTime(),
                     IsDeleted = false
