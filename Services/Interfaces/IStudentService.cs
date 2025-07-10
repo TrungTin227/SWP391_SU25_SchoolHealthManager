@@ -1,10 +1,11 @@
-﻿using System;
+﻿using DTOs.GlobalDTO.Respond;
+using DTOs.StudentDTOs.Request;
+using DTOs.StudentDTOs.Response;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DTOs.StudentDTOs.Request;
-using DTOs.StudentDTOs.Response;
 
 namespace Services.Interfaces
 {
@@ -23,5 +24,7 @@ namespace Services.Interfaces
         Task<ApiResult<bool>> SoftDeleteStudentByCodeAsync(string studentCode);
         Task<ApiResult<bool>> SoftDeleteStudentByCodesAsync(List<string> studentCode);
         Task<ApiResult<List<GetAllStudentDTO>>> GetStudentsByParentIdAsync(Guid parentId);
+        Task<RestoreResponseDTO> RestoreStudentAsync(Guid id, Guid? userId);
+        Task<List<RestoreResponseDTO>> RestoreStudentRangeAsync(List<Guid> ids, Guid? userId);
     }
 }

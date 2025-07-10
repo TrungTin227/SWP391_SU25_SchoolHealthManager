@@ -1,10 +1,11 @@
-﻿using System;
+﻿using DTOs.ParentMedicationDeliveryDTOs.Request;
+using DTOs.ParentMedicationDeliveryDTOs.Respond;
+using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DTOs.ParentMedicationDeliveryDTOs.Request;
-using Microsoft.AspNetCore.Http;
 
 namespace Services.Helpers.Mapers
 {
@@ -23,6 +24,23 @@ namespace Services.Helpers.Mapers
                 Notes = request.Notes,
             };
         }
+
+        public static GetParentMedicationDeliveryRespondDTO ToResponds(this ParentMedicationDelivery request)
+        {
+            return new GetParentMedicationDeliveryRespondDTO
+            {
+                ParentMedicationDeliveryId = request.Id,
+                medicationName = request.MedicationName,
+                StudentId = request.StudentId,
+                ParentId = request.ParentId,
+                ReceivedBy = request.ParentId, // Assuming ReceivedBy is the same as ParentId for this example
+                QuantityDelivered = request.QuantityDelivered,
+                Status = request.Status.ToString(),
+                DeliveredAt = request.DeliveredAt,
+                Notes = request.Notes,
+            };
+        }
+
 
 
         public static ParentMedicationDelivery ToUpdateParentMedicationDelivery(this UpdateParentMedicationDeliveryRequestDTO request, ParentMedicationDelivery existingDelivery)
@@ -53,7 +71,6 @@ namespace Services.Helpers.Mapers
 
             return existingDelivery;
         }
-
 
     }
 }

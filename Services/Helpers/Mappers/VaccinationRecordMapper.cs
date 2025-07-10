@@ -11,7 +11,6 @@ namespace Services.Helpers.Mappers
                 Id = record.Id,
                 Message = "Vaccination record created successfully",
 
-                StudentId = record.StudentId,
                 StudentName = record.Student?.FullName ?? string.Empty,
                 StudentCode = record.Student?.StudentCode ?? string.Empty,
 
@@ -36,7 +35,6 @@ namespace Services.Helpers.Mappers
             {
                 Id = record.Id,
                 Message = string.Empty, // không cần thông báo khi chỉ xem
-                StudentId = record.StudentId,
                 StudentName = record.Student?.FullName ?? string.Empty,
                 StudentCode = record.Student?.StudentCode ?? string.Empty,
 

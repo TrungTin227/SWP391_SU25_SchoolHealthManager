@@ -1,6 +1,5 @@
 ﻿using BusinessObjects.Common;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BusinessObjects
 {
@@ -24,6 +23,7 @@ namespace BusinessObjects
         public string? Remarks { get; set; }              // Khuyến nghị
         public CheckupRecordStatus Status { get; set; }           // Hoàn thành/Cần tái khám
         public virtual ICollection<CounselingAppointment>? CounselingAppointments { get; set; }
+        public virtual ICollection<HealthEvent> HealthEvents { get; set; } = new List<HealthEvent>();
 
     }
 }

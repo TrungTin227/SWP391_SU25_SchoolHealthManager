@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Quartz;
 
 namespace Services.Implementations
 {
@@ -304,6 +305,30 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<List<CheckupScheduleDetailResponseDTO>>> GetCheckupScheduleByStudentIdAsync(Guid id)
+        {
+            try
+            {
+                var result = await _unitOfWork.CheckupScheduleRepository.GetCheckupSchedulesByStudentIdAsync(id);
+                if (result == null || !result.Any())
+                {
+                    return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Failure(
+                        new Exception("Không tìm thấy CheckupSchedule nào với Student Id: " + id));
+                }
+
+                // 👇 Map từng phần tử trong list
+                var respond = result
+                    .Select(MapToDetailResponseDTO)
+                    .ToList();
+
+                return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Success(respond, "Lấy lịch khám theo Id học sinh thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Failure(new Exception("Lỗi khi lấy lịch khám theo Id học sinh!!"));
+            }
+        }
+
         #region Private Methods
 
         private async Task<HashSet<Guid>> GetStudentIdsFromRequest(CreateCheckupScheduleRequest request)
@@ -457,7 +482,6 @@ namespace Services.Implementations
                     Id = schedule.Campaign.Id,
                     Name = schedule.Campaign.Name,
                     SchoolYear = schedule.Campaign.SchoolYear,
-                    ScheduledDate = schedule.Campaign.ScheduledDate,
                     Status = schedule.Campaign.Status
                 } : new CheckupCampaignBasicInfoDTO(),
                 Record = schedule.Record != null ? new CheckupRecordBasicInfoDTO

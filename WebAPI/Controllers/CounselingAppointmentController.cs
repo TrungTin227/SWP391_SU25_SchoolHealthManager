@@ -3,161 +3,130 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/counseling-appointments")]
     public class CounselingAppointmentController : Controller
     {
-        public readonly ICounselingAppointmentService _counselingAppointmentService;
+        private readonly ICounselingAppointmentService _counselingAppointmentService;
+
         public CounselingAppointmentController(ICounselingAppointmentService counselingAppointmentService)
         {
             _counselingAppointmentService = counselingAppointmentService;
         }
-        [HttpPost("create-counseling-appointment")]
+
+        [HttpPost]
         public async Task<IActionResult> CreateCounselingAppointment([FromBody] CreateCounselingAppointmentRequestDTO request)
         {
             if (request == null)
-            {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu!!" });
-            }
+
             var result = await _counselingAppointmentService.CreateCounselingAppointmentAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("add-note-and-recommend")]
-        public async Task<IActionResult> AddNoteAndRecommend(AddNoteAndRecommendRequestDTO request)
+        [HttpPost("add-note")]
+        public async Task<IActionResult> AddNoteAndRecommend([FromBody] AddNoteAndRecommendRequestDTO request)
         {
             if (request == null)
-            {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu!!" });
-            }
 
             var result = await _counselingAppointmentService.AddNoteAndRecommend(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("acpt-Appointment")]
-        public async Task<IActionResult> AcptAppointment(Guid AppointmentId)
+        [HttpPost("{appointmentId}/accept")]
+        public async Task<IActionResult> AcptAppointment(Guid appointmentId)
         {
-            if (AppointmentId == Guid.Empty)
-            {
+            if (appointmentId == Guid.Empty)
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.AcceptAppointmentAsync(AppointmentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+
+            var result = await _counselingAppointmentService.AcceptAppointmentAsync(appointmentId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("reject-Appointment")]
-        public async Task<IActionResult> RejectAppointment(Guid AppointmentId)
+        [HttpPost("{appointmentId}/reject")]
+        public async Task<IActionResult> RejectAppointment(Guid appointmentId)
         {
-            if (AppointmentId == Guid.Empty)
-            {
+            if (appointmentId == Guid.Empty)
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.RejectAppointmentAsync(AppointmentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+
+            var result = await _counselingAppointmentService.RejectAppointmentAsync(appointmentId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("update-Appointment-by-id")]
+        [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAppointmentById([FromBody] UpdateCounselingAppointmentRequestDTO request)
         {
             if (request == null || request.Id == Guid.Empty)
-            {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
+
             var result = await _counselingAppointmentService.UpdateAppointmentAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
-        }
-        [HttpGet("get-appointments-by-id")]
-        public async Task<IActionResult> GetById(Guid AppointmentId)
-        {
-            if (AppointmentId == Guid.Empty)
-            {
-                return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.GetByIdAsync(AppointmentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-pending-appointments-by-staff-id")]
-        public async Task<IActionResult> GetPendingAppointmentsByStaffId(Guid StaffId)
+        [HttpGet("{appointmentId}")]
+        public async Task<IActionResult> GetById(Guid appointmentId)
         {
-            if (StaffId == Guid.Empty)
-            {
+            if (appointmentId == Guid.Empty)
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.GetAllPendingByStaffIdAsync(StaffId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
-        }
-        [HttpGet("get-all-appointments-by-staff-id")]
-        public async Task<IActionResult> GetAllAppointmentsByStaffId(Guid StaffId)
-        {
-            if (StaffId == Guid.Empty)
-            {
-                return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.GetAllByStaffIdAsync(StaffId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+
+            var result = await _counselingAppointmentService.GetByIdAsync(appointmentId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-all-appointments-by-student-code")]
-        public async Task<IActionResult> GetAllAppointmentsByStudentCode(string StudentCode)
+        [HttpGet("pending/staff/{staffId}")]
+        public async Task<IActionResult> GetPendingAppointmentsByStaffId(Guid staffId)
         {
-            if (string.IsNullOrEmpty(StudentCode))
-            {
+            if (staffId == Guid.Empty)
+                return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
+
+            var result = await _counselingAppointmentService.GetAllPendingByStaffIdAsync(staffId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("staff/{staffId}")]
+        public async Task<IActionResult> GetAllAppointmentsByStaffId(Guid staffId)
+        {
+            if (staffId == Guid.Empty)
+                return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
+
+            var result = await _counselingAppointmentService.GetAllByStaffIdAsync(staffId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("code/{studentCode}")]
+        public async Task<IActionResult> GetAllAppointmentsByStudentCode(string studentCode)
+        {
+            if (string.IsNullOrEmpty(studentCode))
                 return BadRequest(new { Message = "Yêu cầu nhập mã học sinh hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.GetAllByStudentCodeAsync(StudentCode);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+
+            var result = await _counselingAppointmentService.GetAllByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpDelete("delete-appointment-by-id")]
-        public async Task<IActionResult> DeleteAppointmentById(List<Guid> AppointmentId)
+        [HttpGet("id/{studentId}")]
+        public async Task<IActionResult> GetAllAppointmentsByStudentId(Guid studentId)
         {
-            if (AppointmentId == null || !AppointmentId.Any())
-            {
+            //if (string.IsNullOrEmpty(studentCode))
+            //    return BadRequest(new { Message = "Yêu cầu nhập mã học sinh hợp lệ!!" });
+
+            var result = await _counselingAppointmentService.GetAllByStudentIdAsync(studentId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteAppointmentById([FromBody] List<Guid> appointmentIds)
+        {
+            if (appointmentIds == null || !appointmentIds.Any())
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu hợp lệ!!" });
-            }
-            var result = await _counselingAppointmentService.SoftDeleteRangeAsync(AppointmentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
+
+            var result = await _counselingAppointmentService.SoftDeleteRangeAsync(appointmentIds);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        [HttpPost("restore-counseling-appointments")]
+        public async Task<IActionResult> RestoreCounselingAppointments([FromBody] List<Guid> ids)
+        {
+            var result = await _counselingAppointmentService.RestoreCounselingAppointmentRangeAsync(ids, null);
             return Ok(result);
         }
     }

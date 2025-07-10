@@ -7,7 +7,6 @@ namespace DTOs.CheckupCampaign.Response
         public Guid Id { get; set; }
         public string Name { get; set; } = "";
         public string SchoolYear { get; set; } = "";
-        public DateTime ScheduledDate { get; set; }
         public string Description { get; set; } = "";
         public CheckupCampaignStatus Status { get; set; }
         public DateTime? StartDate { get; set; }

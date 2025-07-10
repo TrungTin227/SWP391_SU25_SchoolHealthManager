@@ -149,20 +149,6 @@ namespace Repositories.Implementations
                 predicate = predicate.And(c => c.Status == status.Value);
             }
 
-            // Nếu có ngày bắt đầu, ghép thêm điều kiện >= startDate
-            if (startDate.HasValue)
-            {
-                var from = startDate.Value.Date;
-                predicate = predicate.And(c => c.ScheduledDate >= from);
-            }
-
-            // Nếu có ngày kết thúc, ghép thêm điều kiện <= endDate (đến cuối ngày)
-            if (endDate.HasValue)
-            {
-                var to = endDate.Value.Date.AddDays(1).AddTicks(-1);
-                predicate = predicate.And(c => c.ScheduledDate <= to);
-            }
-
             return predicate;
         }
     }

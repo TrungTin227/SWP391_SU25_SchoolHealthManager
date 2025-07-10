@@ -17,6 +17,7 @@ namespace Repositories.Implementations
             _currentTime = currentTime;
         }
 
+        //  LIST VIEW 
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesAsync(
            Guid? campaignId,
            DateTime? startDate,
@@ -28,9 +29,7 @@ namespace Repositories.Implementations
         {
             IQueryable<VaccinationSchedule> query = _context.VaccinationSchedules
                 .Include(vs => vs.Campaign)
-                .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents).ThenInclude(ss => ss.Student)
-                .Include(vs => vs.Records)
+                .Include(vs => vs.VaccinationType)              
                 .Where(vs => !vs.IsDeleted);
 
             if (campaignId.HasValue)
@@ -56,6 +55,22 @@ namespace Repositories.Implementations
             return await PagedList<VaccinationSchedule>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
+        //  DETAIL VIEW - Sử dụng AsSplitQuery() và include đầy đủ
+        public async Task<VaccinationSchedule?> GetScheduleWithDetailsAsync(Guid id)
+        {
+            return await _context.VaccinationSchedules
+                .AsSplitQuery() // ✅ Tách query để tránh Cartesian product
+                .Include(vs => vs.Campaign)
+                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.VaccinationRecords)
+                        .ThenInclude(vr => vr.VaccinatedBy)
+                .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
+        }
+
+        // Tối ưu cho Campaign view - Include một số thông tin cần thiết
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(
             Guid campaignId, int pageNumber, int pageSize, string? searchTerm = null)
         {
@@ -63,8 +78,6 @@ namespace Repositories.Implementations
                 .Include(vs => vs.Campaign)
                 .Include(vs => vs.VaccinationType)
                 .Include(vs => vs.SessionStudents)
-                    .ThenInclude(ss => ss.Student)
-                .Include(vs => vs.Records)
                 .Where(vs => vs.CampaignId == campaignId && !vs.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -81,15 +94,14 @@ namespace Repositories.Implementations
             return await PagedList<VaccinationSchedule>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
+        // ✅ Tối ưu cho Date Range view
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesByDateRangeAsync(
             DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchTerm = null)
         {
             var query = _context.VaccinationSchedules
                 .Include(vs => vs.Campaign)
                 .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents)
-                    .ThenInclude(ss => ss.Student)
-                .Include(vs => vs.Records)
+                .Include(vs => vs.SessionStudents) 
                 .Where(vs => vs.ScheduledAt >= startDate && vs.ScheduledAt <= endDate && !vs.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -111,22 +123,10 @@ namespace Repositories.Implementations
         {
             return await _context.VaccinationSchedules
                 .Include(vs => vs.Campaign)
-                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.VaccinationType)               
                 .Where(vs => vs.ScheduleStatus == status && !vs.IsDeleted)
                 .OrderBy(vs => vs.ScheduledAt)
                 .ToListAsync();
-        }
-
-        public async Task<VaccinationSchedule?> GetScheduleWithDetailsAsync(Guid id)
-        {
-            return await _context.VaccinationSchedules
-                .Include(vs => vs.Campaign)
-                .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents)
-                    .ThenInclude(ss => ss.Student)
-                .Include(vs => vs.Records)
-                    .ThenInclude(vr => vr.VaccinatedBy)
-                .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
         }
 
         public async Task<List<VaccinationSchedule>> GetSchedulesByIdsAsync(List<Guid> ids, bool includeDeleted = false)
@@ -134,8 +134,6 @@ namespace Repositories.Implementations
             var query = _context.VaccinationSchedules
                 .Include(vs => vs.Campaign)
                 .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents)
-                .Include(vs => vs.Records)
                 .Where(vs => ids.Contains(vs.Id));
 
             if (!includeDeleted)
@@ -144,6 +142,28 @@ namespace Repositories.Implementations
             }
 
             return await query.ToListAsync();
+        }
+
+        // ✅  method riêng để lấy SessionStudents khi cần
+        public async Task<List<SessionStudent>> GetSessionStudentsByScheduleAsync(Guid scheduleId)
+        {
+            return await _context.SessionStudents
+                .Include(ss => ss.Student)
+                .Where(ss => ss.VaccinationScheduleId == scheduleId)
+                .OrderBy(ss => ss.Student.FullName)
+                .ToListAsync();
+        }
+
+        // ✅  method riêng để lấy VaccinationRecords khi cần
+        public async Task<List<VaccinationRecord>> GetVaccinationRecordsByScheduleAsync(Guid scheduleId)
+        {
+            return await _context.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.VaccinatedBy)
+                .Where(vr => vr.SessionStudent.VaccinationScheduleId == scheduleId)
+                .OrderBy(vr => vr.VaccinatedAt)
+                .ToListAsync();
         }
 
         public async Task<bool> AddStudentsToScheduleAsync(Guid scheduleId, List<Guid> studentIds, Guid addedBy)
@@ -162,25 +182,19 @@ namespace Repositories.Implementations
                     .Select(s => s.Id)
                     .ToListAsync();
 
-                //  Kiểm tra nếu có studentId không hợp lệ
                 var invalidStudentIds = studentIds.Except(validStudentIds).ToList();
                 if (invalidStudentIds.Any())
                 {
                     _logger.LogWarning("Các studentId không hợp lệ: {InvalidIds}", string.Join(", ", invalidStudentIds));
-                    // Tùy chọn: Có thể throw exception hoặc chỉ log warning
-                    // throw new InvalidOperationException($"Các studentId không tồn tại: {string.Join(", ", invalidStudentIds)}");
                 }
 
                 var existingStudentIds = schedule.SessionStudents.Select(ss => ss.StudentId).ToHashSet();
-
-                // Chỉ sử dụng studentIds hợp lệ và chưa tồn tại
                 var newStudentIds = validStudentIds.Where(id => !existingStudentIds.Contains(id)).ToList();
 
                 if (!newStudentIds.Any())
                 {
-                    // thông báo: Không có studentId hợp lệ nào để thêm
                     _logger.LogInformation("Không có studentId hợp lệ nào để thêm vào lịch tiêm {ScheduleId}", scheduleId);
-                    return invalidStudentIds.Any() ? false : true; // Trả về false nếu có invalid IDs
+                    return invalidStudentIds.Any() ? false : true;
                 }
 
                 var now = _currentTime.GetVietnamTime();
@@ -197,7 +211,6 @@ namespace Repositories.Implementations
                 }).ToList();
 
                 _context.SessionStudents.AddRange(sessionStudents);
-
                 var result = await _context.SaveChangesAsync() > 0;
 
                 if (result)
@@ -233,15 +246,6 @@ namespace Repositories.Implementations
                 _logger.LogError(ex, "Lỗi khi xóa học sinh khỏi lịch tiêm {ScheduleId}", scheduleId);
                 return false;
             }
-        }
-
-        public async Task<List<SessionStudent>> GetSessionStudentsByScheduleAsync(Guid scheduleId)
-        {
-            return await _context.SessionStudents
-                .Include(ss => ss.Student)
-                .Where(ss => ss.VaccinationScheduleId == scheduleId)
-                .OrderBy(ss => ss.Student.FullName)
-                .ToListAsync();
         }
 
         public async Task<bool> UpdateScheduleStatusAsync(Guid scheduleId, ScheduleStatus newStatus, Guid updatedBy)
@@ -300,6 +304,7 @@ namespace Repositories.Implementations
                 .IgnoreQueryFilters()
                 .Include(vs => vs.Campaign)
                 .Include(vs => vs.VaccinationType)
+                // ❌ KHÔNG include SessionStudents cho soft deleted
                 .Where(vs => vs.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -373,10 +378,9 @@ namespace Repositories.Implementations
 
         public async Task<bool> IsScheduleConflictAsync(Guid campaignId, DateTime scheduledAt, Guid? excludeScheduleId = null)
         {
-            //  So sánh datetime chính xác, không chỉ ngày
             var query = _context.VaccinationSchedules
                 .Where(vs => vs.CampaignId == campaignId &&
-                           vs.ScheduledAt == scheduledAt &&  // So sánh chính xác datetime
+                           vs.ScheduledAt == scheduledAt &&
                            !vs.IsDeleted);
 
             if (excludeScheduleId.HasValue)
@@ -389,14 +393,16 @@ namespace Repositories.Implementations
 
         public async Task<bool> CanDeleteScheduleAsync(Guid id)
         {
-            var hasRecords = await _context.VaccinationRecords
-                .AnyAsync(vr => vr.ScheduleId == id);
+            var hasRecords = await _context.SessionStudents
+                    .Where(ss => ss.VaccinationScheduleId == id)
+                    .AnyAsync(ss => ss.VaccinationRecords.Any());
 
             return !hasRecords;
         }
+
         public async Task<bool> HasStudentScheduleConflictAsync(Guid studentId, DateTime scheduledAt, Guid? excludeScheduleId = null)
         {
-            var timeWindow = TimeSpan.FromMinutes(60); // 1 hour buffer for vaccination
+            var timeWindow = TimeSpan.FromMinutes(60);
             var startTime = scheduledAt.Subtract(timeWindow);
             var endTime = scheduledAt.Add(timeWindow);
 

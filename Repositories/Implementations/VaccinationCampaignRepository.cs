@@ -41,12 +41,16 @@ namespace Repositories.Implementations
         public async Task<VaccinationCampaign?> GetVaccinationCampaignWithDetailsAsync(Guid id)
         {
             return await _dbContext.VaccinationCampaigns
+                .AsSplitQuery() // ✅ Thêm để tối ưu performance
                 .Include(c => c.Schedules)
                     .ThenInclude(s => s.VaccinationType)
                 .Include(c => c.Schedules)
                     .ThenInclude(s => s.SessionStudents)
+                        .ThenInclude(ss => ss.Student) // ✅ Include Student info
                 .Include(c => c.Schedules)
-                    .ThenInclude(s => s.Records)
+                    .ThenInclude(s => s.SessionStudents)
+                        .ThenInclude(ss => ss.VaccinationRecords) // ✅ Lấy Records thông qua SessionStudents
+                            .ThenInclude(vr => vr.VaccinatedBy) // ✅ Include VaccinatedBy nếu cần
                 .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
@@ -58,6 +62,7 @@ namespace Repositories.Implementations
 
             return await query
                 .Include(c => c.Schedules)
+                    .ThenInclude(s => s.VaccinationType)
                 .Where(c => ids.Contains(c.Id))
                 .ToListAsync();
         }
@@ -149,6 +154,66 @@ namespace Repositories.Implementations
                     .SetProperty(c => c.UpdatedBy, updatedBy));
         }
 
+        // ✅ Thêm method riêng để lấy campaign statistics nếu cần
+        public async Task<Dictionary<Guid, CampaignStatsDTO>> GetCampaignStatsAsync(List<Guid> campaignIds)
+        {
+            var stats = new Dictionary<Guid, CampaignStatsDTO>();
+
+            // Lấy thống kê từ SessionStudents và VaccinationRecords
+            var campaigns = await _dbContext.VaccinationCampaigns
+                .Where(c => campaignIds.Contains(c.Id) && !c.IsDeleted)
+                .Select(c => new
+                {
+                    c.Id,
+                    ScheduleCount = c.Schedules.Count,
+                    TotalStudents = c.Schedules.SelectMany(s => s.SessionStudents).Count(),
+                    CompletedVaccinations = c.Schedules
+                        .SelectMany(s => s.SessionStudents)
+                        .SelectMany(ss => ss.VaccinationRecords)
+                        .Count()
+                })
+                .ToListAsync();
+
+            foreach (var campaign in campaigns)
+            {
+                stats[campaign.Id] = new CampaignStatsDTO
+                {
+                    ScheduleCount = campaign.ScheduleCount,
+                    TotalStudents = campaign.TotalStudents,
+                    CompletedVaccinations = campaign.CompletedVaccinations,
+                    CompletionRate = campaign.TotalStudents > 0
+                        ? (double)campaign.CompletedVaccinations / campaign.TotalStudents * 100
+                        : 0
+                };
+            }
+
+            return stats;
+        }
+
+        // ✅ Helper method để lấy SessionStudents của campaign khi cần
+        public async Task<List<SessionStudent>> GetCampaignSessionStudentsAsync(Guid campaignId)
+        {
+            return await _dbContext.SessionStudents
+                .Include(ss => ss.Student)
+                .Include(ss => ss.VaccinationSchedule)
+                .Include(ss => ss.VaccinationRecords)
+                .Where(ss => ss.VaccinationSchedule.CampaignId == campaignId)
+                .OrderBy(ss => ss.Student.FullName)
+                .ToListAsync();
+        }
+
+        // ✅ Helper method để lấy VaccinationRecords của campaign khi cần
+        public async Task<List<VaccinationRecord>> GetCampaignVaccinationRecordsAsync(Guid campaignId)
+        {
+            return await _dbContext.VaccinationRecords
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.VaccinatedBy)
+                .Where(vr => vr.SessionStudent.VaccinationSchedule.CampaignId == campaignId)
+                .OrderByDescending(vr => vr.VaccinatedAt)
+                .ToListAsync();
+        }
+
         private Expression<Func<VaccinationCampaign, bool>> BuildCampaignPredicate(
             string? searchTerm, VaccinationCampaignStatus? status, DateTime? startDate, DateTime? endDate)
         {
@@ -178,5 +243,14 @@ namespace Repositories.Implementations
 
             return predicate;
         }
+    }
+
+    // ✅ DTO cho campaign statistics
+    public class CampaignStatsDTO
+    {
+        public int ScheduleCount { get; set; }
+        public int TotalStudents { get; set; }
+        public int CompletedVaccinations { get; set; }
+        public double CompletionRate { get; set; }
     }
 }

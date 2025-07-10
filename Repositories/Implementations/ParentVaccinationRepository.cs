@@ -29,11 +29,13 @@ namespace Repositories.Implementations
                     parentUserId, status, pageNumber, pageSize);
 
                 var query = _context.VaccinationSchedules
+                    .AsSplitQuery() // ✅ Sử dụng split query để tối ưu performance
                     .Include(vs => vs.Campaign)
                     .Include(vs => vs.VaccinationType)
                     .Include(vs => vs.SessionStudents.Where(ss => ss.Student.ParentUserId == parentUserId))
                         .ThenInclude(ss => ss.Student)
-                    .Include(vs => vs.Records.Where(vr => vr.Student.ParentUserId == parentUserId))
+                    .Include(vs => vs.SessionStudents.Where(ss => ss.Student.ParentUserId == parentUserId))
+                        .ThenInclude(ss => ss.VaccinationRecords) // ✅ Lấy records thông qua SessionStudents
                     .Where(vs => !vs.IsDeleted &&
                                vs.SessionStudents.Any(ss => ss.Student.ParentUserId == parentUserId))
                     .AsQueryable();
@@ -71,6 +73,9 @@ namespace Repositories.Implementations
                     .Include(ss => ss.VaccinationSchedule)
                         .ThenInclude(vs => vs.VaccinationType)
                     .Include(ss => ss.VaccinationRecords)
+                        .ThenInclude(vr => vr.VaccinatedBy) // ✅ Thêm VaccinatedBy
+                    .Include(ss => ss.VaccinationRecords)
+                        .ThenInclude(vr => vr.VaccineLot) // ✅ Thêm VaccineLot nếu cần
                     .Where(ss => ss.Student.ParentUserId == parentUserId &&
                                ss.VaccinationScheduleId == scheduleId)
                     .ToListAsync();
@@ -90,13 +95,17 @@ namespace Repositories.Implementations
                 _logger.LogInformation("Getting vaccination history for parent {ParentUserId}", parentUserId);
 
                 return await _context.VaccinationRecords
-                    .Include(vr => vr.Student)
-                    .Include(vr => vr.Schedule)
-                        .ThenInclude(vs => vs.Campaign)
-                    .Include(vr => vr.VaccineType)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.Student) // ✅ Student thông qua SessionStudent
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule) // ✅ Schedule thông qua SessionStudent
+                            .ThenInclude(vs => vs.Campaign)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule)
+                            .ThenInclude(vs => vs.VaccinationType) // ✅ VaccinationType thông qua Schedule
                     .Include(vr => vr.VaccinatedBy)
                     .Include(vr => vr.VaccineLot)
-                    .Where(vr => vr.Student.ParentUserId == parentUserId)
+                    .Where(vr => vr.SessionStudent.Student.ParentUserId == parentUserId) // ✅ Truy cập Student thông qua SessionStudent
                     .OrderByDescending(vr => vr.VaccinatedAt)
                     .ToListAsync();
             }
@@ -115,14 +124,18 @@ namespace Repositories.Implementations
                     parentUserId, studentId);
 
                 return await _context.VaccinationRecords
-                    .Include(vr => vr.Student)
-                    .Include(vr => vr.Schedule)
-                        .ThenInclude(vs => vs.Campaign)
-                    .Include(vr => vr.VaccineType)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.Student)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule)
+                            .ThenInclude(vs => vs.Campaign)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule)
+                            .ThenInclude(vs => vs.VaccinationType)
                     .Include(vr => vr.VaccinatedBy)
                     .Include(vr => vr.VaccineLot)
-                    .Where(vr => vr.Student.ParentUserId == parentUserId &&
-                               vr.StudentId == studentId)
+                    .Where(vr => vr.SessionStudent.Student.ParentUserId == parentUserId &&
+                               vr.SessionStudent.StudentId == studentId) // ✅ Sử dụng SessionStudent.StudentId
                     .OrderByDescending(vr => vr.VaccinatedAt)
                     .ToListAsync();
             }
@@ -141,11 +154,15 @@ namespace Repositories.Implementations
                 _logger.LogInformation("Getting follow-up vaccinations for parent {ParentUserId}", parentUserId);
 
                 return await _context.VaccinationRecords
-                    .Include(vr => vr.Student)
-                    .Include(vr => vr.Schedule)
-                        .ThenInclude(vs => vs.Campaign)
-                    .Include(vr => vr.VaccineType)
-                    .Where(vr => vr.Student.ParentUserId == parentUserId &&
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.Student)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule)
+                            .ThenInclude(vs => vs.Campaign)
+                    .Include(vr => vr.SessionStudent)
+                        .ThenInclude(ss => ss.VaccinationSchedule)
+                            .ThenInclude(vs => vs.VaccinationType)
+                    .Where(vr => vr.SessionStudent.Student.ParentUserId == parentUserId &&
                                vr.ReactionSeverity > VaccinationReactionSeverity.None)
                     .OrderByDescending(vr => vr.VaccinatedAt)
                     .ToListAsync();
@@ -180,11 +197,12 @@ namespace Repositories.Implementations
                                     ss.ConsentStatus == ParentConsentStatus.Approved &&
                                     ss.VaccinationSchedule.ScheduleStatus == ScheduleStatus.Pending);
 
+                // ✅ Đếm VaccinationRecords thông qua SessionStudent
                 var completedCount = await _context.VaccinationRecords
-                    .CountAsync(vr => vr.Student.ParentUserId == parentUserId);
+                    .CountAsync(vr => vr.SessionStudent.Student.ParentUserId == parentUserId);
 
                 var followUpCount = await _context.VaccinationRecords
-                    .CountAsync(vr => vr.Student.ParentUserId == parentUserId &&
+                    .CountAsync(vr => vr.SessionStudent.Student.ParentUserId == parentUserId &&
                                     vr.ReactionSeverity > VaccinationReactionSeverity.None);
 
                 stats[ParentActionStatus.PendingConsent] = pendingCount;
@@ -348,9 +366,10 @@ namespace Repositories.Implementations
                     vs.SessionStudents.Any(ss => ss.Student.ParentUserId == parentUserId &&
                                                 vs.ScheduleStatus == ScheduleStatus.Completed)),
 
+                // ✅ Sử dụng SessionStudents thay vì Records
                 ParentActionStatus.RequiresFollowUp => query.Where(vs =>
-                    vs.Records.Any(vr => vr.Student.ParentUserId == parentUserId &&
-                                       vr.ReactionSeverity > VaccinationReactionSeverity.None)),
+                    vs.SessionStudents.Any(ss => ss.Student.ParentUserId == parentUserId &&
+                                                ss.VaccinationRecords.Any(vr => vr.ReactionSeverity > VaccinationReactionSeverity.None))),
 
                 _ => query
             };

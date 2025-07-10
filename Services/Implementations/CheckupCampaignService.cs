@@ -575,7 +575,6 @@ namespace Services.Implementations
                 Id = campaign.Id,
                 Name = campaign.Name,
                 SchoolYear = campaign.SchoolYear,
-                ScheduledDate = campaign.ScheduledDate,
                 Description = campaign.Description,
                 Status = campaign.Status,
                 StartDate = campaign.StartDate,
@@ -615,7 +614,6 @@ namespace Services.Implementations
                 Id = baseDto.Id,
                 Name = baseDto.Name,
                 SchoolYear = baseDto.SchoolYear,
-                ScheduledDate = baseDto.ScheduledDate,
                 Description = baseDto.Description,
                 Status = baseDto.Status,
                 StartDate = baseDto.StartDate,
@@ -635,7 +633,6 @@ namespace Services.Implementations
                 // Không cần set Id, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy - BaseService sẽ xử lý
                 Name = request.Name,
                 SchoolYear = request.SchoolYear,
-                ScheduledDate = request.ScheduledDate,
                 Description = request.Description,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
@@ -650,9 +647,6 @@ namespace Services.Implementations
 
             if (!string.IsNullOrEmpty(request.SchoolYear))
                 campaign.SchoolYear = request.SchoolYear;
-
-            if (request.ScheduledDate.HasValue)
-                campaign.ScheduledDate = request.ScheduledDate.Value;
 
             if (!string.IsNullOrEmpty(request.Description))
                 campaign.Description = request.Description;

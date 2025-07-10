@@ -1,12 +1,12 @@
 ﻿using DTOs.ParentDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Request;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Crypto;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-
+    [Route("api/parents")]
     public class ParentController : Controller
     {
         private readonly IParentService _parentService;
@@ -18,173 +18,131 @@ namespace WebAPI.Controllers
             _ParentMedicationDeliveryService = parentMedicationDeliveryService;
         }
 
-        [HttpPost("register-parent")]
+        [HttpPost("register")]
         public async Task<IActionResult> RegisterParent([FromBody] UserRegisterRequestDTO request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var result = await _parentService.RegisterParentUserAsync(request);
-            if (result.IsSuccess)
-                return Ok(result);
-            else
-                return BadRequest(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-        //[HttpPost("register-User")]
+
+        //[HttpPost("user-register")]
         //public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequestDTO request)
         //{
         //    if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
-        //    {
         //        return BadRequest(new { Message = "Email and Password are required" });
-        //    }
 
         //    var result = await _parentService.RegisterUserAsync(request);
-
-        //    if (!result.IsSuccess)
-        //    {
-        //        return BadRequest(result);
-        //    }
-
-        //    return Ok(result);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
         //}
 
-        //[HttpPost("create-parent")]
+        //[HttpPost]
         //public async Task<IActionResult> CreateParent([FromBody] AddParentRequestDTO request)
         //{
         //    if (request == null)
-        //    {
-        //        return BadRequest(new { Message = "User ID are required" });
-        //    }
+        //        return BadRequest(new { Message = "User ID is required" });
+
         //    var result = await _parentService.CreateParentAsync(request);
-        //    if (!result.IsSuccess)
-        //    {
-        //        return BadRequest(result);
-        //    }
-        //    return Ok(result);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
         //}
 
-        //[HttpGet("get-all-parents")]
-        //public async Task<IActionResult> GetAllParents()
-        //{
-        //    var result = await _parentService.GetAllParentsAsync();
-        //    if (!result.IsSuccess)
-        //    {
-        //        return BadRequest(result);
-        //    }
-        //    return Ok(result);
-        //}
-
-        [HttpPost("update-relationship-by-parent-id")]
+        [HttpPatch("relationship")]
         public async Task<IActionResult> UpdateRelationshipByParentId([FromBody] UpdateRelationshipByParentId request)
         {
             if (request == null || request.ParentId == Guid.Empty)
-            {
                 return BadRequest(new { Message = "Parent ID is required" });
-            }
+
             var result = await _parentService.UpdateRelationshipByParentIdAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpDelete("soft-delete-by-parent-id")]
-        public async Task<IActionResult> SoftDeleteByParentId([FromBody] Guid parentId)
+        [HttpDelete("soft-delete")]
+        public async Task<IActionResult> SoftDeleteByParentId([FromBody] List<Guid> ids)
         {
-            if (parentId == Guid.Empty)
-            {
+            if (ids == null || !ids.Any())
                 return BadRequest(new { Message = "Parent ID is required" });
-            }
-            var result = await _parentService.SoftDeleteByParentIdAsync(parentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
+
+            var result = await _parentService.SoftDeleteByParentIdListAsync(ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("restore-parents")]
+        public async Task<IActionResult> RestoreParents([FromBody] List<Guid> ids)
+        {
+            var result = await _parentService.RestoreParentRangeAsync(ids, null);
             return Ok(result);
         }
 
-        [HttpPost("create-parent-medication-delivery")]
+        [HttpPost("medication-deliveries")]
         public async Task<IActionResult> CreateParentMedicationDelivery([FromBody] CreateParentMedicationDeliveryRequestDTO request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
             var result = await _ParentMedicationDeliveryService.CreateAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("update-parent-medication-delivery")]
+        [HttpPut("medication-deliveries")]
         public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
             if (request.QuantityDelivered <= 0)
                 return BadRequest("Số lượng phải lớn hơn 0");
+
             var result = await _ParentMedicationDeliveryService.UpdateAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-all-parent-medication-delivery")]
+        [HttpGet("medication-deliveries")]
         public async Task<IActionResult> GetAllParentMedicationDelivery()
         {
             var result = await _ParentMedicationDeliveryService.GetAllAsync();
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-all-parent-medication-delivery-by-parent-id/{parentId}")]
+        [HttpGet("medication-deliveries/by-parent/{parentId}")]
         public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
         {
             if (parentId == Guid.Empty)
-            {
                 return BadRequest(new { Message = "Parent ID is required" });
-            }
+
             var result = await _ParentMedicationDeliveryService.GetAllParentMedicationDeliveryByParentIdAsync(parentId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-        [HttpGet("get-parent-medication-delivery-by-id/{id}")]
+
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
+        {
+            var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+
+        [HttpGet("medication-deliveries/{id}")]
         public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 return BadRequest(new { Message = "ID is required" });
-            }
+
             var result = await _ParentMedicationDeliveryService.GetByIdAsync(id);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("accept-delivery")]
-        public async Task<IActionResult> AcceptDelivery(Guid parentMedicationDeliveryid, Guid receiverId)
+        [HttpPost("medication-deliveries/update-status")]
+        public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
         {
-            if (parentMedicationDeliveryid == Guid.Empty || receiverId == Guid.Empty)
-            {
-                return BadRequest(new { Message = "Parent Medication Delivery ID and Received By are required" });
-            }
-            var result = await _ParentMedicationDeliveryService.AcptDelivery(parentMedicationDeliveryid, receiverId);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
+                return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
+
+            var result = await _ParentMedicationDeliveryService.UpdateStatus(parentMedicationDeliveryid, status);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+
     }
 }

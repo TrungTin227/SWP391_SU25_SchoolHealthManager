@@ -8,5 +8,6 @@ namespace Repositories.Interfaces
 {
     public interface INurseProfileRepository : IGenericRepository<NurseProfile, Guid>
     {
+        Task<NurseProfile?> GetByUserIdAsync(Guid userId);
     }
 }

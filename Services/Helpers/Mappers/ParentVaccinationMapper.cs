@@ -86,8 +86,8 @@ namespace Services.Helpers.Mappers
             return new VaccinationHistoryRecordDTO
             {
                 RecordId = record.Id,
-                VaccineName = record.VaccineType?.Name ?? "",
-                CampaignName = record.Schedule?.Campaign?.Name ?? "",
+                VaccineName = record.SessionStudent.VaccinationSchedule.VaccinationType?.Name ?? "", 
+                CampaignName = record.SessionStudent.VaccinationSchedule.Campaign?.Name ?? "", 
                 VaccinatedAt = record.VaccinatedAt,
                 VaccinatedBy = record.VaccinatedBy?.FullName ?? "",
                 ReactionSeverity = record.ReactionSeverity,
@@ -117,6 +117,28 @@ namespace Services.Helpers.Mappers
                 ParentConsentStatus.Approved => ParentActionStatus.Approved,
                 _ => ParentActionStatus.Completed
             };
+        }
+
+        public static ParentVaccinationRespondDTO ToDTO(ParentVaccinationRecord entity)
+        {
+            if (entity == null) return null;
+
+            return new ParentVaccinationRespondDTO
+            {
+                Id = entity.Id,
+                StudentId = entity.StudentId,
+                ParentUserId = entity.ParentUserId,
+                VaccineTypeId = entity.VaccineTypeId,
+                DoseNumber = entity.DoseNumber,
+                AdministeredAt = entity.AdministeredAt
+            };
+        }
+
+        public static List<ParentVaccinationRespondDTO> ToDTOList(List<ParentVaccinationRecord> entities)
+        {
+            if (entities == null) return new List<ParentVaccinationRespondDTO>();
+
+            return entities.Select(ToDTO).ToList();
         }
     }
 }

@@ -22,7 +22,5 @@ namespace BusinessObjects
 
         // Quản lý học sinh thông qua bảng trung gian
         public virtual ICollection<SessionStudent> SessionStudents { get; set; } = new List<SessionStudent>();
-
-        public virtual ICollection<VaccinationRecord> Records { get; set; } = new List<VaccinationRecord>();
     }
 }

@@ -9,6 +9,7 @@ namespace Services.Implementations
     public class ParentVaccinationService : BaseService<SessionStudent, Guid>, IParentVaccinationService
     {
         private readonly IParentVaccinationRepository _parentVaccinationRepository;
+        private readonly IParentVaccinationRecordRepository _parentVaccinationRecordRepository;
         private readonly ILogger<ParentVaccinationService> _logger;
 
         public ParentVaccinationService(
@@ -17,11 +18,13 @@ namespace Services.Implementations
             IUnitOfWork unitOfWork,
             ICurrentTime currentTime,
             IParentVaccinationRepository parentVaccinationRepository,
-            ILogger<ParentVaccinationService> logger)
+            ILogger<ParentVaccinationService> logger,
+            IParentVaccinationRecordRepository parentVaccinationRecordRepository    )
             : base(repository, currentUserService, unitOfWork, currentTime)
         {
             _parentVaccinationRepository = parentVaccinationRepository;
             _logger = logger;
+            _parentVaccinationRecordRepository = parentVaccinationRecordRepository;
         }
 
         public async Task<ApiResult<PagedList<ParentVaccinationScheduleResponseDTO>>> GetVaccinationSchedulesByStatusAsync(
@@ -211,7 +214,11 @@ namespace Services.Implementations
                     .GetParentVaccinationHistoryAsync(currentUserId);
 
                 var groupedByStudent = records
-                    .GroupBy(vr => new { vr.StudentId, vr.Student.FullName, vr.Student.StudentCode })
+                    .GroupBy(vr => new {
+                        StudentId = vr.SessionStudent.StudentId, // ✅ Sửa
+                        vr.SessionStudent.Student.FullName,
+                        vr.SessionStudent.Student.StudentCode
+                    })
                     .Select(g => new ParentVaccinationHistoryResponseDTO
                     {
                         StudentId = g.Key.StudentId,
@@ -395,5 +402,327 @@ namespace Services.Implementations
                 throw new UnauthorizedAccessException("User is not authenticated.");
             return userId.Value;
         }
+
+        public async Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> CreateParentVaccinationListAsync(List<CreateParentVaccinationRequestDTO> requests)
+        {
+            var results = new List<ParentVaccinationCreateResultDTO>();
+            var currentUserId = GetCurrentUserIdOrThrow();
+
+            var parent = await _unitOfWork.ParentRepository.GetParentByUserIdAsync(currentUserId);
+            if (parent == null)
+            {
+                // Nếu parent không tồn tại thì trả về lỗi cho toàn bộ requests
+                var failedResults = requests.Select(req => new ParentVaccinationCreateResultDTO
+                {
+                    IsSuccess = false,
+                    Message = $"Phụ huynh với ID {currentUserId} không tồn tại."
+                }).ToList();
+
+                return ApiResult<List<ParentVaccinationCreateResultDTO>>.Failure(new Exception("Parent không tồn tại!!"));
+            }
+
+            foreach (var request in requests)
+            {
+                try
+                {
+                    // 1. Kiểm tra student
+                    var student = await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId);
+                    if (student == null)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Học sinh với ID {request.StudentId} không tồn tại."
+                        });
+                        continue;
+                    }
+
+                    // 2. Kiểm tra quyền sở hữu học sinh
+                    if (student.ParentUserId != currentUserId)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Bạn không có quyền tạo tiêm chủng cho học sinh {student.FullName}."
+                        });
+                        continue;
+                    }
+
+                    // 3. Kiểm tra vaccine type
+                    var vaccineType = await _unitOfWork.VaccineTypeRepository.GetByIdAsync(request.VaccineTypeId);
+                    if (vaccineType == null)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Loại vắc xin với ID {request.VaccineTypeId} không tồn tại."
+                        });
+                        continue;
+                    }
+
+                    // 4. Kiểm tra số liều hợp lệ
+                    if (request.DoseNumber < 1)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Số liều phải lớn hơn hoặc bằng 1."
+                        });
+                        continue;
+                    }
+
+                    // 5. Kiểm tra trùng tiêm
+                    var exists = await _parentVaccinationRecordRepository.AnyAsync(
+                        r => r.StudentId == request.StudentId
+                          && r.VaccineTypeId == request.VaccineTypeId
+                          && r.DoseNumber == request.DoseNumber
+                          && !r.IsDeleted
+                    );
+
+                    if (exists)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Học sinh đã được ghi nhận tiêm liều {request.DoseNumber} của loại vắc xin này."
+                        });
+                        continue;
+                    }
+
+                    // 6. Tạo entity
+                    var newRecord = new ParentVaccinationRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        StudentId = request.StudentId,
+                        ParentUserId = currentUserId,
+                        VaccineTypeId = request.VaccineTypeId,
+                        DoseNumber = request.DoseNumber,
+                        AdministeredAt = request.AdministeredAt,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        IsDeleted = false
+                    };
+
+                    await _parentVaccinationRecordRepository.AddAsync(newRecord);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = true,
+                        Data = ParentVaccinationMapper.ToDTO(newRecord),
+                        Message = "Tạo thành công"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = false,
+                        Message = $"Lỗi xử lý: {ex.Message}"
+                    });
+                }
+            }
+
+            return ApiResult<List<ParentVaccinationCreateResultDTO>>.Success(results,"Khai báo thành công !!");
+        }
+        public async Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> UpdateParentVaccinationListAsync(List<UpdateParentVaccinationRequestDTO> requests)
+        {
+            var results = new List<ParentVaccinationCreateResultDTO>();
+            var currentUserId = GetCurrentUserIdOrThrow();
+
+            foreach (var request in requests)
+            {
+                try
+                {
+                    var record = await _parentVaccinationRecordRepository.GetByIdAsync(request.Id);
+                    if (record == null || record.IsDeleted)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Không tìm thấy bản ghi có ID {request.Id}."
+                        });
+                        continue;
+                    }
+
+                    if (request.DoseNumber is < 1)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = "Số liều phải >= 1."
+                        });
+                        continue;
+                    }
+
+                    // Áp dụng cập nhật nếu có
+                    if (request.AdministeredAt.HasValue)
+                        record.AdministeredAt = request.AdministeredAt.Value;
+
+                    if (request.DoseNumber.HasValue)
+                        record.DoseNumber = request.DoseNumber.Value;
+
+                    record.UpdatedAt = DateTime.UtcNow;
+                    record.UpdatedBy = currentUserId;
+                    await _parentVaccinationRecordRepository.UpdateAsync(record);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = true,
+                        Data = ParentVaccinationMapper.ToDTO(record),
+                        Message = "Cập nhật thành công"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = false,
+                        Message = $"Lỗi xử lý: {ex.Message}"
+                    });
+                }
+            }
+
+            return ApiResult<List<ParentVaccinationCreateResultDTO>>.Success(results, "Cập nhật thành công!");
+        }
+
+        public async Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> SoftDeleteParentVaccinationRangeAsync(List<Guid> ids)
+        {
+            var results = new List<ParentVaccinationCreateResultDTO>();
+            var currentUserId = GetCurrentUserIdOrThrow();
+
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var record = await _parentVaccinationRecordRepository.GetByIdAsync(id);
+                    if (record == null || record.IsDeleted)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Không tìm thấy bản ghi hoặc đã bị xoá trước đó (ID: {id})."
+                        });
+                        continue;
+                    }
+
+                    record.IsDeleted = true;
+                    record.DeletedAt = DateTime.UtcNow;
+                    record.DeletedBy = currentUserId;
+
+                    await _parentVaccinationRecordRepository.UpdateAsync(record);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = true,
+                        Data = ParentVaccinationMapper.ToDTO(record),
+                        Message = "Xoá mềm thành công"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = false,
+                        Message = $"Lỗi: {ex.Message}"
+                    });
+                }
+            }
+
+            return ApiResult<List<ParentVaccinationCreateResultDTO>>.Success(results, "Xoá mềm hoàn tất.");
+        }
+
+        public async Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> RestoreParentVaccinationRangeAsync(List<Guid> ids)
+        {
+            var results = new List<ParentVaccinationCreateResultDTO>();
+            var currentUserId = GetCurrentUserIdOrThrow();
+
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var record = await _parentVaccinationRecordRepository.GetByIdAsync(id);
+                    if (record == null || !record.IsDeleted)
+                    {
+                        results.Add(new ParentVaccinationCreateResultDTO
+                        {
+                            IsSuccess = false,
+                            Message = $"Không tìm thấy bản ghi cần khôi phục hoặc chưa bị xoá (ID: {id})."
+                        });
+                        continue;
+                    }
+
+                    record.IsDeleted = false;
+                    record.UpdatedAt = DateTime.UtcNow;
+                    record.UpdatedBy = currentUserId;
+
+                    await  _parentVaccinationRecordRepository.UpdateAsync(record);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = true,
+                        Data = ParentVaccinationMapper.ToDTO(record),
+                        Message = "Khôi phục thành công"
+                    });
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new ParentVaccinationCreateResultDTO
+                    {
+                        IsSuccess = false,
+                        Message = $"Lỗi: {ex.Message}"
+                    });
+                }
+            }
+
+            return ApiResult<List<ParentVaccinationCreateResultDTO>>.Success(results, "Khôi phục hoàn tất.");
+        }
+
+        public async Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByStudentIdAsync(Guid studentId)
+        {
+            var student = await _unitOfWork.StudentRepository.GetByIdAsync(studentId);
+            if (student == null)
+            {
+                return ApiResult<List<ParentVaccinationRespondDTO>>.Failure(new Exception("Không tìm thấy học sinh."));
+            }
+
+            var records = await _parentVaccinationRecordRepository.GetAllAsync(
+                predicate: r => r.StudentId == studentId && !r.IsDeleted,
+                orderBy: q => q.OrderByDescending(r => r.AdministeredAt)
+            );
+
+            var result = records.Select(ParentVaccinationMapper.ToDTO).ToList();
+            if (result == null || !result.Any())
+            {
+                return ApiResult<List<ParentVaccinationRespondDTO>>.Failure(new Exception("Không tìm thấy bản ghi tiêm chủng cho học sinh này."));
+            }
+            return ApiResult<List<ParentVaccinationRespondDTO>>.Success(result,"Lấy thông tin tiêm chủng thành công!!");
+        }
+
+        public async Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByStudentCodeAsync(string studentCode)
+        {
+            var student = await _unitOfWork.StudentRepository.GetStudentByStudentCode(studentCode);
+            if (student == null)
+                return ApiResult<List<ParentVaccinationRespondDTO>>.Failure(new Exception("Không tìm thấy học sinh."));
+
+            return await GetByStudentIdAsync(student.Id);
+        }
+
+        public async Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByParentUserIdAsync(Guid parentUserId)
+        {
+            var records = await _parentVaccinationRecordRepository
+                .GetAllAsync(r => r.ParentUserId == parentUserId && !r.IsDeleted);
+
+            var result = records.Select(ParentVaccinationMapper.ToDTO).ToList();
+
+            if (result == null || !result.Any())
+                return ApiResult<List<ParentVaccinationRespondDTO>>.Failure(new Exception("Không tìm thấy bản ghi tiêm chủng cho phụ huynh này."));
+            return ApiResult<List<ParentVaccinationRespondDTO>>.Success(result, "Lấy thông tin tiêm chủng theo student code thành công!!");
+
+        }
+
     }
 }
