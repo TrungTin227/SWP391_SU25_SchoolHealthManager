@@ -15,6 +15,7 @@ namespace Services.Implementations
     public class ParentMedicationDeliveryService : BaseService<ParentMedicationDelivery, Guid>, IParentMedicationDeliveryService
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
+        private readonly ISchoolHealthEmailService _emailService;
 
         // Constructor sử dụng base service để khởi tạo repository, current user service và unit of work
         public ParentMedicationDeliveryService(
@@ -22,12 +23,14 @@ namespace Services.Implementations
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             SchoolHealthManagerDbContext dbContext,
-            ICurrentTime currentTime
+            ICurrentTime currentTime,
+            ISchoolHealthEmailService emailService
             )
         :
             base(parentMedicationDeliveryRepository, currentUserService, unitOfWork, currentTime)
         {
             _dbContext = dbContext;
+            _emailService = emailService;
         }
 
         public async Task<ApiResult<bool>> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
@@ -80,15 +83,21 @@ namespace Services.Implementations
                 if (IsWithinWorkingHours(request.DeliveredAt) == false)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không thể tạo đơn thuốc phụ huynh giao ngoài giờ làm việc."));
 
-                if (await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId) == null)
+                var student = await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId);
+
+                if (student == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
 
-                if (await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId) == null)
+                var parent = await _unitOfWork.UserRepository.GetByIdAsync(request.ParentId);
+                var isParent = await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId);
+                if (parent == null || isParent == null)
                     return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
 
                 //await _unitOfWork.ParentMedicationDeliveryRepository.CreateParentMedicationDeliveryRequestDTO(request); // gọi base service để tạo entity
                 await CreateAsync(ParentMedicationDeliveryMappings.ToParentMedicationDelivery(request)); // map DTO thành entity và gọi base service để tạo entity
 
+                if (parent != null && !string.IsNullOrWhiteSpace(parent.Email))
+                    await _emailService.SendMedicationDeliveryConfirmationAsync(parent.Email, student.FullName, request.MedicationName);
                 return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Success(request, "Tạo đơn thuốc phụ huynh giao thành công!!!"); // ví dụ
             }
             catch (Exception ex)
