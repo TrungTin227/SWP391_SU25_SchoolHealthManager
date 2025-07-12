@@ -20,22 +20,20 @@ namespace Repositories.Implementations
         #region Query Operations
 
         public async Task<PagedList<MedicalSupplyLot>> GetMedicalSupplyLotsAsync(
-            int pageNumber, int pageSize, string? searchTerm = null,
-            Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false)
+             int pageNumber, int pageSize, string? searchTerm = null,
+             Guid? medicalSupplyId = null, bool? isExpired = null, bool includeDeleted = false)
         {
             try
             {
+                var currentDate = DateTime.UtcNow.Date;
+
                 var query = _context.MedicalSupplyLots
+                    .IgnoreQueryFilters() // nếu bạn có GlobalFilter cho IsDeleted
                     .Include(msl => msl.MedicalSupply)
+                    .Where(msl => msl.IsDeleted == includeDeleted) //  lọc theo đúng yêu cầu
                     .AsQueryable();
 
-                // Apply deleted filter
-                if (!includeDeleted)
-                {
-                    query = query.Where(msl => !msl.IsDeleted);
-                }
-
-                // Apply search filter
+                // Search filter
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     var searchTermLower = searchTerm.ToLower();
@@ -44,34 +42,27 @@ namespace Repositories.Implementations
                         msl.MedicalSupply.Name.ToLower().Contains(searchTermLower));
                 }
 
-                // Apply medical supply filter
+                // Medical supply filter
                 if (medicalSupplyId.HasValue)
                 {
                     query = query.Where(msl => msl.MedicalSupplyId == medicalSupplyId.Value);
                 }
 
-                // Apply expiry filter
+                // Expiry filter
                 if (isExpired.HasValue)
                 {
-                    var currentDate = DateTime.UtcNow.Date;
                     if (isExpired.Value)
-                    {
                         query = query.Where(msl => msl.ExpirationDate.Date <= currentDate);
-                    }
                     else
-                    {
                         query = query.Where(msl => msl.ExpirationDate.Date > currentDate);
-                    }
                 }
 
-                // Apply ordering
+                // Ordering
                 query = query.OrderBy(msl => msl.ExpirationDate)
-                            .ThenBy(msl => msl.LotNumber);
+                             .ThenBy(msl => msl.LotNumber);
 
-                // Get total count
+                // Pagination
                 var totalCount = await query.CountAsync();
-
-                // Apply pagination
                 var items = await query
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)

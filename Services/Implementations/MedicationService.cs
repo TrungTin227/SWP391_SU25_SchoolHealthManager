@@ -414,17 +414,9 @@ namespace Services.Implementations
         private async Task<PagedList<Medication>> GetMedicationsFromRepository(
             int pageNumber, int pageSize, string? searchTerm, MedicationCategory? category, bool includeDeleted)
         {
-            if (includeDeleted)
             {
-                _logger.LogInformation("Fetching medications including deleted ones");
                 return await _unitOfWork.MedicationRepository.GetAllMedicationsIncludingDeletedAsync(
-                    pageNumber, pageSize, searchTerm, category);
-            }
-            else
-            {
-                _logger.LogInformation("Fetching active medications only");
-                return await _unitOfWork.MedicationRepository.GetMedicationsAsync(
-                    pageNumber, pageSize, searchTerm, category);
+                    pageNumber, pageSize, searchTerm, category, includeDeleted);
             }
         }
 
@@ -821,7 +813,7 @@ namespace Services.Implementations
 
             if (includeDeleted)
             {
-                conditions.Add("bao gồm thuốc đã xóa");
+                conditions.Add("thuốc đã xóa");
             }
 
             if (conditions.Any())

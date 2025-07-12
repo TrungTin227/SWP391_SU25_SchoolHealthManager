@@ -43,7 +43,7 @@ namespace WebAPI.Controllers
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetMedicalSupplyById(
             Guid id,
-            [FromQuery] bool includeLots = false) // Tích hợp chức năng detail
+            [FromQuery] bool includeLots = true) // Tích hợp chức năng detail
         {
             if (id == Guid.Empty)
                 return BadRequest("ID vật tư y tế không hợp lệ");

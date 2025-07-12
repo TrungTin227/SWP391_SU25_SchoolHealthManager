@@ -16,17 +16,21 @@ namespace Repositories.Implementations
         #region Query Operations
 
         public async Task<PagedList<MedicalSupply>> GetMedicalSuppliesAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm = null,
-            bool? isActive = null,
-            bool includeDeleted = false)
+                int pageNumber,
+                int pageSize,
+                string? searchTerm = null,
+                bool? isActive = null,
+                bool includeDeleted = false)
         {
-            var query = _context.MedicalSupplies.AsQueryable();
+            // Luôn bỏ qua global filter nếu có
+            var query = _context.MedicalSupplies
+                .IgnoreQueryFilters() // nếu bạn dùng Global Query Filter cho IsDeleted
+                .AsQueryable();
 
-            if (!includeDeleted)
-                query = query.Where(ms => !ms.IsDeleted);
+            // Lọc theo trạng thái đã xóa hay chưa
+            query = query.Where(ms => ms.IsDeleted == includeDeleted);
 
+            // Lọc theo từ khóa
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.Trim().ToLower();
@@ -35,12 +39,15 @@ namespace Repositories.Implementations
                     ms.Unit.ToLower().Contains(term));
             }
 
+            // Lọc theo trạng thái hoạt động
             if (isActive.HasValue)
                 query = query.Where(ms => ms.IsActive == isActive.Value);
 
+            // Sắp xếp
             query = query.OrderByDescending(ms => ms.IsActive)
                          .ThenBy(ms => ms.Name);
 
+            // Phân trang
             var totalCount = await query.CountAsync();
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
@@ -49,6 +56,7 @@ namespace Repositories.Implementations
 
             return new PagedList<MedicalSupply>(items, totalCount, pageNumber, pageSize);
         }
+
 
         public async Task<MedicalSupply?> GetByIdAsync(Guid id, bool includeDeleted = false)
         {

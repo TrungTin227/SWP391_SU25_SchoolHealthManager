@@ -18,20 +18,23 @@ namespace Repositories.Implementations
         #region Basic CRUD Methods
 
         public async Task<PagedList<MedicationLot>> GetMedicationLotsAsync(
-                int pageNumber, int pageSize, string? searchTerm = null,
-                Guid? medicationId = null, bool? isExpired = null,
-                int? daysBeforeExpiry = null, bool includeDeleted = false)
+    int pageNumber, int pageSize, string? searchTerm = null,
+    Guid? medicationId = null, bool? isExpired = null,
+    int? daysBeforeExpiry = null, bool includeDeleted = false)
         {
             var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired, daysBeforeExpiry, includeDeleted);
 
-            IQueryable<MedicationLot> query = includeDeleted
-                ? _dbContext.MedicationLots.IgnoreQueryFilters().Include(ml => ml.Medication)
-                : _dbContext.MedicationLots.Include(ml => ml.Medication);
+            IQueryable<MedicationLot> query = _dbContext.MedicationLots
+                .IgnoreQueryFilters() // Bỏ global filter nếu có
+                .Include(ml => ml.Medication);
 
-            // Áp dụng filter và ordering
+            // Áp dụng điều kiện IsDeleted rõ ràng
+            query = query.Where(ml => ml.IsDeleted == includeDeleted);
+
+            // Apply filter + sort
             var orderedQuery = query.Where(predicate)
-                                   .OrderBy(ml => ml.ExpiryDate)
-                                   .ThenBy(ml => ml.LotNumber);
+                                    .OrderBy(ml => ml.ExpiryDate)
+                                    .ThenBy(ml => ml.LotNumber);
 
             var totalCount = await orderedQuery.CountAsync();
             var items = await orderedQuery
@@ -41,6 +44,7 @@ namespace Repositories.Implementations
 
             return new PagedList<MedicationLot>(items, totalCount, pageNumber, pageSize);
         }
+
 
         public async Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId)
         {
@@ -334,14 +338,14 @@ namespace Repositories.Implementations
         #region Private Helper Methods - Predicate Builders
 
         private Expression<Func<MedicationLot, bool>> BuildMedicationLotPredicate(
-            string? searchTerm, Guid? medicationId, bool? isExpired,
-            int? daysBeforeExpiry, bool includeDeleted)
+    string? searchTerm, Guid? medicationId, bool? isExpired,
+    int? daysBeforeExpiry, bool includeDeleted)
         {
             var today = _currentTime.GetVietnamTime().Date;
 
             return ml =>
-                // Deleted filter
-                (includeDeleted || !ml.IsDeleted) &&
+                // Chính xác hóa Deleted filter
+                ml.IsDeleted == includeDeleted &&
 
                 // Search term filter
                 (string.IsNullOrWhiteSpace(searchTerm) ||
@@ -362,6 +366,7 @@ namespace Repositories.Implementations
                  (ml.ExpiryDate.Date <= today.AddDays(daysBeforeExpiry.Value) &&
                   ml.ExpiryDate.Date > today));
         }
+
 
         private Expression<Func<MedicationLot, bool>> BuildExpiringLotsPredicate(int daysBeforeExpiry)
         {
