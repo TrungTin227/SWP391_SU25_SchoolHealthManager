@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DTOs.VaccinationRecordDTOs.Request;
-using DTOs.VaccinationRecordDTOs.Response;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
