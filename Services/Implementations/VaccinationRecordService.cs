@@ -58,9 +58,10 @@ namespace Services.Implementations
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
-                    StudentId = request.StudentId,
-                    ScheduleId = request.ScheduleId,
+<<<<<<<<< Temporary merge branch 1
                     SessionStudentId = request.SessionStudentId,
+=========
+>>>>>>>>> Temporary merge branch 2
                     VaccineLotId = request.VaccineLotId,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,

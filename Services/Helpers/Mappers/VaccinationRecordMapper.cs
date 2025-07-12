@@ -11,16 +11,17 @@ namespace Services.Helpers.Mappers
                 Id = record.Id,
                 Message = "Vaccination record created successfully",
 
-                StudentId = record.StudentId,
-                StudentName = record.Student?.FullName ?? string.Empty,
-                StudentCode = record.Student?.StudentCode ?? string.Empty,
+                // Student info from SessionStudent
+                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
+                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
+                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
-                // Thông tin vắc xin
+                // Vaccine info
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
                 LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
                 ExpirationDate = record.VaccineLot?.ExpiryDate,
 
-                // Thông tin người tiêm
+                // Vaccinator info
                 VaccinatedBy = record.VaccinatedBy != null
                     ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
                     : string.Empty,
@@ -29,7 +30,7 @@ namespace Services.Helpers.Mappers
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null, // Nếu có trường Notes thì bổ sung
+                Notes = null,
                 Status = record.ReactionSeverity.ToString()
             };
         }
@@ -39,10 +40,11 @@ namespace Services.Helpers.Mappers
             return new CreateVaccinationRecordResponse
             {
                 Id = record.Id,
-                Message = string.Empty, // không cần thông báo khi chỉ xem
-                StudentId = record.StudentId,
-                StudentName = record.Student?.FullName ?? string.Empty,
-                StudentCode = record.Student?.StudentCode ?? string.Empty,
+                Message = string.Empty,
+
+                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
+                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
+                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
                 LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,

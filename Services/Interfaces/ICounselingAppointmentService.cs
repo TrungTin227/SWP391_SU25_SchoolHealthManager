@@ -19,6 +19,7 @@ namespace Services.Interfaces
         Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStaffIdAsync(Guid id);
         Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllPendingByStaffIdAsync(Guid id);
         Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStudentCodeAsync(string studentId);
+        Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStudentIdAsync(Guid studentId);
         Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
         Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> id);
 
