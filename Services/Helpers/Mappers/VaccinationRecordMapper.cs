@@ -1,4 +1,4 @@
-﻿using DTOs.VaccinationRecordDTOs.Response;
+﻿
 
 namespace Services.Helpers.Mappers
 {
