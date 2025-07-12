@@ -22,6 +22,7 @@ namespace Services.Helpers.Mappers
                 ExpirationDate = record.VaccineLot?.ExpiryDate,
 
                 // Vaccinator info
+                VaccinatedById = record.VaccinatedById,
                 VaccinatedBy = record.VaccinatedBy != null
                     ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
                     : string.Empty,
