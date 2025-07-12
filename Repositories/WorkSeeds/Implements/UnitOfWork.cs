@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using System.Data;
 
 namespace Repositories.WorkSeeds.Implements
@@ -9,7 +10,7 @@ namespace Repositories.WorkSeeds.Implements
         private readonly SchoolHealthManagerDbContext _context;
         private readonly IRepositoryFactory _repositoryFactory;
         private IDbContextTransaction? _transaction;
-
+        private ILogger<UnitOfWork> _logger;
         // Specific repositories
         private IUserRepository? _userRepository;
         private IHealProfileRepository? _healProfileRepository;
@@ -34,10 +35,11 @@ namespace Repositories.WorkSeeds.Implements
         private ICounselingAppointmentRepository? _counselingAppointmentRepository;
         private INurseProfileRepository? _nurseProfileRepository;
         private IVaccinationRecordRepository? _vaccinationRecordRepository;
-        public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory)
+        public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory, ILogger<UnitOfWork> logger)
         {
             _context = context;
             _repositoryFactory = repositoryFactory;
+            _logger = logger;
         }
 
         public IUserRepository UserRepository =>
@@ -127,11 +129,20 @@ namespace Repositories.WorkSeeds.Implements
         public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
         {
             if (_transaction == null)
-                throw new InvalidOperationException("No active transaction to rollback.");
+            {
+                // ✨ FIXED: thay vì throw, log cảnh báo và return
+                _logger.LogWarning("⚠️ No active transaction to rollback.");
+                return;
+            }
 
             try
             {
                 await _transaction.RollbackAsync(cancellationToken);
+                _logger.LogInformation("🔁 Rollback transaction thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Rollback transaction gặp lỗi.");
             }
             finally
             {
@@ -139,6 +150,7 @@ namespace Repositories.WorkSeeds.Implements
                 _transaction = null;
             }
         }
+
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

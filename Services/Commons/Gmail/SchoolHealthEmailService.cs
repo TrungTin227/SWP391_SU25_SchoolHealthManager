@@ -189,6 +189,7 @@ namespace Services.Implementations
                             
                             <p><strong>Chuẩn bị trước khi kiểm tra:</strong></p>
                             <ul>
+                                <li>Xác nhận đồng ý khám cho con em qua đường link sau: <a href=""http://localhost:5173/checkup-schedules"">link</a>
                                 <li>Cho con em ăn sáng nhẹ</li>
                                 <li>Đảm bảo con em ngủ đủ giấc</li>
                                 <li>Mang theo sổ sức khỏe (nếu có)</li>

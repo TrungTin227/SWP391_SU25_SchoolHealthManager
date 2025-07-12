@@ -6,15 +6,18 @@ namespace Services.Implementations
     public class CheckupScheduleService : BaseService<CheckupSchedule, Guid>, ICheckupScheduleService
     {
         private readonly ILogger<CheckupScheduleService> _logger;
+        private readonly ISchoolHealthEmailService _emailService;
 
         public CheckupScheduleService(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             ICurrentTime currentTime,
-            ILogger<CheckupScheduleService> logger)
+            ILogger<CheckupScheduleService> logger,
+            ISchoolHealthEmailService emailService)
             : base(unitOfWork.CheckupScheduleRepository, currentUserService, unitOfWork, currentTime)
         {
             _logger = logger;
+            _emailService = emailService;
         }
 
         public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesAsync(
@@ -99,8 +102,21 @@ namespace Services.Implementations
                 await _unitOfWork.CheckupScheduleRepository.BatchCreateSchedulesAsync(schedules);
                 await transaction.CommitAsync();
 
-                // Map với student data đã load
-                var responseDTOs = schedules.Select(schedule => MapToResponseDTOWithStudent(schedule, studentDict.GetValueOrDefault(schedule.StudentId), campaign)).ToList();
+                foreach (var schedule in schedules)
+                {
+                    var student = await _unitOfWork.StudentRepository.GetByIdAsync(schedule.StudentId);
+                    var parent = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(student.ParentUserId);
+                    if (student != null && !string.IsNullOrEmpty(parent.Email))
+                    {
+                        // Gọi hàm gửi mail
+                        await _emailService.SendHealthCheckupNotificationAsync(parent.Email, student.FullName, schedule.ScheduledAt);
+                        _logger.LogInformation("Đã gửi thông báo lịch khám cho phụ huynh {ParentEmail} của học sinh {StudentName}",
+                            parent.Email, student.FullName);
+                    }
+                }
+
+                    // Map với student data đã load
+                    var responseDTOs = schedules.Select(schedule => MapToResponseDTOWithStudent(schedule, studentDict.GetValueOrDefault(schedule.StudentId), campaign)).ToList();
 
                 return ApiResult<List<CheckupScheduleResponseDTO>>.Success(
                     responseDTOs, $"Tạo thành công {schedules.Count} lịch khám");
