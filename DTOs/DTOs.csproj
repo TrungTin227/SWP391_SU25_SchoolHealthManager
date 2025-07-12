@@ -15,8 +15,6 @@
 
     <Folder Include="SessionStudentDTOs\Responds\" />
 
-    <Folder Include="CheckUpRecordDTOs\Requests\" />
-
   </ItemGroup>
 
 </Project>

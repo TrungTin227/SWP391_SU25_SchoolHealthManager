@@ -37,7 +37,7 @@ namespace Services.Implementations
             _counselingAppointmentService = counselingAppointmentService;
             _logger = logger;
         }
-        #region create
+        #region Create Checkup Record
         public async Task<ApiResult<CheckupRecordRespondDTO>> CreateCheckupRecordAsync(CreateCheckupRecordRequestDTO request)
         {
             await _unitOfWork.BeginTransactionAsync();
@@ -135,9 +135,107 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<CheckupRecordRespondDTO>> UpdateCheckupRecordAsync(UpdateCheckupRecordRequestDTO request)
+        {
+            try
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                var result = await UpdateCheckupRecordCoreAsync(request);
+                if (!result.IsSuccess)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return result;
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+                return ApiResult<CheckupRecordRespondDTO>.Success(result.Data, "Cập nhật hồ sơ kiểm tra thành công!");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Cập nhật hồ sơ thất bại!! " + ex.Message));
+            }
+        }
+
+        public async Task<ApiResult<IReadOnlyList<CheckupRecordRespondDTO>>> UpdateCheckupRecordsAsync(IEnumerable<UpdateCheckupRecordRequestDTO> requests)
+        {
+            await _unitOfWork.BeginTransactionAsync();
+
+            var updatedList = new List<CheckupRecordRespondDTO>();
+
+            try
+            {
+                foreach (var req in requests)
+                {
+                    var singleResult = await UpdateCheckupRecordCoreAsync(req);
+
+                    if (!singleResult.IsSuccess)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return ApiResult<IReadOnlyList<CheckupRecordRespondDTO>>
+                            .Failure(new Exception($"Update failed for record {req.Id}: {singleResult.Message}"));
+                    }
+
+                    updatedList.Add(singleResult.Data);
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+                return ApiResult<IReadOnlyList<CheckupRecordRespondDTO>>
+                    .Success(updatedList, $"Đã cập nhật {updatedList.Count} hồ sơ thành công!");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return ApiResult<IReadOnlyList<CheckupRecordRespondDTO>>
+                    .Failure(new Exception("Bulk update thất bại: " + ex.Message));
+            }
+        }
+
+        public async Task<ApiResult<CheckupRecordRespondDTO>> UpdateCheckupRecordStatusAsync(Guid id, CheckupRecordStatus newStatus)
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserId();
+                if (currentUserId == null)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không xác định được người dùng hiện tại!"));
+                }
+
+                var record = await _unitOfWork.CheckupRecordRepository.GetByIdAsync(id);
+                if (record == null || record.IsDeleted)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Hồ sơ kiểm tra không tồn tại hoặc đã bị xóa!!"));
+                }
+
+                if (record.Status == CheckupRecordStatus.RequiresFollowUp && newStatus != CheckupRecordStatus.RequiresFollowUp)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không thể chuyển trạng thái hồ sơ cần tái khám sang trạng thái khác!"));
+                }
+
+                // Không cho update lùi status
+                if ((int)newStatus < (int)record.Status)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không được cập nhật lùi trạng thái hồ sơ!"));
+                }
+
+                record.Status = newStatus;
+                record.UpdatedAt = DateTime.UtcNow;
+                record.UpdatedBy = currentUserId.Value;
+
+                await _unitOfWork.CheckupRecordRepository.UpdateAsync(record);
+                await _unitOfWork.SaveChangesAsync();
+
+                var response = CheckupRecordMappings.MapToRespondDTO(record);
+                return ApiResult<CheckupRecordRespondDTO>.Success(response, "Cập nhật trạng thái hồ sơ thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Cập nhật trạng thái thất bại!! " + ex.Message));
+            }
+        }
 
         #endregion
-        #region Get
+        #region Get Checkup Record
         public async Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id)
         {
             try
@@ -245,8 +343,8 @@ namespace Services.Implementations
                 return ApiResult<CheckupRecordRespondDTO?>.Failure(new Exception("Lỗi khi lấy hồ sơ kiểm tra theo ID: " + ex.Message));
             }
         }
-#endregion
-        #region delete and restore
+        #endregion
+        #region Delete and Restore Checkup Record
         public async Task<ApiResult<bool>> SoftDeleteAsync(Guid id)
         {
             try
@@ -324,32 +422,158 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<RestoreResponseDTO> RestoreCheckupRecordAsync(Guid id, Guid? userId)
+        public async Task<ApiResult<int>> RestoreRangeAsync(List<Guid> ids)
         {
+            if (ids == null || !ids.Any())
+                return ApiResult<int>.Failure(new Exception("Danh sách ID không được để trống."));
+
             try
             {
-                var restored = await _repository.RestoreAsync(id, userId);
-                return new RestoreResponseDTO
+                var records = await _unitOfWork.CheckupRecordRepository
+                    .GetQueryable()
+                    .IgnoreQueryFilters()
+                    .Include(r => r.CounselingAppointments)
+                    .Where(r => ids.Contains(r.Id) && r.IsDeleted)
+                    .ToListAsync();
+
+                if (!records.Any())
+                    return ApiResult<int>.Failure(new Exception("Không tìm thấy hồ sơ nào phù hợp để khôi phục."));
+
+                var currentTime = _currentTime.GetVietnamTime();
+                var currentUser = _currentUserService.GetUserId() ?? Guid.Empty;
+
+                foreach (var record in records)
                 {
-                    Id = id,
-                    IsSuccess = restored,
-                    Message = restored ? "Khôi phục hồ sơ khám thành công" : "Không thể khôi phục hồ sơ khám"
-                };
+                    record.IsDeleted = false;
+                    record.DeletedAt = null;
+                    record.DeletedBy = null;
+                    record.UpdatedAt = currentTime;
+                    record.UpdatedBy = currentUser;
+
+                    foreach (var ca in record.CounselingAppointments.Where(ca => ca.IsDeleted))
+                    {
+                        ca.IsDeleted = false;
+                        ca.DeletedAt = null;
+                        ca.DeletedBy = null;
+                        ca.UpdatedAt = currentTime;
+                        ca.UpdatedBy = currentUser;
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<int>.Success(records.Count, $"Khôi phục thành công {records.Count} hồ sơ khám!");
             }
             catch (Exception ex)
             {
-                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+                return ApiResult<int>.Failure(new Exception("Lỗi khi khôi phục danh sách hồ sơ khám: " + ex.Message));
             }
         }
 
-        public async Task<List<RestoreResponseDTO>> RestoreCheckupRecordRangeAsync(List<Guid> ids, Guid? userId)
+
+        #endregion
+
+        #region Private Methods 
+        private async Task<ApiResult<CheckupRecordRespondDTO>> UpdateCheckupRecordCoreAsync(UpdateCheckupRecordRequestDTO request)
         {
-            var results = new List<RestoreResponseDTO>();
-            foreach (var id in ids)
+            var record = await _unitOfWork.CheckupRecordRepository.GetByIdAsync(request.Id);
+            if (record == null || record.IsDeleted)
             {
-                results.Add(await RestoreCheckupRecordAsync(id, userId));
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Hồ sơ không tồn tại hoặc đã bị xóa!"));
             }
-            return results;
+
+            if (record.Status == CheckupRecordStatus.Completed)
+            {
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không thể cập nhật hồ sơ đã hoàn thành!"));
+            }
+
+            if (record.Status == CheckupRecordStatus.RequiresFollowUp && request.Status != CheckupRecordStatus.RequiresFollowUp)
+            {
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không thể cập nhật hồ sơ cần tái khám sang trạng thái khác!"));
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            if (currentUserId == null)
+            {
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không xác định được người dùng hiện tại!"));
+            }
+
+            bool isUpdated = false;
+
+            if (request.HeightCm.HasValue)
+            {
+                record.HeightCm = request.HeightCm.Value;
+                isUpdated = true;
+            }
+
+            if (request.WeightKg.HasValue)
+            {
+                record.WeightKg = request.WeightKg.Value;
+                isUpdated = true;
+            }
+
+            if (request.VisionLeft.HasValue)
+            {
+                record.VisionLeft = request.VisionLeft.Value;
+                isUpdated = true;
+            }
+
+            if (request.VisionRight.HasValue)
+            {
+                record.VisionRight = request.VisionRight.Value;
+                isUpdated = true;
+            }
+
+            if (request.Hearing.HasValue)
+            {
+                record.Hearing = request.Hearing.Value;
+                isUpdated = true;
+            }
+
+            if (request.BloodPressureDiastolic.HasValue)
+            {
+                record.BloodPressureDiastolic = request.BloodPressureDiastolic.Value;
+                isUpdated = true;
+            }
+
+            if (request.ExaminedByNurseId.HasValue)
+            {
+                var isNurse = await _unitOfWork.NurseProfileRepository
+                    .AnyAsync(n => n.UserId == request.ExaminedByNurseId && !n.IsDeleted);
+
+                if (!isNurse)
+                {
+                    return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Y tá không có quyền cập nhật hồ sơ này!"));
+                }
+
+                record.ExaminedByNurseId = request.ExaminedByNurseId.Value;
+                isUpdated = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Remarks))
+            {
+                record.Remarks = request.Remarks;
+                isUpdated = true;
+            }
+
+            if (request.Status.HasValue && request.Status.Value != record.Status)
+            {
+                record.Status = request.Status.Value;
+                isUpdated = true;
+            }
+
+            if (!isUpdated)
+            {
+                return ApiResult<CheckupRecordRespondDTO>.Failure(new Exception("Không có trường nào được cập nhật!"));
+            }
+
+            record.UpdatedAt = DateTime.UtcNow;
+            record.UpdatedBy = currentUserId.Value;
+
+            await _unitOfWork.CheckupRecordRepository.UpdateAsync(record);
+
+            var response = CheckupRecordMappings.MapToRespondDTO(record);
+            return ApiResult<CheckupRecordRespondDTO>.Success(response,"Update Checkup Record thành công!!");
         }
 
         #endregion

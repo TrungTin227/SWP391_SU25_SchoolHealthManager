@@ -1,4 +1,5 @@
 ﻿using DTOs.CheckUpRecordDTOs.Requests;
+using DTOs.CheckUpRecordDTOs.Requests.DTOs.CheckUpRecordDTOs.Requests;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
@@ -23,6 +24,33 @@ namespace WebAPI.Controllers
             var result = await _checkupRecordService.CreateCheckupRecordAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        [HttpPatch]
+        public async Task<IActionResult> UpdateCheckupRecord([FromBody] UpdateCheckupRecordRequestDTO request)
+        {
+            var result = await _checkupRecordService.UpdateCheckupRecordAsync(request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPatch("bulk")]
+        public async Task<IActionResult> UpdateCheckupRecordRange([FromBody] UpdateCheckupRecordRangeRequestDTO request)
+        {
+            if (request.Records == null || !request.Records.Any())
+            {
+                return BadRequest("Danh sách hồ sơ cần cập nhật không được để trống!");
+            }
+
+            var result = await _checkupRecordService.UpdateCheckupRecordsAsync(request.Records);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPatch("status/{id}")]
+        public async Task<IActionResult> UpdateCheckupRecordStatus(Guid id, [FromQuery] CheckupRecordStatus newStatus)
+        {
+            var result = await _checkupRecordService.UpdateCheckupRecordStatusAsync(id, newStatus);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
 
         [HttpGet("staff/{staffId}")]
         public async Task<IActionResult> GetAllByStaffId(Guid staffId)
@@ -62,6 +90,13 @@ namespace WebAPI.Controllers
         public async Task<IActionResult> SoftDeleteRange([FromBody] List<Guid> ids)
         {
             var result = await _checkupRecordService.SoftDeleteRangeAsync(ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("restore")]
+        public async Task<IActionResult> RestoreRange([FromBody] List<Guid> ids)
+        {
+            var result = await _checkupRecordService.RestoreRangeAsync(ids);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
     }
