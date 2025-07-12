@@ -4,122 +4,94 @@ using Quartz.Util;
 
 namespace WebAPI.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/health-profiles")]
     public class HealthProfileController : Controller
     {
-       public readonly IHealProfileService _healProfileService;
+        private readonly IHealProfileService _healProfileService;
+
         public HealthProfileController(IHealProfileService healProfileService)
         {
             _healProfileService = healProfileService;
         }
-        [HttpPost("create")]
+
+        [HttpPost]
         public async Task<IActionResult> CreateHealthProfile([FromBody] CreateHealProfileRequestDTO request)
         {
             if (request == null)
-            {
                 return BadRequest("Request cannot be null");
-            }
+
             var result = await _healProfileService.CreateHealProfileAsync(request);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-        [HttpPost("update-healprofile-by-studentcode/{studentCode}")]
-        public async Task<IActionResult> UpdateHealthProfileById(string studentCode, [FromBody] UpdateHealProfileRequestDTO request)
+
+        [HttpPut("student/{studentCode}")]
+        public async Task<IActionResult> UpdateHealthProfileByStudentCode(string studentCode, [FromBody] UpdateHealProfileRequestDTO request)
         {
             if (request == null)
-            {
                 return BadRequest("Request cannot be null");
-            }
+
             if (studentCode.IsNullOrWhiteSpace())
-            {
                 return BadRequest("Mã học sinh không được null!!");
-            }
+
             var result = await _healProfileService.UpdateHealProfileByStudentCodeAsync(studentCode, request);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpDelete]
-        [Route("soft-delete-healprofile-by-id/{id}")]
-        public async Task<IActionResult> DeleteHealthProfileById(Guid id)
+        [HttpDelete("soft-delete-range")]
+        public async Task<IActionResult> DeleteHealthProfileById([FromBody] List<Guid> ids)
         {
-            if (id == Guid.Empty)
-            {
+            if (ids == null || !ids.Any())
                 return BadRequest("Id của hồ sơ sức khỏe không được null!!");
-            }
-            var result = await _healProfileService.SoftDeleteHealProfileAsync(id);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+
+            var result = await _healProfileService.SoftDeleteHealthProfilesAsync(ids);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        [HttpPost("restore-health-profiles")]
+        public async Task<IActionResult> RestoreHealthProfiles([FromBody] List<Guid> ids)
+        {
+            var result = await _healProfileService.RestoreHealthProfileRangeAsync(ids, null);
+            return Ok(result);
         }
 
-        [HttpGet("get-all-healprofiles-by-student-code/{code}")]
-        public async Task<IActionResult> GetAllHealProfilesByStudentId(string code)
+        [HttpGet("student/{code}")]
+        public async Task<IActionResult> GetAllHealProfilesByStudentCode(string code)
         {
             if (code.IsNullOrWhiteSpace())
-            {
                 return BadRequest("Mã học sinh không được null!!");
-            }
+
             var result = await _healProfileService.GetAllHealProfileByStudentCodeAsync(code);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-healprofile-by-id/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetHealProfileById(Guid id)
         {
             if (id == Guid.Empty)
-            {
                 return BadRequest("Id của hồ sơ sức khỏe không được null!!");
-            }
+
             var result = await _healProfileService.GetHealProfileByIdAsync(id);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("get-newest-healprofile-by-student-code/{studentcode}")]
-        public async Task<IActionResult> GetHealProfileByStudentId(string studentcode)
+        [HttpGet("student/{studentCode}/latest")]
+        public async Task<IActionResult> GetNewestHealProfileByStudentCode(string studentCode)
         {
-            if (studentcode.IsNullOrWhiteSpace())
-            {
+            if (studentCode.IsNullOrWhiteSpace())
                 return BadRequest("Mã học sinh không được null!!");
-            }
-            var result = await _healProfileService.GetNewestHealProfileByStudentCodeAsync(studentcode);
-            if (result.IsSuccess)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
+
+            var result = await _healProfileService.GetNewestHealProfileByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        //[HttpGet("get-newest-healprofile-by-parent-id/{parentId}")]
-        //public async Task<IActionResult> GetHealProfileByParentId(Guid parentId)
+        //[HttpGet("parent/{parentId}/latest")]
+        //public async Task<IActionResult> GetNewestHealProfileByParentId(Guid parentId)
         //{
         //    if (parentId == Guid.Empty)
-        //    {
         //        return BadRequest("Id của phụ huynh không được null!!");
-        //    }
+
         //    var result = await _healProfileService.GetHealProfileByParentIdAsync(parentId);
-        //    if (result.IsSuccess)
-        //    {
-        //        return Ok(result);
-        //    }
-        //    return BadRequest(result);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
         //}
     }
 }

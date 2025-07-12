@@ -1,4 +1,5 @@
 ﻿using BusinessObjects;
+using DTOs.GlobalDTO.Respond;
 using DTOs.MedicationLotDTOs.Response;
 using DTOs.StudentDTOs.Request;
 using DTOs.StudentDTOs.Response;
@@ -28,6 +29,7 @@ namespace Services.Implementations
         {
         }
 
+        #region add and update student
         public async Task<ApiResult<AddStudentRequestDTO>> AddStudentAsync(AddStudentRequestDTO addStudentRequestDTO)
         {
             try
@@ -63,6 +65,38 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<UpdateStudentRequestDTO>> UpdateStudentById(UpdateStudentRequestDTO updateStudentRequestDTO)
+        {
+            try
+            {
+
+                if (updateStudentRequestDTO.Id == Guid.Empty)
+                {
+                    return ApiResult<UpdateStudentRequestDTO>.Failure(new ArgumentNullException(nameof(updateStudentRequestDTO.Id), "ID học sinh không được để trống."));
+                }
+                var student = await _unitOfWork.StudentRepository.GetByIdAsync(updateStudentRequestDTO.Id);
+                if (student == null)
+                {
+                    return ApiResult<UpdateStudentRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + updateStudentRequestDTO.Id + " !!"));
+                }
+                student.UpdatedBy = _currentUserService.GetUserId() ?? SystemGuid;
+                student.UpdatedAt = DateTime.UtcNow;
+                var updated = await _unitOfWork.StudentRepository.UpdateStudentAsync(updateStudentRequestDTO.ToUpdatedStudent(student));
+                if (!updated)
+                {
+                    return ApiResult<UpdateStudentRequestDTO>.Failure(new Exception("Cập nhật học sinh thất bại!!"));
+                }
+                return ApiResult<UpdateStudentRequestDTO>.Success(updateStudentRequestDTO, "Cập nhật học sinh thành công!!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật thông tin học sinh");
+                return ApiResult<UpdateStudentRequestDTO>.Failure(ex);
+            }
+        }
+
+        #endregion
+        #region get student
         public async Task<ApiResult<List<Student>>> GetAllStudentsAsync()
         {
             try
@@ -138,37 +172,31 @@ namespace Services.Implementations
                 return ApiResult<GetAllStudentDTO?>.Failure(ex);
             }
         }
-
-        public async Task<ApiResult<UpdateStudentRequestDTO>> UpdateStudentById(UpdateStudentRequestDTO updateStudentRequestDTO)
+        public async Task<ApiResult<List<GetAllStudentDTO>>> GetStudentsByParentIdAsync(Guid parentId)
         {
             try
             {
-               
-                if (updateStudentRequestDTO.Id == Guid.Empty)
+                if (parentId == Guid.Empty)
                 {
-                    return ApiResult<UpdateStudentRequestDTO>.Failure(new ArgumentNullException(nameof(updateStudentRequestDTO.Id), "ID học sinh không được để trống."));
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("ID phụ huynh không được để trống."));
                 }
-                var student = await _unitOfWork.StudentRepository.GetByIdAsync(updateStudentRequestDTO.Id);
-                if (student == null)
+                var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId);
+                if (students == null || !students.Any())
                 {
-                    return ApiResult<UpdateStudentRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + updateStudentRequestDTO.Id + " !!"));
+                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("Không tìm thấy học sinh nào cho phụ huynh với ID: " + parentId + " !!"));
                 }
-                student.UpdatedBy = _currentUserService.GetUserId() ?? SystemGuid;
-                student.UpdatedAt = DateTime.UtcNow;
-                var updated = await _unitOfWork.StudentRepository.UpdateStudentAsync(updateStudentRequestDTO.ToUpdatedStudent(student));
-                if (!updated)
-                {
-                    return ApiResult<UpdateStudentRequestDTO>.Failure(new Exception("Cập nhật học sinh thất bại!!"));
-                }
-                return ApiResult<UpdateStudentRequestDTO>.Success(updateStudentRequestDTO, "Cập nhật học sinh thành công!!");
+                return ApiResult<List<GetAllStudentDTO>>.Success(students, "Lấy danh sách học sinh theo phụ huynh thành công!!");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi cập nhật thông tin học sinh");
-                return ApiResult<UpdateStudentRequestDTO>.Failure(ex);
+                _logger.LogError(ex, "Lỗi khi lấy danh sách học sinh theo ID phụ huynh");
+                return ApiResult<List<GetAllStudentDTO>>.Failure(ex);
             }
+
         }
 
+        #endregion
+        #region delete, Restore student
         public async Task<ApiResult<bool>> SoftDeleteStudentByIdAsync(Guid id)
         {
             try
@@ -203,29 +231,6 @@ namespace Services.Implementations
                 _logger.LogError(ex, "Lỗi khi xóa học sinh theo mã");
                 return ApiResult<bool>.Failure(ex);
             }
-        }
-
-        public async Task<ApiResult<List<GetAllStudentDTO>>> GetStudentsByParentIdAsync(Guid parentId)
-        {
-            try
-            {
-                if (parentId == Guid.Empty)
-                {
-                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("ID phụ huynh không được để trống."));
-                }
-                var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId);
-                if (students == null || !students.Any())
-                {
-                    return ApiResult<List<GetAllStudentDTO>>.Failure(new Exception("Không tìm thấy học sinh nào cho phụ huynh với ID: " + parentId + " !!"));
-                }
-                return ApiResult<List<GetAllStudentDTO>>.Success(students, "Lấy danh sách học sinh theo phụ huynh thành công!!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy danh sách học sinh theo ID phụ huynh");
-                return ApiResult<List<GetAllStudentDTO>>.Failure(ex);
-            }
-
         }
 
         public async Task<ApiResult<bool>> SoftDeleteStudentByIdsAsync(List<Guid> studentIds)
@@ -312,6 +317,33 @@ namespace Services.Implementations
                 return ApiResult<bool>.Failure(new Exception("Xóa danh sách học sinh thất bại: " + ex.Message));
             }
         }
+        public async Task<RestoreResponseDTO> RestoreStudentAsync(Guid id, Guid? userId)
+        {
+            try
+            {
+                var restored = await _repository.RestoreAsync(id, userId);
+                return new RestoreResponseDTO
+                {
+                    Id = id,
+                    IsSuccess = restored,
+                    Message = restored ? "Khôi phục học sinh thành công" : "Không tìm thấy hoặc không thể khôi phục học sinh"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+            }
+        }
 
+        public async Task<List<RestoreResponseDTO>> RestoreStudentRangeAsync(List<Guid> ids, Guid? userId)
+        {
+            var results = new List<RestoreResponseDTO>();
+            foreach (var id in ids)
+            {
+                results.Add(await RestoreStudentAsync(id, userId));
+            }
+            return results;
+        }
+        #endregion
     }
 }

@@ -11,10 +11,9 @@ namespace Services.Helpers.Mappers
                 Id = record.Id,
                 Message = "Vaccination record created successfully",
 
-                // Lấy thông tin học sinh qua SessionStudent
-                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
-                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
-                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
+                StudentId = record.StudentId,
+                StudentName = record.Student?.FullName ?? string.Empty,
+                StudentCode = record.Student?.StudentCode ?? string.Empty,
 
                 // Thông tin vắc xin
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
@@ -40,11 +39,10 @@ namespace Services.Helpers.Mappers
             return new CreateVaccinationRecordResponse
             {
                 Id = record.Id,
-                Message = string.Empty,
-
-                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
-                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
-                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
+                Message = string.Empty, // không cần thông báo khi chỉ xem
+                StudentId = record.StudentId,
+                StudentName = record.Student?.FullName ?? string.Empty,
+                StudentCode = record.Student?.StudentCode ?? string.Empty,
 
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
                 LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,

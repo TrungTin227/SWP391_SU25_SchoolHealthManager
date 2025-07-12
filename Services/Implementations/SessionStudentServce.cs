@@ -1,4 +1,5 @@
-﻿using DTOs.SessionStudentDTOs.Requests;
+﻿using DTOs.GlobalDTO.Respond;
+using DTOs.SessionStudentDTOs.Requests;
 using DTOs.SessionStudentDTOs.Responds;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ namespace Services.Implementations
             _schoolHealthEmailService = schoolHealthEmailService;
             _logger = logger;
         }
-
+        #region Parent Accept Vaccine
         public async Task<ApiResult<List<ParentAcptVaccineResult>>> ParentAcptVaccineAsync(ParentAcptVaccine request)
         {
             var resultList = new List<ParentAcptVaccineResult>();
@@ -128,61 +129,8 @@ namespace Services.Implementations
                 return ApiResult<List<ParentAcptVaccineResult>>.Failure(new Exception($"Lỗi hệ thống: {ex.Message}"));
             }
         }
-
-
-        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
-        {
-            try
-            {
-                // 1. Lấy toàn bộ học sinh liên quan
-                var students = await _unitOfWork.StudentRepository
-                    .GetByIdsAsync(studentIds);
-
-                // 2. Lấy toàn bộ parentId
-                var parentIds = students
-                    .Select(s => s.ParentUserId)
-                    .Distinct()
-                    .ToList();
-
-                // 3. Lấy thông tin phụ huynh theo batch
-                var parents = await _unitOfWork.UserRepository
-                    .GetByIdsAsync(parentIds);
-
-                // 4. Map phụ huynh để tra nhanh
-                var parentDict = parents.ToDictionary(p => p.Id);
-
-                // 5. Gửi email theo từng học sinh
-                foreach (var student in students)
-                {
-                    if (parentDict.TryGetValue(student.ParentUserId, out var parent))
-                    {
-                        await _schoolHealthEmailService.SendVaccinationConsentRequestAsync(parent.Email,
-                            student.FullName,
-                            vaccineName,
-                            schedule.ScheduledAt);
-                    }
-                }
-                // 4. Sau khi gửi xong email, update trạng thái trong SessionStudent
-                var consentDeadline = schedule.ScheduledAt.AddDays(-1); // ví dụ hạn chót ký là trước 1 ngày
-                await MarkParentNotificationStatusAsync(
-                    studentIds,
-                    schedule.Id,
-                    consentDeadline);
-                return ApiResult<bool>.Success(true, "Vaccination notification emails sent successfully.");
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<bool>.Failure(new Exception($"Error processing batch student notifications: {ex.Message}"));
-            }
-        }
-
-
-        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(Guid studentId, string VaccineName, VaccinationSchedule schedule)
-        {
-            return await SendVaccinationNotificationEmailToParents(new List<Guid> { studentId }, VaccineName, schedule);
-        }
-
-
+        #endregion  
+        #region Get Session Students
         public async Task<ApiResult<List<SessionStudentRespondDTO>>> GetSessionStudentsWithOptionalFilterAsync(GetSessionStudentsRequest request)
         {
             try
@@ -238,28 +186,8 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<bool>> MarkParentNotificationStatusAsync(List<Guid> studentIds, Guid vaccinationScheduleId, DateTime consentDeadline)
-        {
-            var sessionStudents = await _unitOfWork.SessionStudentRepository
-                .GetQueryable()
-                .Where(ss => studentIds.Contains(ss.StudentId) &&
-                             ss.VaccinationScheduleId == vaccinationScheduleId)
-                .ToListAsync();
-
-            var now = _currentTime.GetVietnamTime();
-
-            foreach (var ss in sessionStudents)
-            {
-                ss.ParentNotifiedAt = now;
-                ss.ConsentStatus = ParentConsentStatus.Sent;
-                ss.ConsentDeadline = consentDeadline;
-            }
-
-            await _unitOfWork.SessionStudentRepository.UpdateRangeAsync(sessionStudents);
-            await _unitOfWork.SaveChangesAsync();
-
-            return ApiResult<bool>.Success(true, "Cập nhật thời gian thông báo cho phụ huynh tiêm chủng thành công!!");
-        }
+        #endregion
+        #region update check-in time and status
 
         public async Task<ApiResult<List<SessionStudentRespondDTO>>> UpdateCheckinTimeById(UpdateSessionStudentCheckInRequest request)
         {
@@ -357,6 +285,131 @@ namespace Services.Implementations
                 return ApiResult<List<SessionStudentRespondDTO>>.Failure(new Exception($"Lỗi khi cập nhật trạng thái Session: {ex.Message}"));
             }
         }
+
+#endregion
+        #region Restore Session Student
+        public async Task<RestoreResponseDTO> RestoreSessionStudentAsync(Guid id, Guid? userId)
+        {
+            try
+            {
+                var restored = await _repository.RestoreAsync(id, userId);
+                return new RestoreResponseDTO
+                {
+                    Id = id,
+                    IsSuccess = restored,
+                    Message = restored ? "Khôi phục học sinh trong chiến dịch thành công" : "Không thể khôi phục học sinh trong chiến dịch"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new RestoreResponseDTO { Id = id, IsSuccess = false, Message = ex.Message };
+            }
+        }
+
+        public async Task<List<RestoreResponseDTO>> RestoreSessionStudentRangeAsync(List<Guid> ids, Guid? userId)
+        {
+            var results = new List<RestoreResponseDTO>();
+            foreach (var id in ids)
+            {
+                results.Add(await RestoreSessionStudentAsync(id, userId));
+            }
+            return results;
+        }
+
+        #endregion
+        #region Others Methods
+        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(List<Guid> studentIds, string vaccineName, VaccinationSchedule schedule)
+        {
+            try
+            {
+                // 1. Lấy toàn bộ học sinh liên quan
+                var students = await _unitOfWork.StudentRepository
+                    .GetByIdsAsync(studentIds);
+
+                // 2. Lấy toàn bộ parentId
+                var parentIds = students
+                    .Select(s => s.ParentUserId)
+                    .Distinct()
+                    .ToList();
+
+                // 3. Lấy thông tin phụ huynh theo batch
+                var parents = await _unitOfWork.UserRepository
+                    .GetByIdsAsync(parentIds);
+
+                // 4. Map phụ huynh để tra nhanh
+                var parentDict = parents.ToDictionary(p => p.Id);
+
+                // 5. Gửi email theo từng học sinh
+                foreach (var student in students)
+                {
+                    if (parentDict.TryGetValue(student.ParentUserId, out var parent))
+                    {
+                        await _schoolHealthEmailService.SendVaccinationConsentRequestAsync(parent.Email,
+                            student.FullName,
+                            vaccineName,
+                            schedule.ScheduledAt);
+                    }
+                }
+                // 4. Sau khi gửi xong email, update trạng thái trong SessionStudent
+                var consentDeadline = schedule.ScheduledAt.AddDays(-1); // ví dụ hạn chót ký là trước 1 ngày
+                await MarkParentNotificationStatusAsync(
+                    studentIds,
+                    schedule.Id,
+                    consentDeadline);
+                return ApiResult<bool>.Success(true, "Vaccination notification emails sent successfully.");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception($"Error processing batch student notifications: {ex.Message}"));
+            }
+        }
+        public async Task<ApiResult<bool>> SendVaccinationNotificationEmailToParents(Guid studentId, string VaccineName, VaccinationSchedule schedule)
+        {
+            return await SendVaccinationNotificationEmailToParents(new List<Guid> { studentId }, VaccineName, schedule);
+        }
+        private async Task<ApiResult<bool>> MarkParentNotificationStatusAsync(List<Guid> studentIds, Guid vaccinationScheduleId, DateTime consentDeadline)
+        {
+            try
+            {
+                if (studentIds == null || !studentIds.Any())
+                {
+                    return ApiResult<bool>.Failure(new Exception("Danh sách học sinh không được để trống!"));
+                }
+                if (vaccinationScheduleId == Guid.Empty)
+                {
+                    return ApiResult<bool>.Failure(new Exception("VaccinationScheduleId không được để trống!"));
+                }
+                if (consentDeadline == default)
+                {
+                    return ApiResult<bool>.Failure(new Exception("ConsentDeadline không được để trống!"));
+                }
+                // 1. Lấy toàn bộ SessionStudent liên quan đến danh sách học sinh và lịch tiêm chủng
+                var sessionStudents = await _unitOfWork.SessionStudentRepository
+                    .GetQueryable()
+                    .Where(ss => studentIds.Contains(ss.StudentId) &&
+                                 ss.VaccinationScheduleId == vaccinationScheduleId)
+                    .ToListAsync();
+
+                var now = _currentTime.GetVietnamTime();
+
+                foreach (var ss in sessionStudents)
+                {
+                    ss.ParentNotifiedAt = now;
+                    ss.ConsentStatus = ParentConsentStatus.Sent;
+                    ss.ConsentDeadline = consentDeadline;
+                }
+
+                await _unitOfWork.SessionStudentRepository.UpdateRangeAsync(sessionStudents);
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResult<bool>.Success(true, "Cập nhật thời gian thông báo cho phụ huynh tiêm chủng thành công!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<bool>.Failure(new Exception($"Lỗi khi cập nhật trạng thái thông báo phụ huynh: {ex.Message}"));
+            }
+        }
+        #endregion  
 
     }
 }

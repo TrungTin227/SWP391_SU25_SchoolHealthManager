@@ -8,6 +8,7 @@
             {
                 Id = Guid.NewGuid(),
                 Name = request.Name,
+                SchoolYear = request.SchoolYear,
                 Description = request.Description,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
@@ -36,6 +37,7 @@
             {
                 Id = campaign.Id,
                 Name = campaign.Name,
+                SchoolYear = campaign.SchoolYear ?? string.Empty,
                 Description = campaign.Description,
                 StartDate = campaign.StartDate,
                 EndDate = campaign.EndDate,
@@ -59,6 +61,7 @@
             {
                 Id = baseDto.Id,
                 Name = baseDto.Name,
+                SchoolYear = baseDto.SchoolYear,
                 Description = baseDto.Description,
                 StartDate = baseDto.StartDate,
                 EndDate = baseDto.EndDate,
@@ -87,7 +90,7 @@
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,
                 TotalStudents = schedule.SessionStudents?.Count ?? 0,
-                CompletedRecords = schedule.Records?.Count ?? 0
+                CompletedRecords = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Count() ?? 0 
             };
         }
 

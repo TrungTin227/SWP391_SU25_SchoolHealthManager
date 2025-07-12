@@ -4,39 +4,43 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/checkup-records")]
     public class CheckupRecordController : Controller
     {
         private readonly ICheckupRecordService _checkupRecordService;
+
         public CheckupRecordController(ICheckupRecordService checkupRecordService)
         {
             _checkupRecordService = checkupRecordService;
         }
-        [HttpPost("create-checkup-record")]
+
+        [HttpPost]
         public async Task<IActionResult> CreateCheckupRecord([FromBody] CreateCheckupRecordRequestDTO request)
         {
             if (request == null)
-            {
                 return BadRequest(new { Message = "Yêu cầu nhập dữ liệu!!" });
-            }
+
             var result = await _checkupRecordService.CreateCheckupRecordAsync(request);
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
-        [HttpGet("by-staff/{staffId}")]
+
+        [HttpGet("staff/{staffId}")]
         public async Task<IActionResult> GetAllByStaffId(Guid staffId)
         {
             var result = await _checkupRecordService.GetAllByStaffIdAsync(staffId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("by-student-code/{studentCode}")]
+        [HttpGet("by-code/{studentCode}")]
         public async Task<IActionResult> GetAllByStudentCode(string studentCode)
         {
             var result = await _checkupRecordService.GetAllByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        [HttpGet("by-id/{studentId}")]
+        public async Task<IActionResult> GetAllByStudentId(Guid studentId)
+        {
+            var result = await _checkupRecordService.GetAllByStudentIdAsync(studentId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
@@ -54,7 +58,7 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("soft-delete-range")]
+        [HttpPost("soft-delete")]
         public async Task<IActionResult> SoftDeleteRange([FromBody] List<Guid> ids)
         {
             var result = await _checkupRecordService.SoftDeleteRangeAsync(ids);

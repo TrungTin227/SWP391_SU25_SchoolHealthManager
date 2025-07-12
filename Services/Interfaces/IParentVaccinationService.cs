@@ -29,7 +29,17 @@ namespace Services.Interfaces
 
         // Thống kê tổng quan
         Task<ApiResult<ParentVaccinationSummaryDTO>> GetVaccinationSummaryAsync();
-    }
 
-    
+        Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> CreateParentVaccinationListAsync(List<CreateParentVaccinationRequestDTO> requests);
+
+        Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> UpdateParentVaccinationListAsync(List<UpdateParentVaccinationRequestDTO> requests);
+
+        Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> SoftDeleteParentVaccinationRangeAsync(List<Guid> ids);
+        Task<ApiResult<List<ParentVaccinationCreateResultDTO>>> RestoreParentVaccinationRangeAsync(List<Guid> ids);
+        Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByStudentIdAsync(Guid studentId);
+        Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByStudentCodeAsync(string studentCode);
+        Task<ApiResult<List<ParentVaccinationRespondDTO>>> GetByParentUserIdAsync(Guid parentUserId);
+
+
+    }
 }

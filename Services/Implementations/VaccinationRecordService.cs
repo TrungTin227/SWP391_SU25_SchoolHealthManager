@@ -58,6 +58,9 @@ namespace Services.Implementations
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
+                    StudentId = request.StudentId,
+                    ScheduleId = request.ScheduleId,
+                    SessionStudentId = request.SessionStudentId,
                     VaccineLotId = request.VaccineLotId,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,

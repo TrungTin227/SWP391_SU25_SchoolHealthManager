@@ -4,6 +4,7 @@
     {
         // Basic Operations
         Task<CheckupSchedule?> GetCheckupScheduleByIdAsync(Guid id);
+        Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdAsync(Guid studentId);
         Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null);
