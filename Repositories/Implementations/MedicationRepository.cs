@@ -32,18 +32,28 @@ namespace Repositories.Implementations
         }
 
         /// <summary>
-        /// Lấy danh sách medications bao gồm cả những cái đã bị soft delete (for MedicationService.GetMedicationsAsync)
+        /// Lấy danh sách medications theo điều kiện includeDeleted
         /// </summary>
-        public async Task<PagedList<Medication>> GetAllMedicationsIncludingDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null)
+        public async Task<PagedList<Medication>> GetAllMedicationsIncludingDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null, bool includeDeleted = false)
         {
-            var predicate = BuildMedicationPredicateIncludingDeleted(searchTerm, category);
+            Expression<Func<Medication, bool>> predicate;
 
-            // Sử dụng IgnoreQueryFilters để lấy cả soft deleted items
-            IQueryable<Medication> query = _dbContext.Medications.IgnoreQueryFilters();
+            if (includeDeleted)
+            {
+                // Chỉ lấy những medication đã bị xóa (IsDeleted == true)
+                predicate = BuildDeletedMedicationPredicate(searchTerm, category);
+            }
+            else
+            {
+                // Lấy những medication chưa bị xóa (IsDeleted == false)
+                predicate = BuildMedicationPredicate(searchTerm, category);
+            }
 
-            if (predicate != null)
-                query = query.Where(predicate);
+            IQueryable<Medication> query = includeDeleted
+                ? _dbContext.Medications.IgnoreQueryFilters() // Cần IgnoreQueryFilters để lấy soft deleted items
+                : _dbContext.Medications; // Dùng query filter bình thường
 
+            query = query.Where(predicate);
             query = query.Include(m => m.Lots);
             query = query.OrderBy(m => m.Name);
 
@@ -260,6 +270,7 @@ namespace Repositories.Implementations
 
         private Expression<Func<Medication, bool>> BuildMedicationPredicate(string? searchTerm, MedicationCategory? category)
         {
+            // Điều kiện cho medication chưa bị xóa (IsDeleted == false)
             return m => !m.IsDeleted &&
                        (string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Name.ToLower().Contains(searchTerm.ToLower()) ||
@@ -267,9 +278,11 @@ namespace Repositories.Implementations
                        (!category.HasValue || m.Category == category.Value);
         }
 
-        private Expression<Func<Medication, bool>> BuildMedicationPredicateIncludingDeleted(string? searchTerm, MedicationCategory? category)
+        private Expression<Func<Medication, bool>> BuildDeletedMedicationPredicate(string? searchTerm, MedicationCategory? category)
         {
-            return m => (string.IsNullOrWhiteSpace(searchTerm) ||
+            // Điều kiện cho medication đã bị xóa (IsDeleted == true)
+            return m => m.IsDeleted &&
+                       (string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Name.ToLower().Contains(searchTerm.ToLower()) ||
                         (m.DosageForm != null && m.DosageForm.ToLower().Contains(searchTerm.ToLower()))) &&
                        (!category.HasValue || m.Category == category.Value);
@@ -291,5 +304,6 @@ namespace Repositories.Implementations
         }
 
         #endregion
+
     }
 }

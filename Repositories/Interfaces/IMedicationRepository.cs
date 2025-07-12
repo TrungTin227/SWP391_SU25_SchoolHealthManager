@@ -4,7 +4,7 @@
     {
         // Specific medication business logic methods
         Task<PagedList<Medication>> GetMedicationsAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null);
-        Task<PagedList<Medication>> GetAllMedicationsIncludingDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null);
+        Task<PagedList<Medication>> GetAllMedicationsIncludingDeletedAsync(int pageNumber, int pageSize, string? searchTerm = null, MedicationCategory? category = null, bool includeDeleted = false);
 
         Task<bool> MedicationNameExistsAsync(string name, Guid? excludeId = null);
         Task<List<Medication>> GetMedicationsByCategoryAsync(MedicationCategory category);
