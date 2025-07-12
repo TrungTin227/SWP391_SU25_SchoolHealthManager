@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DTOs.VaccinationRecordDTOs.Request;
-using DTOs.VaccinationRecordDTOs.Response;
 
 namespace Services.Interfaces
 {
