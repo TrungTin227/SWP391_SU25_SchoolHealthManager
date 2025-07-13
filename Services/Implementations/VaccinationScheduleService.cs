@@ -22,18 +22,51 @@ namespace Services.Implementations
 
         #region CRUD Operations
 
+        //public async Task<ApiResult<PagedList<VaccinationScheduleResponseDTO>>> GetSchedulesAsync(
+        //    Guid? campaignId,
+        //    DateTime? startDate,
+        //    DateTime? endDate,
+        //    ScheduleStatus? status,
+        //    string? searchTerm,
+        //    int pageNumber,
+        //    int pageSize)
+        //{
+        //    try
+        //    {
+        //        var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesAsync(
+        //            campaignId,
+        //            startDate,
+        //            endDate,
+        //            status,
+        //            searchTerm,
+        //            pageNumber,
+        //            pageSize);
+
+        //        var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
+        //        return ApiResult<PagedList<VaccinationScheduleResponseDTO>>.Success(
+        //            response,
+        //            $"Lấy lịch tiêm thành công. Tổng: {response.MetaData.TotalCount}");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error retrieving filtered schedules");
+        //        return ApiResult<PagedList<VaccinationScheduleResponseDTO>>.Failure(
+        //            new Exception("Đã xảy ra lỗi khi lấy danh sách lịch tiêm"));
+        //    }
+        //}
         public async Task<ApiResult<PagedList<VaccinationScheduleResponseDTO>>> GetSchedulesAsync(
-            Guid? campaignId,
-            DateTime? startDate,
-            DateTime? endDate,
-            ScheduleStatus? status,
-            string? searchTerm,
-            int pageNumber,
-            int pageSize)
+    Guid? campaignId,
+    DateTime? startDate,
+    DateTime? endDate,
+    ScheduleStatus? status,
+    string? searchTerm,
+    int pageNumber,
+    int pageSize)
         {
             try
             {
-                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetSchedulesAsync(
+                // 🟢 Repository giờ trả về PagedList<VaccinationScheduleResponseDTO> rồi
+                var schedules = await _unitOfWork.VaccinationScheduleRepository.GetScheduleSummariesAsync(
                     campaignId,
                     startDate,
                     endDate,
@@ -42,10 +75,9 @@ namespace Services.Implementations
                     pageNumber,
                     pageSize);
 
-                var response = VaccinationScheduleMapper.ToPagedResponseDTO(schedules);
                 return ApiResult<PagedList<VaccinationScheduleResponseDTO>>.Success(
-                    response,
-                    $"Lấy lịch tiêm thành công. Tổng: {response.MetaData.TotalCount}");
+                    schedules,
+                    $"Lấy lịch tiêm thành công. Tổng: {schedules.MetaData.TotalCount}");
             }
             catch (Exception ex)
             {
@@ -54,7 +86,6 @@ namespace Services.Implementations
                     new Exception("Đã xảy ra lỗi khi lấy danh sách lịch tiêm"));
             }
         }
-
         public async Task<ApiResult<List<VaccinationScheduleResponseDTO>>> CreateSchedulesAsync(CreateVaccinationScheduleRequest request)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
