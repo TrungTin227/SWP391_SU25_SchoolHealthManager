@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DTOs.VaccinationCampaignDTOs.Response;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Repositories.Implementations
@@ -29,7 +30,7 @@ namespace Repositories.Implementations
         {
             IQueryable<VaccinationSchedule> query = _context.VaccinationSchedules
                 .Include(vs => vs.Campaign)
-                .Include(vs => vs.VaccinationType)              
+                .Include(vs => vs.VaccinationType)               
                 .Where(vs => !vs.IsDeleted);
 
             if (campaignId.HasValue)
@@ -54,6 +55,44 @@ namespace Repositories.Implementations
 
             return await PagedList<VaccinationSchedule>.ToPagedListAsync(query, pageNumber, pageSize);
         }
+
+        public async Task<PagedList<VaccinationScheduleResponseDTO>> GetScheduleSummariesAsync(
+                Guid? campaignId,
+                DateTime? startDate,
+                DateTime? endDate,
+                ScheduleStatus? status,
+                string? searchTerm,
+                int pageNumber,
+                int pageSize)
+        {
+            IQueryable<VaccinationScheduleResponseDTO> query = _context.VaccinationSchedules
+                .Where(vs => !vs.IsDeleted)
+                .Where(vs => !campaignId.HasValue || vs.CampaignId == campaignId.Value)
+                .Where(vs => !startDate.HasValue || vs.ScheduledAt >= startDate.Value)
+                .Where(vs => !endDate.HasValue || vs.ScheduledAt <= endDate.Value)
+                .Where(vs => !status.HasValue || vs.ScheduleStatus == status.Value)
+                .Where(vs =>
+                    string.IsNullOrEmpty(searchTerm) ||
+                    vs.Campaign.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                    vs.VaccinationType.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                    vs.VaccinationType.Code.ToLower().Contains(searchTerm.ToLower()))
+                .OrderBy(vs => vs.ScheduledAt)
+                .ThenBy(vs => vs.Campaign.Name)
+                .Select(vs => new VaccinationScheduleResponseDTO
+                {
+                    Id = vs.Id,
+                    VaccinationTypeName = vs.VaccinationType.Name,
+                    ScheduledAt = vs.ScheduledAt,
+                    ScheduleStatus = vs.ScheduleStatus,
+                    TotalStudents = vs.SessionStudents.Count,
+                    CompletedRecords = vs.SessionStudents
+                        .SelectMany(ss => ss.VaccinationRecords)
+                        .Count(r => r.AdministeredDate != default)
+                });
+
+            return await PagedList<VaccinationScheduleResponseDTO>.ToPagedListAsync(query, pageNumber, pageSize);
+        }
+
 
         //  DETAIL VIEW - Sử dụng AsSplitQuery() và include đầy đủ
         public async Task<VaccinationSchedule?> GetScheduleWithDetailsAsync(Guid id)

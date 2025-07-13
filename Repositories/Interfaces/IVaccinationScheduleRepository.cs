@@ -1,4 +1,6 @@
-﻿namespace Repositories.Interfaces
+﻿using DTOs.VaccinationCampaignDTOs.Response;
+
+namespace Repositories.Interfaces
 {
     public interface IVaccinationScheduleRepository : IGenericRepository<VaccinationSchedule, Guid>
     {
@@ -11,6 +13,14 @@
             string? searchTerm,
             int pageNumber,
             int pageSize);
+        Task<PagedList<VaccinationScheduleResponseDTO>> GetScheduleSummariesAsync(
+                Guid? campaignId,
+                DateTime? startDate,
+                DateTime? endDate,
+                ScheduleStatus? status,
+                string? searchTerm,
+                int pageNumber,
+                int pageSize);
         Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(
             Guid campaignId, int pageNumber, int pageSize, string? searchTerm = null);
 

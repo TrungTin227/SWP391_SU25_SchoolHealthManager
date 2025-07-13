@@ -54,7 +54,9 @@
                 Id = record.Id,
                 StudentName = record.Student?.FullName ?? string.Empty,
                 AdministeredDate = record.AdministeredDate,
-                VaccinatedByName = record.VaccinatedBy?.FirstName + " " + record.VaccinatedBy?.LastName ?? string.Empty,
+                VaccinatedByName = record.VaccinatedBy != null
+                    ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
+                    : string.Empty,
                 ReactionFollowup24h = record.ReactionFollowup24h,
                 ReactionFollowup72h = record.ReactionFollowup72h
             };
