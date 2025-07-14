@@ -9,7 +9,6 @@ namespace DTOs.VaccinationRecordDTOs.Request
     public class CreateVaccinationRecordRequest
     {
         public Guid StudentId { get; set; }
-        public Guid SessionStudentId { get; set; }
         public Guid ScheduleId { get; set; }
         public Guid VaccineLotId { get; set; }
         public DateTime AdministeredDate { get; set; }

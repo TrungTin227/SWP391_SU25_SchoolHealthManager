@@ -38,6 +38,14 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet]
+        [Route("Student")]
+        public async Task<IActionResult> GetCheckupScheduleByStudentId(Guid StudentId)
+        {
+            var results = await _checkupScheduleService.GetCheckupScheduleByStudentIdAsync(StudentId);
+            return results.IsSuccess ? Ok(results) : BadRequest(results);
+        }
+
         /// <summary>
         /// Lấy chi tiết lịch khám theo ID
         /// </summary>

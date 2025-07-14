@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DTOs.VaccinationRecordDTOs.Request;
-using DTOs.VaccinationRecordDTOs.Response;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Implementations
@@ -58,7 +57,6 @@ namespace Services.Implementations
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
-                    SessionStudentId = request.SessionStudentId,
                     VaccineLotId = request.VaccineLotId,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,

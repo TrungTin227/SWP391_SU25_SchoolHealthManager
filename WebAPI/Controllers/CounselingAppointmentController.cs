@@ -94,13 +94,23 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("student/{studentCode}")]
+        [HttpGet("code/{studentCode}")]
         public async Task<IActionResult> GetAllAppointmentsByStudentCode(string studentCode)
         {
             if (string.IsNullOrEmpty(studentCode))
                 return BadRequest(new { Message = "Yêu cầu nhập mã học sinh hợp lệ!!" });
 
             var result = await _counselingAppointmentService.GetAllByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("id/{studentId}")]
+        public async Task<IActionResult> GetAllAppointmentsByStudentId(Guid studentId)
+        {
+            //if (string.IsNullOrEmpty(studentCode))
+            //    return BadRequest(new { Message = "Yêu cầu nhập mã học sinh hợp lệ!!" });
+
+            var result = await _counselingAppointmentService.GetAllByStudentIdAsync(studentId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

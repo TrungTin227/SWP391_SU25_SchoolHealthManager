@@ -115,6 +115,14 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
+        {
+            var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+
         [HttpGet("medication-deliveries/{id}")]
         public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
         {
@@ -125,15 +133,16 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("medication-deliveries/accept")]
-        public async Task<IActionResult> AcceptDelivery(Guid parentMedicationDeliveryid, Guid receiverId)
+        [HttpPost("medication-deliveries/update-status")]
+        public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
         {
-            if (parentMedicationDeliveryid == Guid.Empty || receiverId == Guid.Empty)
-                return BadRequest(new { Message = "Parent Medication Delivery ID and Receiver ID are required" });
+            if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
+                return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
 
-            var result = await _ParentMedicationDeliveryService.AcptDelivery(parentMedicationDeliveryid, receiverId);
+            var result = await _ParentMedicationDeliveryService.UpdateStatus(parentMedicationDeliveryid, status);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
 
     }
 }

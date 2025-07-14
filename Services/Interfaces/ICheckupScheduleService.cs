@@ -8,6 +8,7 @@
             CheckupScheduleStatus? status = null, string? searchTerm = null);
 
         Task<ApiResult<CheckupScheduleDetailResponseDTO>> GetCheckupScheduleByIdAsync(Guid id);
+        Task<ApiResult<List<CheckupScheduleDetailResponseDTO>>> GetCheckupScheduleByStudentIdAsync(Guid id);
         Task<ApiResult<List<CheckupScheduleResponseDTO>>> CreateCheckupSchedulesAsync(CreateCheckupScheduleRequest request);
         Task<ApiResult<CheckupScheduleResponseDTO>> UpdateCheckupScheduleAsync(UpdateCheckupScheduleRequest request);
 

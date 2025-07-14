@@ -345,6 +345,45 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<List<CounselingAppointmentRespondDTO?>>> GetAllByStudentIdAsync(Guid studentId)
+        {
+            try
+            {
+                // 1. Tìm học sinh theo studentCode
+                var student = await _unitOfWork.StudentRepository
+                    .GetQueryable()
+                    .FirstOrDefaultAsync(s => s.Id == studentId && !s.IsDeleted);
+
+                if (student == null)
+                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(
+                        new Exception("Không tìm thấy học sinh với id đã cho."));
+
+                // 2. Lấy danh sách lịch tư vấn
+                var appointments = await _unitOfWork.CounselingAppointmentRepository
+                    .GetQueryable()
+                    .Where(a => a.StudentId == student.Id && !a.IsDeleted)
+                    .OrderByDescending(a => a.AppointmentDate)
+                    .ToListAsync();
+
+                if (appointments == null || !appointments.Any())
+                    return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(
+                        new Exception("Học sinh này chưa có lịch tư vấn nào."));
+
+                // 3. Map sang DTO
+                var responseList = appointments
+                    .Select(CounselingAppointmentMappings.MapToCounselingAppointmentResponseDTO)
+                    .ToList();
+
+                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Success(responseList, "Lấy danh sách lịch tư vấn theo id học sinh thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch tư vấn theo StudentId");
+                return ApiResult<List<CounselingAppointmentRespondDTO?>>.Failure(
+                    new Exception("Lấy lịch tư vấn thất bại: " + ex.Message));
+            }
+        }
+
         #endregion
         #region Accept, Reject, Add Note and Recommend
         public async Task<ApiResult<AddNoteAndRecommendRequestDTO>> AddNoteAndRecommend(AddNoteAndRecommendRequestDTO request)

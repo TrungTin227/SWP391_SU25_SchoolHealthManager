@@ -31,10 +31,16 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("student/{studentCode}")]
+        [HttpGet("by-code/{studentCode}")]
         public async Task<IActionResult> GetAllByStudentCode(string studentCode)
         {
             var result = await _checkupRecordService.GetAllByStudentCodeAsync(studentCode);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        [HttpGet("by-id/{studentId}")]
+        public async Task<IActionResult> GetAllByStudentId(Guid studentId)
+        {
+            var result = await _checkupRecordService.GetAllByStudentIdAsync(studentId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

@@ -16,6 +16,7 @@ namespace Services.Interfaces
         public Task<ApiResult<CheckupRecordRespondDTO?>> GetByIdAsync(Guid id);
         public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStaffIdAsync(Guid id);
         public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentCodeAsync(string studentCode);
+        public Task<ApiResult<List<CheckupRecordRespondDTO?>>> GetAllByStudentIdAsync(Guid studentId);
         public Task<ApiResult<bool>> SoftDeleteAsync(Guid id);
         public Task<ApiResult<bool>> SoftDeleteRangeAsync(List<Guid> ids);
         Task<RestoreResponseDTO> RestoreCheckupRecordAsync(Guid id, Guid? userId);

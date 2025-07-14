@@ -1,4 +1,4 @@
-﻿using DTOs.VaccinationRecordDTOs.Response;
+﻿
 
 namespace Services.Helpers.Mappers
 {
@@ -11,20 +11,27 @@ namespace Services.Helpers.Mappers
                 Id = record.Id,
                 Message = "Vaccination record created successfully",
 
-                StudentName = record.Student?.FullName ?? string.Empty,
-                StudentCode = record.Student?.StudentCode ?? string.Empty,
+                // Student info from SessionStudent
+                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
+                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
+                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
+                // Vaccine info
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
                 LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
                 ExpirationDate = record.VaccineLot?.ExpiryDate,
 
-                VaccinatedBy = $"{record.VaccinatedBy?.FirstName} {record.VaccinatedBy?.LastName}".Trim(),
+                // Vaccinator info
+                VaccinatedById = record.VaccinatedById,
+                VaccinatedBy = record.VaccinatedBy != null
+                    ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
+                    : string.Empty,
 
                 AdministeredDate = record.AdministeredDate,
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null, // Bạn có thể bổ sung nếu DTO có Notes
+                Notes = null,
                 Status = record.ReactionSeverity.ToString()
             };
         }
@@ -34,15 +41,19 @@ namespace Services.Helpers.Mappers
             return new CreateVaccinationRecordResponse
             {
                 Id = record.Id,
-                Message = string.Empty, // không cần thông báo khi chỉ xem
-                StudentName = record.Student?.FullName ?? string.Empty,
-                StudentCode = record.Student?.StudentCode ?? string.Empty,
+                Message = string.Empty,
+
+                StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
+                StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
+                StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
                 VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
                 LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
                 ExpirationDate = record.VaccineLot?.ExpiryDate,
 
-                VaccinatedBy = $"{record.VaccinatedBy?.FirstName} {record.VaccinatedBy?.LastName}".Trim(),
+                VaccinatedBy = record.VaccinatedBy != null
+                    ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
+                    : string.Empty,
 
                 AdministeredDate = record.AdministeredDate,
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
@@ -55,7 +66,7 @@ namespace Services.Helpers.Mappers
 
         public static CreateVaccinationRecordResponse MapToDetailResponseDTO(VaccinationRecord record)
         {
-            return MapToResponseDTO(record); // Tạm dùng chung nếu không có thêm trường riêng
+            return MapToResponseDTO(record);
         }
 
         public static PagedList<CreateVaccinationRecordResponse> ToPagedResponseDTO(PagedList<VaccinationRecord> source)

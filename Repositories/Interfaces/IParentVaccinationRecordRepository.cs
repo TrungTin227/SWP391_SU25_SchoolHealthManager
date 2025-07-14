@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Interfaces
 {
-    public interface INurseProfileRepository : IGenericRepository<NurseProfile, Guid>
+    public interface IParentVaccinationRecordRepository : IGenericRepository<ParentVaccinationRecord, Guid>
     {
-        Task<NurseProfile?> GetByUserIdAsync(Guid userId);
     }
 }

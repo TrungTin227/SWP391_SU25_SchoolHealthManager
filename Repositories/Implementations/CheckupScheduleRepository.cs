@@ -23,6 +23,19 @@ namespace Repositories.Implementations
                 .FirstOrDefaultAsync(cs => cs.Id == id && !cs.IsDeleted);
         }
 
+        public async Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdAsync(Guid studentId)
+        {
+            return await _context.CheckupSchedules
+                .Include(cs => cs.Campaign)
+                .Include(cs => cs.Student)
+                .Include(cs => cs.Record)
+                .Where(cs => cs.StudentId == studentId && !cs.IsDeleted)
+                .OrderByDescending(cs => cs.ScheduledAt)
+                .ToListAsync();
+        }
+
+
+
         public async Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null)

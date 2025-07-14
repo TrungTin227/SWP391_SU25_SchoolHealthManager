@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Quartz;
 
 namespace Services.Implementations
 {
@@ -301,6 +302,30 @@ namespace Services.Implementations
             {
                 _logger.LogError(ex, "Lỗi khi lấy thống kê trạng thái lịch khám");
                 return ApiResult<Dictionary<CheckupScheduleStatus, int>>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<List<CheckupScheduleDetailResponseDTO>>> GetCheckupScheduleByStudentIdAsync(Guid id)
+        {
+            try
+            {
+                var result = await _unitOfWork.CheckupScheduleRepository.GetCheckupSchedulesByStudentIdAsync(id);
+                if (result == null || !result.Any())
+                {
+                    return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Failure(
+                        new Exception("Không tìm thấy CheckupSchedule nào với Student Id: " + id));
+                }
+
+                // 👇 Map từng phần tử trong list
+                var respond = result
+                    .Select(MapToDetailResponseDTO)
+                    .ToList();
+
+                return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Success(respond, "Lấy lịch khám theo Id học sinh thành công!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Failure(new Exception("Lỗi khi lấy lịch khám theo Id học sinh!!"));
             }
         }
 

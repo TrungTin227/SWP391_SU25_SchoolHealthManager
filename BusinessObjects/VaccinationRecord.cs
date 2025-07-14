@@ -32,7 +32,7 @@ namespace BusinessObjects
         public virtual ICollection<CounselingAppointment> CounselingAppointments { get; set; }
             = new List<CounselingAppointment>();
         // Computed properties để truy cập dễ dàng
-        
+
         public virtual ICollection<HealthEvent> HealthEvents { get; set; } = new List<HealthEvent>();
 
         [NotMapped]

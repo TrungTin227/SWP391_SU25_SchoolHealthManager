@@ -21,6 +21,5 @@ namespace DTOs.CheckUpRecordDTOs.Requests
 
         [Required(ErrorMessage = "Mục đích là bắt buộc")]
         public string Purpose { get; set; }
-        public Guid? CheckupRecordId { get; set; }
     }
 }
