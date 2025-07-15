@@ -36,28 +36,29 @@ namespace Services.Implementations
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
                         new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
+                // Lấy schedule → vaccination type
+                var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.ScheduleId);
+                if (schedule == null)
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new KeyNotFoundException("Không tìm thấy lịch tiêm."));
 
-                // 1. Lấy thông tin lô thuốc
-                var lot = await _unitOfWork.MedicationLotRepository.GetByIdAsync(request.VaccineLotId);
-                if (lot == null)
+                var vaccineTypeId = schedule.VaccinationTypeId;
+
+                // Tìm lô còn hàng theo vaccineType
+                var vaccineLot = await _recordRepository.GetAvailableLotByVaccineTypeAsync(vaccineTypeId);
+                if (vaccineLot == null || vaccineLot.Quantity <= 0)
                 {
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
-                        new InvalidOperationException("Lô vaccine không tồn tại."));
+                        new InvalidOperationException("Không còn lô vaccine phù hợp còn tồn."));
                 }
 
-                // 2. Đếm số lượng đã sử dụng
-                var usedCount = lot.VaccinationRecords?.Count(v => !v.IsDeleted) ?? 0;
-                if (usedCount >= lot.Quantity)
-                {
-                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
-                        new InvalidOperationException("Lô vaccine đã hết số lượng sử dụng."));
-                }
-
-                // 3. Tạo phiếu tiêm
+                // Trừ số lượng
+                vaccineLot.Quantity -= 1;
+                await _recordRepository.UpdateVaccineLotAsync(vaccineLot);
+                // Tạo phiếu tiêm
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
-                    VaccineLotId = request.VaccineLotId,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,
                     VaccinatedAt = request.VaccinatedAt,

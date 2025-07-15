@@ -10,13 +10,11 @@ namespace DTOs.VaccinationRecordDTOs.Request
     {
         public Guid StudentId { get; set; }
         public Guid ScheduleId { get; set; }
-        public Guid VaccineLotId { get; set; }
         public DateTime AdministeredDate { get; set; }
         public Guid VaccinatedById { get; set; }
         public DateTime VaccinatedAt { get; set; }
         public bool ReactionFollowup24h { get; set; }
         public bool ReactionFollowup72h { get; set; }
         public int ReactionSeverity { get; set; }
-        public Guid VaccineTypeId { get; set; }
     }
 }
