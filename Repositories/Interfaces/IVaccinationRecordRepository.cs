@@ -17,7 +17,8 @@ namespace Repositories.Interfaces
             int pageNumber,
             int pageSize,
             string? searchTerm = null);
-
+        Task<MedicationLot?> GetAvailableLotByVaccineTypeAsync(Guid vaccineTypeId);
+        Task UpdateVaccineLotAsync(MedicationLot lot);
         Task<PagedList<VaccinationRecord>> GetRecordsByStudentAsync(Guid studentId, int pageNumber, int pageSize, string? searchTerm = null);
         Task<PagedList<VaccinationRecord>> GetRecordsByScheduleAsync(Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null);
         Task<List<VaccinationRecord>> GetRecordsByDateAsync(DateTime from, DateTime to, string? searchTerm = null);

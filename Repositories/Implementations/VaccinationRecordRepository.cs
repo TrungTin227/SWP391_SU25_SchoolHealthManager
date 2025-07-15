@@ -266,5 +266,18 @@ namespace Repositories.Implementations
 
             return await _context.SaveChangesAsync() > 0;
         }
+
+        public async Task<MedicationLot?> GetAvailableLotByVaccineTypeAsync(Guid vaccineTypeId)
+        {
+            return await _context.MedicationLots
+                .Where(l => l.VaccineTypeId == vaccineTypeId && l.Quantity > 0)
+                .OrderBy(l => l.ExpiryDate) // Ưu tiên lô gần hết hạn
+                .FirstOrDefaultAsync();
+        }
+        public async Task UpdateVaccineLotAsync(MedicationLot lot)
+        {
+            _context.MedicationLots.Update(lot);
+            await _context.SaveChangesAsync();
+        }
     }
 }
