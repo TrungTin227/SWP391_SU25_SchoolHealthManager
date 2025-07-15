@@ -8,5 +8,7 @@ namespace Repositories.Interfaces
 {
     public interface ISessionStudentRepository : IGenericRepository<SessionStudent, Guid>
     {
+        Task<SessionStudent?> GetByStudentAndScheduleAsync(Guid studentId, Guid scheduleId);
+
     }
 }

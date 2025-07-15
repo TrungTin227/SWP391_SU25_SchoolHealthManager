@@ -55,10 +55,21 @@ namespace Services.Implementations
                 // Trừ số lượng
                 vaccineLot.Quantity -= 1;
                 await _recordRepository.UpdateVaccineLotAsync(vaccineLot);
-                // Tạo phiếu tiêm
+                // Lấy SessionStudentId từ ScheduleId và StudentId
+                var sessionStudent = await _unitOfWork.SessionStudentRepository
+                    .GetByStudentAndScheduleAsync(request.StudentId, request.ScheduleId);
+
+                if (sessionStudent == null)
+                {
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new KeyNotFoundException("Không tìm thấy mối liên kết học sinh và lịch tiêm."));
+                }
+
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
+                    SessionStudentId = sessionStudent.Id, // ✅ Gán bắt buộc
+                    MedicationLotId = vaccineLot.Id,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,
                     VaccinatedAt = request.VaccinatedAt,
@@ -69,6 +80,7 @@ namespace Services.Implementations
                     UpdatedAt = _currentTime.GetCurrentTime(),
                     IsDeleted = false
                 };
+
 
                 var created = await base.CreateAsync(record);
 
