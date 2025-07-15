@@ -25,7 +25,16 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-       
+        /// <summary>
+        /// Đăng ký tài khoản người dùng chung (không gán role)
+        /// </summary>
+        [HttpPost("register-user")]
+        public async Task<IActionResult> RegisterUserAsync([FromBody] UserRegisterRequestDTO request)
+        {
+            var result = await _nurseProfileService.RegisterUserAsync(request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         /// <summary>
         /// Đăng ký tài khoản y tá và tạo hồ sơ y tá
         /// </summary>
