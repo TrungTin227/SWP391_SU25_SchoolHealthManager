@@ -10,7 +10,6 @@ namespace Services.Interfaces
 {
     public interface INurseProfileService
     {
-        Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user);
         Task<ApiResult<AddNurseRequest>> CreateNurseAsync(AddNurseRequest request);
         Task<ApiResult<List<NurseProfileRespondDTOs>>> GetAllNursesAsync();
         Task<ApiResult<bool>> UpdateNurseAsync(UpdateNurseRequest request);

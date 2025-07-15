@@ -38,18 +38,22 @@ namespace Services.Implementations
             _logger = logger;
         }
 
-        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterUserAsync(UserRegisterRequestDTO user)
+   
+
+        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterNurseUserAsync(UserRegisterRequestDTO user)
         {
             try
             {
+                // Kiểm tra email đã tồn tại chưa
                 var exists = await _nurseRepository.FindByEmailAsync(user.Email);
                 if (exists)
                 {
                     return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Email đã được sử dụng!"));
                 }
 
-                var userId = _currentUserService.GetUserId() ?? SystemGuid;
+                var currentUserId = _currentUserService.GetUserId() ?? SystemGuid;
 
+                // Tạo tài khoản người dùng
                 var newUser = new User
                 {
                     FirstName = user.FirstName,
@@ -58,9 +62,9 @@ namespace Services.Implementations
                     UserName = user.Email,
                     Gender = user.Gender,
                     CreatedAt = DateTime.UtcNow,
-                    CreatedBy = userId,
+                    CreatedBy = currentUserId,
                     UpdatedAt = DateTime.UtcNow,
-                    UpdatedBy = userId,
+                    UpdatedBy = currentUserId,
                     IsDeleted = false,
                     EmailConfirmed = false
                 };
@@ -69,46 +73,43 @@ namespace Services.Implementations
                 if (!result.Succeeded)
                 {
                     var errors = string.Join("; ", result.Errors.Select(e => e.Description));
-                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception(errors));
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception($"Tạo tài khoản thất bại: {errors}"));
                 }
 
+                // Gán quyền Nurse
                 await _userManager.AddToRoleAsync(newUser, "Nurse");
+
+                // Gửi email chào mừng
                 await _userService.SendWelcomeEmailsAsync(newUser.Email);
 
-                return ApiResult<UserRegisterRespondDTO>.Success(UserMappings.ToUserRegisterResponse(newUser), "Tạo tài khoản thành công!");
+                // Tạo hồ sơ NurseProfile
+                var nurse = new NurseProfile
+                {
+                    UserId = newUser.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserId,
+                    UpdatedBy = currentUserId
+                };
+
+                var nurseResult = await _nurseRepository.CreateNurseAsync(nurse);
+                if (nurseResult == null)
+                {
+                    return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Tạo tài khoản thành công nhưng tạo hồ sơ y tá thất bại!"));
+                }
+
+                return ApiResult<UserRegisterRespondDTO>.Success(
+                    UserMappings.ToUserRegisterResponse(newUser),
+                    "Đăng ký tài khoản y tá thành công!"
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi đăng ký tài khoản");
+                _logger.LogError(ex, "Lỗi khi đăng ký tài khoản y tá");
                 return ApiResult<UserRegisterRespondDTO>.Failure(ex);
             }
         }
 
-        public async Task<ApiResult<UserRegisterRespondDTO>> RegisterNurseUserAsync(UserRegisterRequestDTO user)
-        {
-            var registerResult = await RegisterUserAsync(user);
-            if (!registerResult.IsSuccess || registerResult.Data == null)
-            {
-                return registerResult;
-            }
-
-            var nurse = new NurseProfile
-            {
-                UserId = registerResult.Data.UserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CreatedBy = _currentUserService.GetUserId() ?? SystemGuid,
-                UpdatedBy = _currentUserService.GetUserId() ?? SystemGuid
-            };
-
-            var created = await _nurseRepository.CreateNurseAsync(nurse);
-            if (created == null)
-            {
-                return ApiResult<UserRegisterRespondDTO>.Failure(new Exception("Tạo hồ sơ y tá thất bại!"));
-            }
-
-            return registerResult;
-        }
 
         public async Task<ApiResult<AddNurseRequest>> CreateNurseAsync(AddNurseRequest request)
         {
