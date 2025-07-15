@@ -165,17 +165,21 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<VaccinationRecord?>> GetByIdAsync(Guid id)
+        public async Task<ApiResult<CreateVaccinationRecordResponse>> GetByIdAsync(Guid id)
         {
             try
             {
                 var record = await _recordRepository.GetRecordWithDetailsAsync(id);
-                return ApiResult<VaccinationRecord?>.Success(record, "Lấy phiếu tiêm thành công");
+                if (record == null)
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(new KeyNotFoundException("Không tìm thấy phiếu tiêm."));
+
+                var dto = VaccinationRecordMapper.MapToResponseDTO(record);
+                return ApiResult<CreateVaccinationRecordResponse>.Success(dto, "Lấy phiếu tiêm thành công");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy phiếu tiêm theo ID");
-                return ApiResult<VaccinationRecord?>.Failure(ex);
+                return ApiResult<CreateVaccinationRecordResponse>.Failure(ex);
             }
         }
 
@@ -183,33 +187,46 @@ namespace Services.Implementations
 
         #region Queries
 
-        public async Task<ApiResult<PagedList<VaccinationRecord>>> GetRecordsByScheduleAsync(Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
+        public async Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetRecordsByScheduleAsync(
+      Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
         {
             try
             {
                 var records = await _recordRepository.GetRecordsByScheduleAsync(scheduleId, pageNumber, pageSize, searchTerm);
-                return ApiResult<PagedList<VaccinationRecord>>.Success(records, "Lấy danh sách phiếu tiêm theo lịch thành công");
+
+                var response = VaccinationRecordMapper.ToPagedResponseDTO(records);
+
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Success(
+                    response, "Lấy danh sách phiếu tiêm theo lịch thành công"
+                );
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách phiếu tiêm theo lịch");
-                return ApiResult<PagedList<VaccinationRecord>>.Failure(ex);
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Failure(ex);
             }
         }
 
-        public async Task<ApiResult<PagedList<VaccinationRecord>>> GetRecordsByStudentAsync(Guid studentId, int pageNumber, int pageSize, string? searchTerm = null)
+        public async Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetRecordsByStudentAsync(
+            Guid studentId, int pageNumber, int pageSize, string? searchTerm = null)
         {
             try
             {
                 var records = await _recordRepository.GetRecordsByStudentAsync(studentId, pageNumber, pageSize, searchTerm);
-                return ApiResult<PagedList<VaccinationRecord>>.Success(records, "Lấy danh sách phiếu tiêm theo học sinh thành công");
+
+                var response = VaccinationRecordMapper.ToPagedResponseDTO(records);
+
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Success(
+                    response, "Lấy danh sách phiếu tiêm theo học sinh thành công"
+                );
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách phiếu tiêm theo học sinh");
-                return ApiResult<PagedList<VaccinationRecord>>.Failure(ex);
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Failure(ex);
             }
         }
+
 
         #endregion
     }
