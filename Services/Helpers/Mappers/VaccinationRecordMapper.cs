@@ -27,8 +27,6 @@
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null,
-                Status = record.ReactionSeverity.ToString()
             };
         }
 
@@ -54,8 +52,6 @@
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null,
-                Status = record.ReactionSeverity.ToString()
             };
         }
 

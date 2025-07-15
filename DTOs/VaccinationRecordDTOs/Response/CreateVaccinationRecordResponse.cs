@@ -16,7 +16,5 @@
     // Phản ứng sau tiêm
     public string? ReactionFollowup24h { get; set; }
     public string? ReactionFollowup72h { get; set; }
-    // Ghi chú & trạng thái
-    public string? Notes { get; set; }
-    public string Status { get; set; }
+    
 }
