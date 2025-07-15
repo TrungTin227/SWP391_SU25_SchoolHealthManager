@@ -37,7 +37,7 @@ namespace Repositories.Implementations
                     .ThenInclude(ss => ss.VaccinationSchedule)
                         .ThenInclude(vs => vs.VaccinationType) // ✅ VaccinationType thông qua Schedule
                 .Include(vr => vr.VaccinatedBy)
-                .Include(vr => vr.VaccineLot)
+                //.Include(vr => vr.VaccineLot)
                 .Where(vr => !vr.IsDeleted);
 
             // ✅ Filter thông qua SessionStudent relationships
@@ -97,7 +97,7 @@ namespace Repositories.Implementations
                 .Include(vr => vr.SessionStudent)
                     .ThenInclude(ss => ss.Student)
                 .Include(vr => vr.VaccinatedBy)
-                .Include(vr => vr.VaccineLot)
+                //.Include(vr => vr.VaccineLot)
                 .Where(vr => vr.SessionStudent.VaccinationScheduleId == scheduleId && !vr.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -134,7 +134,7 @@ namespace Repositories.Implementations
                 .Include(vr => vr.SessionStudent)
                     .ThenInclude(ss => ss.VaccinationSchedule)
                         .ThenInclude(vs => vs.VaccinationType)
-                .Include(vr => vr.VaccineLot)
+                //.Include(vr => vr.VaccineLot)
                 .Include(vr => vr.VaccinatedBy)
                 .Include(vr => vr.CounselingAppointments)
                 .Include(vr => vr.HealthEvents)

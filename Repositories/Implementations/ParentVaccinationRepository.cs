@@ -75,7 +75,7 @@ namespace Repositories.Implementations
                     .Include(ss => ss.VaccinationRecords)
                         .ThenInclude(vr => vr.VaccinatedBy) // ✅ Thêm VaccinatedBy
                     .Include(ss => ss.VaccinationRecords)
-                        .ThenInclude(vr => vr.VaccineLot) // ✅ Thêm VaccineLot nếu cần
+                        //.ThenInclude(vr => vr.VaccineLot) // ✅ Thêm VaccineLot nếu cần
                     .Where(ss => ss.Student.ParentUserId == parentUserId &&
                                ss.VaccinationScheduleId == scheduleId)
                     .ToListAsync();
@@ -104,7 +104,7 @@ namespace Repositories.Implementations
                         .ThenInclude(ss => ss.VaccinationSchedule)
                             .ThenInclude(vs => vs.VaccinationType) // ✅ VaccinationType thông qua Schedule
                     .Include(vr => vr.VaccinatedBy)
-                    .Include(vr => vr.VaccineLot)
+                    //.Include(vr => vr.VaccineLot)
                     .Where(vr => vr.SessionStudent.Student.ParentUserId == parentUserId) // ✅ Truy cập Student thông qua SessionStudent
                     .OrderByDescending(vr => vr.VaccinatedAt)
                     .ToListAsync();
@@ -133,7 +133,7 @@ namespace Repositories.Implementations
                         .ThenInclude(ss => ss.VaccinationSchedule)
                             .ThenInclude(vs => vs.VaccinationType)
                     .Include(vr => vr.VaccinatedBy)
-                    .Include(vr => vr.VaccineLot)
+                    //.Include(vr => vr.VaccineLot)
                     .Where(vr => vr.SessionStudent.Student.ParentUserId == parentUserId &&
                                vr.SessionStudent.StudentId == studentId) // ✅ Sử dụng SessionStudent.StudentId
                     .OrderByDescending(vr => vr.VaccinatedAt)

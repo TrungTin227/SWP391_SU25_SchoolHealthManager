@@ -91,8 +91,8 @@ namespace Services.Helpers.Mappers
                 VaccinatedAt = record.VaccinatedAt,
                 VaccinatedBy = record.VaccinatedBy?.FullName ?? "",
                 ReactionSeverity = record.ReactionSeverity,
-                VaccineLot = record.VaccineLot?.LotNumber ?? "",
-                VaccineExpiryDate = record.VaccineLot?.ExpiryDate,
+                //VaccineLot = record.VaccineLot?.LotNumber ?? "",
+                //VaccineExpiryDate = record.VaccineLot?.ExpiryDate,
             };
         }
 

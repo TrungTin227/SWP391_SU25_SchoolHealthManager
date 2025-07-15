@@ -256,10 +256,10 @@ namespace Repositories
                       .WithMany(ss => ss.VaccinationRecords)
                       .HasForeignKey(vr => vr.SessionStudentId)
                       .OnDelete(DeleteBehavior.Restrict); //  Thay đổi thành Restrict để tránh cascade conflicts
-                entity.HasOne(vr => vr.VaccineLot)
-                      .WithMany(ml => ml.VaccinationRecords)
-                      .HasForeignKey(vr => vr.VaccineLotId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                //entity.HasOne(vr => vr.VaccineLot)
+                //      .WithMany(ml => ml.VaccinationRecords)
+                //      .HasForeignKey(vr => vr.VaccineLotId)
+                //      .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(vr => vr.VaccinatedBy)
                       .WithMany()
@@ -400,8 +400,8 @@ namespace Repositories
                 entity.HasIndex(vr => vr.SessionStudentId)
                       .HasDatabaseName("IX_VaccinationRecords_SessionStudentId");
 
-                entity.HasIndex(vr => vr.VaccineLotId)
-                      .HasDatabaseName("IX_VaccinationRecords_VaccineLotId");
+                //entity.HasIndex(vr => vr.VaccineLotId)
+                //      .HasDatabaseName("IX_VaccinationRecords_VaccineLotId");
 
                 entity.HasIndex(vr => vr.VaccinatedById)
                       .HasDatabaseName("IX_VaccinationRecords_VaccinatedById");

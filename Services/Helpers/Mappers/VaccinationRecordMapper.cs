@@ -16,10 +16,10 @@ namespace Services.Helpers.Mappers
                 StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
                 StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
-                // Vaccine info
-                VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
-                LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
-                ExpirationDate = record.VaccineLot?.ExpiryDate,
+                //// Vaccine info
+                //VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
+                //LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
+                //ExpirationDate = record.VaccineLot?.ExpiryDate,
 
                 // Vaccinator info
                 VaccinatedById = record.VaccinatedById,
@@ -47,9 +47,9 @@ namespace Services.Helpers.Mappers
                 StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
                 StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
-                VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
-                LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
-                ExpirationDate = record.VaccineLot?.ExpiryDate,
+                //VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
+                //LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
+                //ExpirationDate = record.VaccineLot?.ExpiryDate,
 
                 VaccinatedBy = record.VaccinatedBy != null
                     ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()

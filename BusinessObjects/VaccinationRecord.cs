@@ -13,9 +13,9 @@ namespace BusinessObjects
         public virtual SessionStudent SessionStudent { get; set; }
 
         // Lô vắc-xin sử dụng
-        public Guid VaccineLotId { get; set; }
-        [ForeignKey(nameof(VaccineLotId))]
-        public virtual MedicationLot VaccineLot { get; set; }
+        //public Guid VaccineLotId { get; set; }
+        //[ForeignKey(nameof(VaccineLotId))]
+        //public virtual MedicationLot VaccineLot { get; set; }
 
         public DateTime AdministeredDate { get; set; }
 
