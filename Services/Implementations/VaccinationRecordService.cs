@@ -218,11 +218,29 @@ namespace Services.Implementations
 
                 return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Success(
                     response, "Lấy danh sách phiếu tiêm theo học sinh thành công"
-                );
+                );                                                          
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách phiếu tiêm theo học sinh");
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetAllAsync(int pageNumber, int pageSize)
+        {
+            try
+            {
+                var records = await _recordRepository.GetRecordsAsync(
+                    null, null, null, null, null, pageNumber, pageSize, null
+                );
+
+                var response = VaccinationRecordMapper.ToPagedResponseDTO(records);
+                return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Success(response, "Lấy toàn bộ phiếu tiêm thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy toàn bộ phiếu tiêm");
                 return ApiResult<PagedList<CreateVaccinationRecordResponse>>.Failure(ex);
             }
         }

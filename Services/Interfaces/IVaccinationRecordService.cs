@@ -19,5 +19,6 @@ namespace Services.Interfaces
 
         Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetRecordsByStudentAsync(
             Guid studentId, int pageNumber, int pageSize, string? searchTerm = null);
+        Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetAllAsync(int pageNumber, int pageSize);
     }
 }

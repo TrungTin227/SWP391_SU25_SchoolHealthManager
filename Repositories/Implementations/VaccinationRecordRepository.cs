@@ -91,21 +91,26 @@ namespace Repositories.Implementations
         }
 
         public async Task<PagedList<VaccinationRecord>> GetRecordsByScheduleAsync(
-            Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
+    Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null)
         {
             var query = _context.VaccinationRecords
+                .AsSplitQuery() // ✅ Giúp giảm vòng lặp cycle và cải thiện hiệu năng
                 .Include(vr => vr.SessionStudent)
                     .ThenInclude(ss => ss.Student)
+                .Include(vr => vr.SessionStudent)
+                    .ThenInclude(ss => ss.VaccinationSchedule)
+                        .ThenInclude(vs => vs.VaccinationType) // ✅ THÊM DÒNG NÀY
                 .Include(vr => vr.VaccinatedBy)
-                //.Include(vr => vr.VaccineLot)
                 .Where(vr => vr.SessionStudent.VaccinationScheduleId == scheduleId && !vr.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
                 query = query.Where(vr => vr.SessionStudent.Student.FullName.ToLower().Contains(searchTerm.ToLower()));
 
             query = query.OrderByDescending(vr => vr.VaccinatedAt);
+
             return await PagedList<VaccinationRecord>.ToPagedListAsync(query, pageNumber, pageSize);
         }
+
 
         public async Task<List<VaccinationRecord>> GetRecordsByDateAsync(DateTime from, DateTime to, string? searchTerm = null)
         {

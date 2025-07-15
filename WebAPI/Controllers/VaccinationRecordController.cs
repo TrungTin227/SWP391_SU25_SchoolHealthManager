@@ -61,6 +61,15 @@ namespace WebAPI.Controllers
             return BadRequest(result);
         }
 
+        [HttpGet("get-all-vaccination-records")]
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        {
+            var result = await _vaccinationRecordService.GetAllAsync(pageNumber, pageSize);
+            return Ok(result);
+        }
+
+
+
         /// <summary>
         /// Lấy chi tiết phiếu tiêm theo ID
         /// </summary>
