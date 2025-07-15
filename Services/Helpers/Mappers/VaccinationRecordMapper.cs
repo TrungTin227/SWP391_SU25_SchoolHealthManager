@@ -1,6 +1,4 @@
-﻿
-
-namespace Services.Helpers.Mappers
+﻿namespace Services.Helpers.Mappers
 {
     public static class VaccinationRecordMapper
     {
@@ -11,17 +9,15 @@ namespace Services.Helpers.Mappers
                 Id = record.Id,
                 Message = "Vaccination record created successfully",
 
-                // Student info from SessionStudent
+                // Thông tin học sinh
                 StudentId = record.SessionStudent?.StudentId ?? Guid.Empty,
                 StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
                 StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
-                //// Vaccine info
-                //VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
-                //LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
-                //ExpirationDate = record.VaccineLot?.ExpiryDate,
+                // Thông tin vắc xin: chỉ hiển thị tên loại vắc xin
+                VaccineName = record.SessionStudent?.VaccinationSchedule?.VaccinationType?.Name ?? string.Empty,
 
-                // Vaccinator info
+                // Người tiêm
                 VaccinatedById = record.VaccinatedById,
                 VaccinatedBy = record.VaccinatedBy != null
                     ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
@@ -31,8 +27,6 @@ namespace Services.Helpers.Mappers
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null,
-                Status = record.ReactionSeverity.ToString()
             };
         }
 
@@ -47,10 +41,9 @@ namespace Services.Helpers.Mappers
                 StudentName = record.SessionStudent?.Student?.FullName ?? string.Empty,
                 StudentCode = record.SessionStudent?.Student?.StudentCode ?? string.Empty,
 
-                //VaccineName = record.VaccineLot?.Medication?.Name ?? string.Empty,
-                //LotNumber = record.VaccineLot?.LotNumber ?? string.Empty,
-                //ExpirationDate = record.VaccineLot?.ExpiryDate,
+                VaccineName = record.SessionStudent?.VaccinationSchedule?.VaccinationType?.Name ?? string.Empty,
 
+                VaccinatedById = record.VaccinatedById,
                 VaccinatedBy = record.VaccinatedBy != null
                     ? $"{record.VaccinatedBy.FirstName} {record.VaccinatedBy.LastName}".Trim()
                     : string.Empty,
@@ -59,8 +52,6 @@ namespace Services.Helpers.Mappers
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
 
-                Notes = null,
-                Status = record.ReactionSeverity.ToString()
             };
         }
 

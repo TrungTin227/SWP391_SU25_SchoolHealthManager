@@ -12,9 +12,13 @@ namespace Services.Interfaces
         Task<ApiResult<CreateVaccinationRecordResponse>> CreateAsync(CreateVaccinationRecordRequest request);
         Task<ApiResult<bool>> UpdateAsync(Guid id, UpdateVaccinationRecordRequest request);
         Task<ApiResult<bool>> DeleteAsync(Guid id, Guid deletedBy);
-        Task<ApiResult<VaccinationRecord?>> GetByIdAsync(Guid id);
+        Task<ApiResult<CreateVaccinationRecordResponse>> GetByIdAsync(Guid id);
 
-        Task<ApiResult<PagedList<VaccinationRecord>>> GetRecordsByScheduleAsync(Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null);
-        Task<ApiResult<PagedList<VaccinationRecord>>> GetRecordsByStudentAsync(Guid studentId, int pageNumber, int pageSize, string? searchTerm = null);
+        Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetRecordsByScheduleAsync(
+             Guid scheduleId, int pageNumber, int pageSize, string? searchTerm = null);
+
+        Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetRecordsByStudentAsync(
+            Guid studentId, int pageNumber, int pageSize, string? searchTerm = null);
+        Task<ApiResult<PagedList<CreateVaccinationRecordResponse>>> GetAllAsync(int pageNumber, int pageSize);
     }
 }

@@ -30,5 +30,6 @@ namespace Repositories.Interfaces
         Task<bool> RestoreRecordAsync(Guid id, Guid restoredBy);
         Task<bool> BatchRestoreRecordsAsync(List<Guid> ids, Guid restoredBy);
         Task<bool> HasDuplicateEntryAsync(Guid studentId, Guid scheduleId);
+        Task<MedicationLot?> TryReserveVaccineLotAsync(Guid vaccineTypeId);
     }
 }
