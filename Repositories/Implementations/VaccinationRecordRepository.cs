@@ -279,5 +279,23 @@ namespace Repositories.Implementations
             _context.MedicationLots.Update(lot);
             await _context.SaveChangesAsync();
         }
+        public async Task<MedicationLot?> TryReserveVaccineLotAsync(Guid vaccineTypeId)
+        {
+            var lot = await _context.MedicationLots
+                .Where(l => l.VaccineTypeId == vaccineTypeId && l.Quantity > 0)
+                .OrderBy(l => l.ExpiryDate)
+                .FirstOrDefaultAsync();
+
+            if (lot == null) return null;
+
+            // Trừ số lượng và cập nhật trực tiếp
+            lot.Quantity -= 1;
+
+            _context.MedicationLots.Update(lot); // update chỉ 1 lần
+            await _context.SaveChangesAsync();
+
+            return lot;
+        }
+
     }
 }
