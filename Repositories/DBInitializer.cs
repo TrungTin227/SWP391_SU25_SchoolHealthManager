@@ -20,8 +20,11 @@ namespace Repositories
             await SeedParentsAndStudents(context, userManager);
             await SeedSchoolNurses(context, userManager);
             await SeedVaccineTypes(context);
+            await SeedVaccineLots(context);
             await SeedMedicalSupplies(context);
+            await SeedMedicalSupplyLots(context);
             await SeedMedications(context);
+            await SeedMedicationLots(context);
         }
 
         #region Role Seeding
@@ -439,7 +442,9 @@ namespace Repositories
                 CreateVaccineType("OPV", "Oral Polio Vaccine (OPV)", "EPI", now),
                 CreateVaccineType("IPV", "Inactivated Polio Vaccine (IPV)", "EPI", now),
                 CreateVaccineType("MMR", "Measles–Mumps–Rubella (MMR)", "EPI", now),
-                CreateVaccineType("JE", "Japanese Encephalitis", "EPI", now)
+                CreateVaccineType("JE", "Japanese Encephalitis", "EPI", now),
+                CreateVaccineType("MMR2", "Measles–Mumps–Rubella (2nd dose)", "EPI", now)
+
             };
         }
 
@@ -454,7 +459,9 @@ namespace Repositories
                 CreateVaccineType("Varicella", "Chickenpox (Varicella)", "Supplemental", now),
                 CreateVaccineType("HepA", "Hepatitis A", "Supplemental", now),
                 CreateVaccineType("Typhoid", "Typhoid", "Supplemental", now),
-                CreateVaccineType("COVID19", "COVID-19", "Supplemental", now)
+                CreateVaccineType("COVID19", "COVID-19", "Supplemental", now),
+                CreateVaccineType("HPV", "Human Papillomavirus (HPV)", "Supplemental", now)
+
             };
         }
 
@@ -462,7 +469,9 @@ namespace Repositories
         {
             return new List<VaccinationType>
             {
-                CreateVaccineType("Tdap", "Td/Tdap (Booster Diphtheria–Tetanus–Pertussis)", "Booster", now)
+                CreateVaccineType("Tdap", "Td/Tdap (Booster Diphtheria–Tetanus–Pertussis)", "Booster", now),
+                        CreateVaccineType("Td", "Tetanus – Diphtheria (Td)", "Booster", now)
+
             };
         }
 
@@ -481,6 +490,57 @@ namespace Repositories
                 UpdatedBy = SystemGuid,
                 IsDeleted = false
             };
+        }
+        #endregion
+
+        #region Vaccine Lots Seeding
+        private static async Task SeedVaccineLots(SchoolHealthManagerDbContext context)
+        {
+            // 1. Kiểm tra xem đã có dữ liệu lô vắc-xin chưa để tránh trùng lặp.
+            if (await context.MedicationLots.AnyAsync(l => l.Type == BusinessObjects.Common.LotType.Vaccine)) return;
+
+            // 2. Lấy tất cả các loại vắc-xin đã được seeding trước đó.
+            var vaccineTypes = await context.VaccinationTypes.ToListAsync();
+            if (!vaccineTypes.Any())
+            {
+                // Không thể tạo lô nếu chưa có loại vắc-xin nào.
+                return;
+            }
+
+            var lots = new List<MedicationLot>();
+            var random = new Random();
+            var now = DateTime.UtcNow;
+
+            foreach (var vaccineType in vaccineTypes)
+            {
+                // Tạo từ 1 đến 3 lô cho mỗi loại vắc-xin để dữ liệu đa dạng hơn.
+                int numberOfLots = random.Next(1, 4);
+                for (int i = 0; i < numberOfLots; i++)
+                {
+                    var lot = new MedicationLot
+                    {
+                        Id = Guid.NewGuid(),
+                        VaccineTypeId = vaccineType.Id, // Liên kết với loại vắc-xin
+                        Type = BusinessObjects.Common.LotType.Vaccine, // Đặt loại là Vắc-xin
+                        LotNumber = $"{vaccineType.Code}-{random.Next(10000, 99999)}", // Tạo số lô ngẫu nhiên
+                        ExpiryDate = DateTime.UtcNow.AddYears(random.Next(1, 3)), // Hạn sử dụng ngẫu nhiên trong 1-3 năm tới
+                        Quantity = random.Next(50, 200), // Số lượng ngẫu nhiên
+                        StorageLocation = "Tủ lạnh vắc-xin chính", // Vị trí lưu trữ
+
+                        // Các thuộc tính từ BaseEntity (giả sử MedicationLot kế thừa chúng)
+                        // Lưu ý: Đã loại bỏ 'IsActive' vì nó không tồn tại trong class MedicationLot
+                        CreatedAt = now,
+                        CreatedBy = SystemGuid, // Sử dụng SystemGuid của class
+                        UpdatedAt = now,
+                        UpdatedBy = SystemGuid, // Sử dụng SystemGuid của class
+                        IsDeleted = false
+                    };
+                    lots.Add(lot);
+                }
+            }
+
+            await context.MedicationLots.AddRangeAsync(lots);
+            await context.SaveChangesAsync();
         }
         #endregion
 
@@ -577,6 +637,67 @@ namespace Repositories
                 UpdatedBy = SystemGuid,
                 IsDeleted = false
             };
+        }
+        #endregion
+
+        #region Medical Supply Lots Seeding
+        private static async Task SeedMedicalSupplyLots(SchoolHealthManagerDbContext context)
+        {
+            // 1. Kiểm tra để tránh seeding lại dữ liệu đã có.
+            if (await context.MedicalSupplyLots.AnyAsync()) return;
+
+            // 2. Lấy danh sách các vật tư y tế đã được seeding.
+            var medicalSupplies = await context.MedicalSupplies.ToListAsync();
+            if (!medicalSupplies.Any())
+            {
+                // Không thể tạo lô nếu chưa có vật tư nào.
+                return;
+            }
+
+            var lots = new List<MedicalSupplyLot>();
+            var random = new Random();
+            var now = DateTime.UtcNow;
+
+            foreach (var supply in medicalSupplies)
+            {
+                // Chỉ tạo lô cho các vật tư tiêu hao, có hạn sử dụng.
+                // Thiết bị như giường, bàn, cân... thường không có "lô" theo cách này.
+                if (supply.Unit.ToLower() == "cái") // Bỏ qua các thiết bị đếm bằng "cái".
+                {
+                    continue;
+                }
+
+                // Tạo từ 1 đến 3 lô cho mỗi loại vật tư để dữ liệu đa dạng.
+                int numberOfLots = random.Next(1, 4);
+                for (int i = 0; i < numberOfLots; i++)
+                {
+                    // Tạo ngày hết hạn ngẫu nhiên trong tương lai (1-5 năm tới).
+                    var expirationDate = now.AddYears(random.Next(1, 5)).AddDays(random.Next(0, 365));
+                    // Tạo ngày sản xuất trước ngày hết hạn (1-2 năm).
+                    var manufactureDate = expirationDate.AddYears(-random.Next(1, 3));
+
+                    var lot = new MedicalSupplyLot
+                    {
+                        Id = Guid.NewGuid(),
+                        MedicalSupplyId = supply.Id, // Liên kết với vật tư y tế
+                        LotNumber = $"VTYT-{random.Next(100000, 999999)}", // Tạo số lô ngẫu nhiên
+                        ExpirationDate = expirationDate,
+                        ManufactureDate = manufactureDate,
+                        Quantity = random.Next(50, 300), // Số lượng trong lô này
+
+                        // Các thuộc tính từ BaseEntity
+                        CreatedAt = now,
+                        CreatedBy = SystemGuid,
+                        UpdatedAt = now,
+                        UpdatedBy = SystemGuid,
+                        IsDeleted = false
+                    };
+                    lots.Add(lot);
+                }
+            }
+
+            await context.MedicalSupplyLots.AddRangeAsync(lots);
+            await context.SaveChangesAsync();
         }
         #endregion
 
@@ -962,6 +1083,57 @@ namespace Repositories
                 UpdatedBy = SystemGuid,
                 IsDeleted = false
             };
+        }
+        #endregion
+
+        #region Medication Lots Seeding
+        private static async Task SeedMedicationLots(SchoolHealthManagerDbContext context)
+        {
+            // 1. Kiểm tra xem đã có dữ liệu lô thuốc (không phải vắc-xin) chưa.
+            if (await context.MedicationLots.AnyAsync(l => l.Type == BusinessObjects.Common.LotType.Medicine)) return;
+
+            // 2. Lấy tất cả các loại thuốc đã được seeding trước đó.
+            var medications = await context.Medications.ToListAsync();
+            if (!medications.Any())
+            {
+                // Không thể tạo lô nếu chưa có thuốc nào.
+                return;
+            }
+
+            var lots = new List<MedicationLot>();
+            var random = new Random();
+            var now = DateTime.UtcNow;
+
+            foreach (var medication in medications)
+            {
+                // Tạo từ 1 đến 3 lô cho mỗi loại thuốc để dữ liệu đa dạng.
+                int numberOfLots = random.Next(1, 4);
+                for (int i = 0; i < numberOfLots; i++)
+                {
+                    var lot = new MedicationLot
+                    {
+                        Id = Guid.NewGuid(),
+                        MedicationId = medication.Id, // <-- Liên kết với thuốc
+                        VaccineTypeId = null,         // <-- Không phải vắc-xin nên để null
+                        Type = BusinessObjects.Common.LotType.Medicine, // <-- Đặt loại là Thuốc
+                        LotNumber = $"MED-{random.Next(100000, 999999)}", // Tạo số lô ngẫu nhiên
+                        ExpiryDate = DateTime.UtcNow.AddMonths(random.Next(6, 48)), // Hạn sử dụng ngẫu nhiên trong 6-48 tháng
+                        Quantity = random.Next(20, 150), // Số lượng ngẫu nhiên (hộp, chai, vỉ)
+                        StorageLocation = "Tủ thuốc chính", // Vị trí lưu trữ
+
+                        // Các thuộc tính từ BaseEntity
+                        CreatedAt = now,
+                        CreatedBy = SystemGuid,
+                        UpdatedAt = now,
+                        UpdatedBy = SystemGuid,
+                        IsDeleted = false
+                    };
+                    lots.Add(lot);
+                }
+            }
+
+            await context.MedicationLots.AddRangeAsync(lots);
+            await context.SaveChangesAsync();
         }
         #endregion
 
