@@ -8,8 +8,6 @@ namespace DTOs.VaccinationRecordDTOs.Request
 {
     public class UpdateVaccinationRecordRequest
     {
-        public Guid Id { get; set; }
-        public DateTime? AdministeredDate { get; set; }
         public DateTime? VaccinatedAt { get; set; }
         public bool? ReactionFollowup24h { get; set; }
         public bool? ReactionFollowup72h { get; set; }

@@ -36,29 +36,23 @@ namespace Services.Implementations
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
                         new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
-                // Lấy schedule → vaccination type
+
                 var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.ScheduleId);
                 if (schedule == null)
+                {
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
                         new KeyNotFoundException("Không tìm thấy lịch tiêm."));
+                }
 
-                var vaccineTypeId = schedule.VaccinationTypeId;
-
-                // Tìm lô còn hàng theo vaccineType
-                var vaccineLot = await _recordRepository.GetAvailableLotByVaccineTypeAsync(vaccineTypeId);
-                if (vaccineLot == null || vaccineLot.Quantity <= 0)
+                var reservedLot = await _recordRepository.TryReserveVaccineLotAsync(schedule.VaccinationTypeId);
+                if (reservedLot == null)
                 {
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
                         new InvalidOperationException("Không còn lô vaccine phù hợp còn tồn."));
                 }
 
-                // Trừ số lượng
-                vaccineLot.Quantity -= 1;
-                await _recordRepository.UpdateVaccineLotAsync(vaccineLot);
-                // Lấy SessionStudentId từ ScheduleId và StudentId
                 var sessionStudent = await _unitOfWork.SessionStudentRepository
                     .GetByStudentAndScheduleAsync(request.StudentId, request.ScheduleId);
-
                 if (sessionStudent == null)
                 {
                     return ApiResult<CreateVaccinationRecordResponse>.Failure(
@@ -68,7 +62,7 @@ namespace Services.Implementations
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
-                    SessionStudentId = sessionStudent.Id, // ✅ Gán bắt buộc
+                    SessionStudentId = sessionStudent.Id,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,
                     VaccinatedAt = request.VaccinatedAt,
@@ -80,12 +74,10 @@ namespace Services.Implementations
                     IsDeleted = false
                 };
 
-
                 var created = await base.CreateAsync(record);
 
                 if (created != null)
                 {
-                    // Lấy lại record đầy đủ thông tin liên kết để map DTO
                     var fullRecord = await _recordRepository.GetRecordWithDetailsAsync(created.Id);
                     if (fullRecord != null)
                     {
@@ -104,6 +96,7 @@ namespace Services.Implementations
         }
 
 
+
         public async Task<ApiResult<bool>> UpdateAsync(Guid id, UpdateVaccinationRecordRequest request)
         {
             try
@@ -115,9 +108,6 @@ namespace Services.Implementations
                 }
 
                 record.UpdatedAt = _currentTime.GetCurrentTime();
-
-                if (request.AdministeredDate.HasValue)
-                    record.AdministeredDate = request.AdministeredDate.Value;
 
                 if (request.VaccinatedAt.HasValue)
                     record.VaccinatedAt = request.VaccinatedAt.Value;

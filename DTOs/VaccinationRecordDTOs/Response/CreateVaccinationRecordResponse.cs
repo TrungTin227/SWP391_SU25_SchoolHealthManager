@@ -8,8 +8,6 @@
     public string StudentCode { get; set; }
     // Thông tin vắc xin
     public string VaccineName { get; set; }
-    public string LotNumber { get; set; }
-    public DateTime? ExpirationDate { get; set; }
     // Thông tin người tiêm
     public Guid VaccinatedById { get; set; } // <-- Thêm trường này
     public string VaccinatedBy { get; set; }

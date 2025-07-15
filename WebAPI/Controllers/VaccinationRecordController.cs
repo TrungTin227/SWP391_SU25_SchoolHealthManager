@@ -40,9 +40,6 @@ namespace WebAPI.Controllers
         // [Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVaccinationRecordRequest request)
         {
-            if (id != request.Id)
-                return BadRequest("Id trên URL và body không khớp.");
-
             var result = await _vaccinationRecordService.UpdateAsync(id, request);
             if (result.IsSuccess)
                 return Ok(result);
