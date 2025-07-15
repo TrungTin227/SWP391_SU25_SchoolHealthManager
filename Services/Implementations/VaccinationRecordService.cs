@@ -69,7 +69,6 @@ namespace Services.Implementations
                 {
                     Id = Guid.NewGuid(),
                     SessionStudentId = sessionStudent.Id, // ✅ Gán bắt buộc
-                    MedicationLotId = vaccineLot.Id,
                     AdministeredDate = request.AdministeredDate,
                     VaccinatedById = request.VaccinatedById,
                     VaccinatedAt = request.VaccinatedAt,
