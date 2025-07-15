@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DTOs.NurseProfile
+namespace DTOs.NurseProfile.Response
 {
     public class NurseProfileRespondDTOs
     {
