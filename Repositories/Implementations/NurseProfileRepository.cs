@@ -13,11 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations
 {
-    public class NurseRepository : GenericRepository<NurseProfile, Guid>, INurseProfileRepository
+    public class NurseProfileRepository : GenericRepository<NurseProfile, Guid>, INurseProfileRepository
     {
         private readonly UserManager<User> _userManager;
         private readonly SchoolHealthManagerDbContext _dbcontext;
-        public NurseRepository(UserManager<User> userManager, SchoolHealthManagerDbContext dbcontext) : base(dbcontext)
+        public NurseProfileRepository(UserManager<User> userManager, SchoolHealthManagerDbContext dbcontext) : base(dbcontext)
         {
             _userManager = userManager;
             _dbcontext = dbcontext;
