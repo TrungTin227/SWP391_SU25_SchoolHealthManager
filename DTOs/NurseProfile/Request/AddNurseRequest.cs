@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace DTOs.NurseProfile.Request
 {
-    public class CreateNurseProfileRequest
+    public class AddNurseRequest
     {
+        public Guid Id { get; set; }
     }
 }
