@@ -159,5 +159,15 @@ namespace WebAPI.Controllers
         }
 
         #endregion
+        /// <summary>
+        /// Phụ huynh xem lịch tiêm chủng của con em họ
+        /// </summary>
+        [HttpGet("my-children")]
+        //[Authorize(Roles = "Parent")]
+        public async Task<IActionResult> GetSchedulesForMyChildren()
+        {
+            var result = await _scheduleService.GetSchedulesForParentAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
     }
 }

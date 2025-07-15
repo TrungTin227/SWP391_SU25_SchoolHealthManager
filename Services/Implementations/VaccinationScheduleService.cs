@@ -19,6 +19,46 @@ namespace Services.Implementations
             _logger = logger;
             _sessionStudent = sessionStudent;
         }
+        public async Task<ApiResult<List<VaccinationScheduleForParentResponseDTO>>> GetSchedulesForParentAsync()
+        {
+            try
+            {
+                var parentId = _currentUserService.GetUserId();
+                if (!parentId.HasValue)
+                    return ApiResult<List<VaccinationScheduleForParentResponseDTO>>
+                           .Failure(new UnauthorizedAccessException("Không xác định được phụ huynh"));
+
+                // 1. Lấy danh sách học sinh của phụ huynh (chỉ lấy Id)
+                var studentIds = (await _unitOfWork.StudentRepository
+                                    .GetStudentsByParentIdAsync(parentId.Value))
+                                    .Select(s => s.Id)
+                                    .ToHashSet();
+
+                if (!studentIds.Any())
+                    return ApiResult<List<VaccinationScheduleForParentResponseDTO>>
+                           .Success([], "Không có học sinh nào được liên kết");
+
+                // 2. Lấy toàn bộ lịch tiêm chứa các học sinh đó (bao gồm SessionStudents + Student + VaccinationType)
+                var schedules = await _unitOfWork.VaccinationScheduleRepository
+                                    .GetSchedulesByStudentIdsAsync(studentIds);
+
+                // 3. Duyệt SessionStudents trong từng lịch → tạo DTO cho học sinh phù hợp
+                var result = schedules
+                    .SelectMany(s => s.SessionStudents
+                                      .Where(ss => studentIds.Contains(ss.StudentId))
+                                      .Select(ss => VaccinationScheduleMapper.MapToParentDTO(ss)))
+                    .ToList();
+
+                return ApiResult<List<VaccinationScheduleForParentResponseDTO>>
+                       .Success(result, $"Lấy thành công {result.Count} lịch tiêm cho con em của phụ huynh");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy lịch tiêm cho phụ huynh");
+                return ApiResult<List<VaccinationScheduleForParentResponseDTO>>.Failure(ex);
+            }
+        }
+
 
         #region CRUD Operations
 

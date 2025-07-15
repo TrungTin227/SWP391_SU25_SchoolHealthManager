@@ -42,5 +42,7 @@
         Task<ApiResult<List<VaccinationScheduleResponseDTO>>> GetInProgressSchedulesAsync();
         Task<ApiResult<bool>> StartScheduleAsync(Guid scheduleId);
         Task<ApiResult<bool>> CompleteScheduleAsync(Guid scheduleId);
+        Task<ApiResult<List<VaccinationScheduleForParentResponseDTO>>> GetSchedulesForParentAsync();
+
     }
 }

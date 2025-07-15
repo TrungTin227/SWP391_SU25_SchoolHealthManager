@@ -55,6 +55,18 @@ namespace Repositories.Implementations
 
             return await PagedList<VaccinationSchedule>.ToPagedListAsync(query, pageNumber, pageSize);
         }
+        public async Task<List<VaccinationSchedule>> GetSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds)
+        {
+            return await _context.VaccinationSchedules
+                .AsSplitQuery()
+                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.SessionStudents.Where(ss => studentIds.Contains(ss.StudentId) && !ss.IsDeleted))
+                    .ThenInclude(ss => ss.Student)         
+                .Where(vs => !vs.IsDeleted && vs.SessionStudents.Any(ss => studentIds.Contains(ss.StudentId)))
+                .OrderBy(vs => vs.ScheduledAt)
+                .ToListAsync();
+        }
+
 
         public async Task<PagedList<VaccinationScheduleResponseDTO>> GetScheduleSummariesAsync(
                 Guid? campaignId,

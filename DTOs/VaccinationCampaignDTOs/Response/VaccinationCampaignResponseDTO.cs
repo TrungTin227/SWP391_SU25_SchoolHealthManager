@@ -37,4 +37,12 @@ namespace DTOs.VaccinationCampaignDTOs.Response
         public int TotalStudents { get; set; }
         public int CompletedRecords { get; set; }
     }
+    public class VaccinationScheduleForParentResponseDTO
+    {
+        public Guid Id { get; set; }
+        public string VaccinationTypeName { get; set; } = default!;
+        public DateTime ScheduledAt { get; set; }
+        public ScheduleStatus ScheduleStatus { get; set; }
+        public string StudentName { get; set; } = default!;
+    }
 }

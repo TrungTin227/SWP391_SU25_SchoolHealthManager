@@ -14,6 +14,17 @@ namespace Repositories.Implementations
             _currentTime = currentTime;
         }
 
+        public async Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds)
+        {
+            return await _context.CheckupSchedules
+                .AsSplitQuery()
+                .Include(cs => cs.Student)
+                .Include(cs => cs.Campaign)
+                .Where(cs => studentIds.Contains(cs.StudentId) && !cs.IsDeleted)
+                .OrderByDescending(cs => cs.ScheduledAt)
+                .ToListAsync();
+        }
+
         public async Task<CheckupSchedule?> GetCheckupScheduleByIdAsync(Guid id)
         {
             return await _context.CheckupSchedules

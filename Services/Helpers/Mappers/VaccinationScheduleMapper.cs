@@ -71,5 +71,18 @@
                 source.MetaData.CurrentPage,
                 source.MetaData.PageSize);
         }
+        public static VaccinationScheduleForParentResponseDTO MapToParentDTO(SessionStudent ss)
+        {
+            var schedule = ss.VaccinationSchedule; // cần Include Navigation
+            return new VaccinationScheduleForParentResponseDTO
+            {
+                Id                 = schedule.Id,
+                VaccinationTypeName = schedule.VaccinationType?.Name ?? string.Empty,
+                ScheduledAt        = schedule.ScheduledAt,
+                ScheduleStatus     = schedule.ScheduleStatus,
+                StudentName        = ss.Student?.FullName ?? string.Empty
+            };
+        }
+
     }
 }

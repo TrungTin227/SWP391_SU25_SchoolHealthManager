@@ -20,6 +20,32 @@ namespace Services.Implementations
             _emailService = emailService;
         }
 
+        public async Task<ApiResult<List<CheckupScheduleForParentResponseDTO>>> GetSchedulesForParentAsync()
+        {
+            try
+            {
+                var parentId = _currentUserService.GetUserId();
+                if (!parentId.HasValue)
+                    return ApiResult<List<CheckupScheduleForParentResponseDTO>>.Failure(new UnauthorizedAccessException("Không xác định được phụ huynh."));
+
+                var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(parentId.Value);
+                var studentIds = students.Select(s => s.Id).ToList();
+                if (!studentIds.Any())
+                    return ApiResult<List<CheckupScheduleForParentResponseDTO>>.Success(new(), "Không có học sinh nào được liên kết.");
+
+                var schedules = await _unitOfWork.CheckupScheduleRepository
+                    .GetCheckupSchedulesByStudentIdsAsync(studentIds);
+
+                var result = schedules.Select(CheckupScheduleMapper.MapToParentDTO).ToList();
+                return ApiResult<List<CheckupScheduleForParentResponseDTO>>.Success(result, $"Tìm thấy {result.Count} lịch khám.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy lịch khám sức khỏe cho phụ huynh.");
+                return ApiResult<List<CheckupScheduleForParentResponseDTO>>.Failure(ex);
+            }
+        }
+
         public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null)
