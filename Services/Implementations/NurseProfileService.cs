@@ -77,7 +77,7 @@ namespace Services.Implementations
                 }
 
                 // Gán quyền Nurse
-                await _userManager.AddToRoleAsync(newUser, "Nurse");
+                await _userManager.AddToRoleAsync(newUser, "SchoolNurse");
 
                 // Gửi email chào mừng
                 await _userService.SendWelcomeEmailsAsync(newUser.Email);
@@ -86,11 +86,13 @@ namespace Services.Implementations
                 var nurse = new NurseProfile
                 {
                     UserId = newUser.Id,
+                    Position = "School Nurse",
+                    Department = "Health Department",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     CreatedBy = currentUserId,
                     UpdatedBy = currentUserId
-                };
+                }; 
 
                 var nurseResult = await _nurseRepository.CreateNurseAsync(nurse);
                 if (nurseResult == null)
