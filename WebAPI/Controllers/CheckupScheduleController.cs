@@ -147,6 +147,14 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("my-children")]
+        public async Task<IActionResult> GetCheckupSchedulesForMyChildren()
+        {
+            var result = await _checkupScheduleService.GetSchedulesForParentAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+
         /// <summary>
         /// Thống kê trạng thái lịch khám
         /// </summary>

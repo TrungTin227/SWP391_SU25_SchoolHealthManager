@@ -58,5 +58,7 @@ namespace Repositories.Interfaces
 
         Task<bool> CanDeleteScheduleAsync(Guid id);
         Task<bool> HasStudentScheduleConflictAsync(Guid studentId, DateTime scheduledAt, Guid? excludeScheduleId = null);
+        Task<List<VaccinationSchedule>> GetSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds);
+
     }
 }

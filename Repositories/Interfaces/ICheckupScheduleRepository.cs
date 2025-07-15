@@ -25,5 +25,7 @@
 
         // Statistics
         Task<Dictionary<CheckupScheduleStatus, int>> GetScheduleStatusStatisticsAsync(Guid? campaignId = null);
+        Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds);
+
     }
 }
