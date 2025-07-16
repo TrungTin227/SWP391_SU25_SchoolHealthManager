@@ -140,18 +140,18 @@ namespace Services.Implementations
                     var hasAnyTreatment = false;
 
                     // Xử lý thuốc
-                    if (request.EventMedications != null && request.EventMedications.Any())
-                    {
-                        var medicationValidation = await ValidateEventMedicationsAsync(request.EventMedications);
-                        if (!medicationValidation.IsSuccess)
-                        {
-                            return ApiResult<HealthEventResponseDTO>.Failure(
-                                new Exception(medicationValidation.Message));
-                        }
+                    //if (request.EventMedications != null && request.EventMedications.Any())
+                    //{
+                    //    var medicationValidation = await ValidateEventMedicationsAsync(request.EventMedications);
+                    //    if (!medicationValidation.IsSuccess)
+                    //    {
+                    //        return ApiResult<HealthEventResponseDTO>.Failure(
+                    //            new Exception(medicationValidation.Message));
+                    //    }
 
-                        await ProcessEventMedicationsAsync(request.HealthEventId, request.EventMedications, currentUserId, vietnamTime);
-                        hasAnyTreatment = true;
-                    }
+                    //    await ProcessEventMedicationsAsync(request.HealthEventId, request.EventMedications, currentUserId, vietnamTime);
+                    //    hasAnyTreatment = true;
+                    //}
 
                     // Xử lý vật tư y tế
                     if (request.SupplyUsages != null && request.SupplyUsages.Any())

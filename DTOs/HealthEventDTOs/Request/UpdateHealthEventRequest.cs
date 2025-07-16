@@ -10,7 +10,7 @@ namespace DTOs.HealthEventDTOs.Request
         /// <summary>
         /// Danh sách thuốc cần thêm vào sự kiện y tế
         /// </summary>
-        public List<CreateEventMedicationRequest>? EventMedications { get; set; }
+        //public List<CreateEventMedicationRequest>? EventMedications { get; set; }
 
         /// <summary>
         /// Danh sách vật tư y tế cần thêm vào sự kiện
