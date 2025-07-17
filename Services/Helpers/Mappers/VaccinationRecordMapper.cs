@@ -26,7 +26,7 @@
                 AdministeredDate = record.AdministeredDate,
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
-
+                SessionStatus = record.SessionStudent?.Status.ToString() ?? "Unknown"
             };
         }
 
@@ -51,7 +51,7 @@
                 AdministeredDate = record.AdministeredDate,
                 ReactionFollowup24h = record.ReactionFollowup24h.ToString(),
                 ReactionFollowup72h = record.ReactionFollowup72h.ToString(),
-
+                SessionStatus = record.SessionStudent?.Status.ToString() ?? "Unknown"
             };
         }
 

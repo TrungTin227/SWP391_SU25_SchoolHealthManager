@@ -78,6 +78,13 @@ namespace Services.Implementations
 
                 if (created != null)
                 {
+                    // ✅ Set status = Completed
+                    sessionStudent.Status = SessionStatus.Completed;
+                    await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
+
+                    // ✅ Save changes nếu chưa có trong base.CreateAsync
+                    await _unitOfWork.SaveChangesAsync();
+
                     var fullRecord = await _recordRepository.GetRecordWithDetailsAsync(created.Id);
                     if (fullRecord != null)
                     {
@@ -94,6 +101,7 @@ namespace Services.Implementations
                 return ApiResult<CreateVaccinationRecordResponse>.Failure(ex);
             }
         }
+
 
 
 
