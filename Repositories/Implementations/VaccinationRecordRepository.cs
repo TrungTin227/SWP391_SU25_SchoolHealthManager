@@ -135,16 +135,16 @@ namespace Repositories.Implementations
                     .ThenInclude(ss => ss.Student)
                 .Include(vr => vr.SessionStudent)
                     .ThenInclude(ss => ss.VaccinationSchedule)
-                        .ThenInclude(vs => vs.Campaign)
+                .ThenInclude(vs => vs.Campaign)
                 .Include(vr => vr.SessionStudent)
                     .ThenInclude(ss => ss.VaccinationSchedule)
-                        .ThenInclude(vs => vs.VaccinationType)
-                //.Include(vr => vr.VaccineLot)
+                .ThenInclude(vs => vs.VaccinationType)
                 .Include(vr => vr.VaccinatedBy)
                 .Include(vr => vr.CounselingAppointments)
                 .Include(vr => vr.HealthEvents)
                 .FirstOrDefaultAsync(vr => vr.Id == id && !vr.IsDeleted);
         }
+
 
         public async Task<List<VaccinationRecord>> GetRecordsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
         {
