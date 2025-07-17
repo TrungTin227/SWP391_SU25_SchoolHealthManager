@@ -196,5 +196,13 @@ namespace Repositories.Implementations
                 .GroupBy(he => he.EventType)
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
+
+        public async Task<List<HealthEvent>> GetHealthEventsByStudentIdsAsync(HashSet<Guid> studentIds)
+        {
+            return await _context.HealthEvents
+                .Where(e => studentIds.Contains(e.StudentId) && !e.IsDeleted)
+                .OrderByDescending(e => e.EventStatus)
+                .ToListAsync();
+        }
     }
 }

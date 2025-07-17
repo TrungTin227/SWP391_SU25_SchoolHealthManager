@@ -96,6 +96,14 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet]
+        [Route("myChild")]
+        public async Task<IActionResult> GetMyChildHealthEvents()
+        {
+            var result = await _healthEventService.GetHealthForParentAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         #endregion
 
         #region Batch Operations

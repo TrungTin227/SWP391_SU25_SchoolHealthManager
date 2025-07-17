@@ -25,5 +25,7 @@
 
         // Statistics
         Task<ApiResult<HealthEventStatisticsResponseDTO>> GetStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
+
+        Task<ApiResult<List<HealthEventResponseDTO>>> GetHealthForParentAsync();
     }
 }

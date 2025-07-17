@@ -25,5 +25,8 @@
         // Statistics
         Task<Dictionary<EventStatus, int>> GetEventStatusStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
         Task<Dictionary<EventType, int>> GetEventTypeStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
+
+        Task<List<HealthEvent>> GetHealthEventsByStudentIdsAsync(HashSet<Guid> studentIds);
+
     }
 }

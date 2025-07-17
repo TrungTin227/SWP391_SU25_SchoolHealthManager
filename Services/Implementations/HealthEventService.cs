@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using BusinessObjects;
+using Microsoft.Extensions.Logging;
 using Services.Commons;
 using Services.Mappers;
 using System.Data;
@@ -665,6 +666,67 @@ namespace Services.Implementations
             else
             {
                 return $"Không có sự kiện y tế nào được {operation}";
+            }
+        }
+
+        public async Task<ApiResult<List<HealthEventResponseDTO>>> GetHealthForParentAsync()
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserId();
+                if (!currentUserId.HasValue)
+                {
+                    return ApiResult<List<HealthEventResponseDTO>>.Failure(
+                        new UnauthorizedAccessException("Không thể xác định người dùng hiện tại!! \nHãy thử đăng nhập lại và thử lại!!!"));
+                }
+
+                // 1. Lấy danh sách học sinh (ID)
+                var students = await _unitOfWork.StudentRepository.GetStudentsByParentIdAsync(currentUserId.Value);
+                var studentIds = students.Select(s => s.Id).ToHashSet();
+
+                if (!studentIds.Any())
+                    return ApiResult<List<HealthEventResponseDTO>>.Failure(new Exception("Không tìm thấy học sinh nào liên kết với phụ huynh hiện tại!!"));
+
+                // 2. Lấy danh sách sự kiện y tế của các học sinh đó
+                var healthEvents = await _unitOfWork.HealthEventRepository.GetHealthEventsByStudentIdsAsync(studentIds);
+
+                if (healthEvents == null || !healthEvents.Any())
+                {
+                    return ApiResult<List<HealthEventResponseDTO>>.Success(new List<HealthEventResponseDTO>(),"Không có sự kiện y tế nào xảy ra với các con của bạn!!");
+                }
+
+                // 3. Chuẩn bị dữ liệu liên quan:
+                var studentDict = students.ToDictionary(s => s.Id, s => s.FirstName+s.LastName);
+
+                // Lấy thông tin người báo cáo
+                var reporterIds = healthEvents.Select(e => e.ReportedUserId).Distinct().ToList();
+                var reporters = await _unitOfWork.UserRepository.GetByIdsAsync(reporterIds);
+                var reporterDict = reporters.ToDictionary(u => u.Id, u => u.FullName);
+
+                // 4. Map thủ công
+                var result = healthEvents.Select(e => new HealthEventResponseDTO
+                {
+                    Id = e.Id,
+                    StudentId = e.StudentId,
+                    StudentName = studentDict.GetValueOrDefault(e.StudentId, "Không rõ"),
+                    EventCategory = e.EventCategory.ToString(),
+                    VaccinationRecordId = e.VaccinationRecordId,
+                    EventType = e.EventType.ToString(),
+                    Description = e.Description,
+                    OccurredAt = e.OccurredAt,
+                    EventStatus = e.EventStatus.ToString(),
+                    ReportedBy = e.ReportedUserId,
+                    ReportedByName = reporterDict.GetValueOrDefault(e.ReportedUserId, "Không rõ"),
+                    CreatedAt = e.CreatedAt,
+                    UpdatedAt = e.UpdatedAt,
+                    IsDeleted = e.IsDeleted,
+                }).ToList();
+
+                return ApiResult<List<HealthEventResponseDTO>>.Success(result,"Lấy danh sách sự kiện y tế của con bạn thành công!!!");
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<HealthEventResponseDTO>>.Failure(new Exception("Có lỗi xảy ra khi lấy sự kiện y tế cho phụ huynh!! Lỗi: " + ex.Message));
             }
         }
 
