@@ -313,6 +313,7 @@ namespace Services.Implementations
 
                 var records = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule)
                     .Include(r => r.CounselingAppointments)
                     .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();
@@ -337,6 +338,7 @@ namespace Services.Implementations
             {
                 var record = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule)
                     .Include(r => r.CounselingAppointments)
                     .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
 
