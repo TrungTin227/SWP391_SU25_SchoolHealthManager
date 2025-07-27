@@ -16,6 +16,7 @@ namespace Services.Helpers.Mappers
             {
                 id = appointment.Id,
                 StudentId = appointment.StudentId,
+                StudentName = appointment.Student?.FullName ?? string.Empty,
                 ParentId = appointment.ParentId,
                 StaffUserId = appointment.StaffUserId,
                 AppointmentDate = appointment.AppointmentDate,
