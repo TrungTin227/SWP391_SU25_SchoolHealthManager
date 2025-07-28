@@ -26,6 +26,7 @@
         // Statistics
         Task<Dictionary<CheckupScheduleStatus, int>> GetScheduleStatusStatisticsAsync(Guid? campaignId = null);
         Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds);
+        Task<PagedList<CheckupSchedule>> GetSoftDeletedSchedulesAsync(int pageNumber, int pageSize, string? searchTerm = null);
 
     }
 }

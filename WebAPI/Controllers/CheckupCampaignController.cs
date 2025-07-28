@@ -158,5 +158,17 @@ namespace WebAPI.Controllers
             var result = await _checkupCampaignService.GetCampaignStatusStatisticsAsync();
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
+        [HttpGet("deleted")]
+        public async Task<IActionResult> GetSoftDeletedCampaigns(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null)
+        {
+            var result = await _checkupCampaignService.GetSoftDeletedCampaignsAsync(
+                pageNumber, pageSize, searchTerm);
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
     }
 }

@@ -673,5 +673,30 @@ namespace Services.Implementations
         }
 
         #endregion
+        public async Task<ApiResult<PagedList<CheckupCampaignResponseDTO>>> GetSoftDeletedCampaignsAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            try
+            {
+                var paged = await _unitOfWork.CheckupCampaignRepository
+                    .GetSoftDeletedCampaignsAsync(pageNumber, pageSize, searchTerm);
+
+                var dtos = new List<CheckupCampaignResponseDTO>();
+                foreach (var c in paged)
+                    dtos.Add(await MapToResponseDTO(c));
+
+                var result = new PagedList<CheckupCampaignResponseDTO>(
+                    dtos, paged.MetaData.TotalCount,
+                    paged.MetaData.CurrentPage, paged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupCampaignResponseDTO>>.Success(
+                    result, "Lấy danh sách chiến dịch đã xóa thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách chiến dịch đã xóa");
+                return ApiResult<PagedList<CheckupCampaignResponseDTO>>.Failure(ex);
+            }
+        }
     }
 }

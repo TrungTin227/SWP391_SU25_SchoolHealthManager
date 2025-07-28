@@ -25,5 +25,6 @@
         // Statistics
         Task<ApiResult<Dictionary<CheckupScheduleStatus, int>>> GetScheduleStatusStatisticsAsync(Guid? campaignId = null);
         Task<ApiResult<List<CheckupScheduleForParentResponseDTO>>> GetSchedulesForParentAsync();
+        Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetSoftDeletedSchedulesAsync(int pageNumber, int pageSize, string? searchTerm = null);
     }
 }

@@ -375,6 +375,30 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetSoftDeletedSchedulesAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            try
+            {
+                var paged = await _unitOfWork.CheckupScheduleRepository
+                    .GetSoftDeletedSchedulesAsync(pageNumber, pageSize, searchTerm);
+
+                var dtos = paged.Select(MapToResponseDTO).ToList();
+
+                var result = new PagedList<CheckupScheduleResponseDTO>(
+                    dtos, paged.MetaData.TotalCount,
+                    paged.MetaData.CurrentPage, paged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Success(
+                    result, "Lấy danh sách lịch khám đã xóa thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch khám đã xóa");
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Failure(ex);
+            }
+        }
+
         #region Private Methods
 
         private async Task<HashSet<Guid>> GetStudentIdsFromRequest(CreateCheckupScheduleRequest request)

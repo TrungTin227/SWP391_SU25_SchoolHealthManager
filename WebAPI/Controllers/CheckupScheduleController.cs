@@ -154,6 +154,20 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        /// <summary>
+        /// Lấy danh sách lịch khám đã xóa mềm
+        /// </summary>
+        [HttpGet("deleted")]
+        public async Task<IActionResult> GetSoftDeletedSchedules(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null)
+        {
+            var result = await _checkupScheduleService.GetSoftDeletedSchedulesAsync(
+                pageNumber, pageSize, searchTerm);
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
         /// <summary>
         /// Thống kê trạng thái lịch khám
@@ -164,5 +178,6 @@ namespace WebAPI.Controllers
             var result = await _checkupScheduleService.GetScheduleStatusStatisticsAsync(campaignId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
+
     }
 }
