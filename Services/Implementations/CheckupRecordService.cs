@@ -53,6 +53,8 @@ namespace Services.Implementations
                 if (!IsWithinWorkingHours(request.ExaminedAt))
                     throw new Exception("Lịch khám không nằm trong giờ làm việc của trường!!");
 
+                if (request.ExaminedAt < schedule.ScheduledAt)
+                    throw new Exception("Vẫn chưa tới lịch khám, bạn nên chờ tới lịch khám!!");
                 if (schedule.ParentConsentStatus != CheckupScheduleStatus.Approved)
                     throw new Exception("Phụ huynh chưa đồng ý lịch khám này!!");
 
