@@ -25,6 +25,10 @@
         Task<ApiResult<string>> Send2FACodeAsync();
         Task SendWelcomeEmailsAsync(string email);
 
-
+        Task<ApiResult<PagedList<UserDetailsDTO>>> SearchUsersAsync(
+            string? searchTerm,
+            RoleType? role,
+            int page,
+            int size);
     }
 }

@@ -188,6 +188,24 @@ namespace Services.Implementations
             return ApiResult<string>.Success("Password reset successfully", "Password has been reset successfully");
         }
 
+        public async Task<ApiResult<PagedList<UserDetailsDTO>>> SearchUsersAsync(
+    string? searchTerm,
+    RoleType? roleId,
+    int page,
+    int size)
+        {
+            if (page < 1 || size < 1)
+                return ApiResult<PagedList<UserDetailsDTO>>.Failure(
+                    new ArgumentException("Tham số phân trang không hợp lệ"));
+
+            var list = await _userRepository.SearchUsersAsync(searchTerm, roleId, page, size);
+
+            var dtoList = list.Select(u => UserMappings.ToUserDetailsDTO(u, _userManager)).ToList();
+
+            return ApiResult<PagedList<UserDetailsDTO>>.Success(
+                new PagedList<UserDetailsDTO>(dtoList, list.MetaData.TotalCount, page, size),
+                $"Tìm thấy {list.MetaData.TotalCount} kết quả");
+        }
         public async Task<ApiResult<string>> Send2FACodeAsync()
         {
             var userId = _currentUserService.GetUserId();
@@ -425,7 +443,12 @@ namespace Services.Implementations
         public async Task<ApiResult<object>> DeleteUsersAsync(List<Guid> ids)
         {
             if (ids == null || !ids.Any())
-                return ApiResult<object>.Success(null, "No users to delete");
+                return ApiResult<object>.Success(null, "Không có người dùng để xóa");
+
+            // Lấy user đang đăng nhập
+            var currentUserId = _currentUserService.GetUserId();
+            if (currentUserId.HasValue && ids.Contains(currentUserId.Value))
+                return ApiResult<object>.Failure(new InvalidOperationException("Không thể xóa chính mình khi đang đăng nhập"));
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -439,10 +462,9 @@ namespace Services.Implementations
                     if (!del.Succeeded)
                         return ApiResult<object>.Failure(new InvalidOperationException(string.Join(", ", del.Errors.Select(e => e.Description))));
                 }
-                return ApiResult<object>.Success(null, $"Successfully deleted {ids.Count} user(s)");
+                return ApiResult<object>.Success(null, $"Đã xóa thành công {ids.Count} người dùng");
             });
         }
-
         public async Task<ApiResult<PagedList<UserDetailsDTO>>> GetUsersAsync(int page, int size)
         {
             if (page < 1 || size < 1)
@@ -452,6 +474,5 @@ namespace Services.Implementations
             return ApiResult<PagedList<UserDetailsDTO>>.Success(list, $"Retrieved {list.Count} users from page {page}");
         }
 
-        
     }
 }

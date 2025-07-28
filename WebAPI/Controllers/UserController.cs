@@ -24,13 +24,6 @@ namespace WebAPI.Controllers
             }
             return Ok(response);
         }
-        [HttpGet]
-        public async Task<IActionResult> GetAllUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-        {
-            // Giả sử IUserService có phương thức GetAllUsersAsync hỗ trợ phân trang
-            var response = await _userService.GetUsersAsync(pageNumber, pageSize);
-            return Ok(response);
-        }
 
         [HttpPatch("{id}")]
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
@@ -51,7 +44,16 @@ namespace WebAPI.Controllers
                 return BadRequest(result);   // Trả về 400 cùng message "User {id} not found"
             return NoContent();
         }
-
+        [HttpGet]
+        public async Task<IActionResult> GetUsers(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? searchTerm = null,
+    [FromQuery] RoleType? role = null)
+        {
+            var result = await _userService.SearchUsersAsync(searchTerm, role, pageNumber, pageSize);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
         // Endpoint lock user
         [HttpPut("lock")]
         public async Task<IActionResult> LockUser([FromQuery] Guid id)

@@ -7,5 +7,10 @@
         Task<User> GetUserDetailsByIdAsync(Guid id);
         Task<bool> ExistsByUsernameAsync(string username);
         Task<bool> ExistsAsync(Guid userId);
+        Task<PagedList<User>> SearchUsersAsync(
+    string? searchTerm,
+    RoleType? role,
+    int page,
+    int size);
     }
 }

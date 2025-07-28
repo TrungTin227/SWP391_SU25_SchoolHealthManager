@@ -12,7 +12,46 @@ namespace Repositories.Implementations
             _context = context;
         }
 
+        public async Task<PagedList<User>> SearchUsersAsync(
+    string? searchTerm,
+    RoleType? role,
+    int page,
+    int size)
+        {
+            var predicate = PredicateBuilder.True<User>()
+                .And(u => !u.IsDeleted);
 
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                predicate = predicate.And(u =>
+                    (u.FirstName + " " + u.LastName).Contains(searchTerm.Trim()));
+
+            IQueryable<User> query = _context.Users;
+
+            if (role.HasValue)
+            {
+                var roleName = role.Value.ToString();
+                query = from user in query
+                        join userRole in _context.UserRoles on user.Id equals userRole.UserId
+                        join r in _context.Roles on userRole.RoleId equals r.Id
+                        where r.Name == roleName
+                        select user;
+                query = query.Where(predicate);
+            }
+            else
+            {
+                query = query.Where(predicate);
+            }
+
+            query = query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName);
+
+            var total = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToListAsync();
+
+            return new PagedList<User>(items, total, page, size);
+        }
         public async Task<PagedList<UserDetailsDTO>> GetUserDetailsAsync(int pageNumber, int pageSize)
         {
             // Query optimization: Count and retrieve users in a single database round trip
