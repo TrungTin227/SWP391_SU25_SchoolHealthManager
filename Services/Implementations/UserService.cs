@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
@@ -380,17 +381,22 @@ namespace Services.Implementations
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
+                // 1. Cập nhật thông tin user
                 UserMappings.ApplyUpdate(req, user);
                 user.UpdatedAt = DateTime.UtcNow;
 
+                // 2. Cập nhật role
                 if (req.Roles?.Any() == true && _currentUserService.IsAdmin())
-                    await _userManager.UpdateRolesAsync(user, req.Roles);
+                {
+                    await _userRepository.UpdateRolesAsync(user, req.Roles);
+                }
 
-                var upd = await _userManager.UpdateAsync(user);
-                if (!upd.Succeeded)
-                    return ApiResult<UserResponse>.Failure(new InvalidOperationException(string.Join(", ", upd.Errors.Select(e => e.Description))));
+                // 3. Lưu toàn bộ thay đổi
+                await _unitOfWork.SaveChangesAsync();
 
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), "User updated successfully");
+                return ApiResult<UserResponse>.Success(
+                    await UserMappings.ToUserResponseAsync(user, _userManager),
+                    "User updated successfully");
             });
         }
 

@@ -137,5 +137,24 @@ namespace Repositories.Implementations
                 .AsNoTracking()
                 .AnyAsync(u => u.Id == userId);
         }
+        public async Task UpdateRolesAsync(User user, IEnumerable<string> roleNames)
+        {
+            var normalized = roleNames.Select(r => r.ToUpper()).ToList();
+            var roles = await _context.Roles
+                .Where(r => normalized.Contains(r.NormalizedName))
+                .ToListAsync();
+
+            // Xóa role cũ
+            var old = _context.UserRoles.Where(ur => ur.UserId == user.Id);
+            _context.UserRoles.RemoveRange(old);
+
+            // Thêm role mới
+            foreach (var r in roles)
+                _context.UserRoles.Add(new IdentityUserRole<Guid>
+                {
+                    UserId = user.Id,
+                    RoleId = r.Id
+                });
+        }
     }
 }
