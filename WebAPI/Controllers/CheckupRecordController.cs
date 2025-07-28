@@ -1,11 +1,14 @@
 ﻿using DTOs.CheckUpRecordDTOs.Requests;
 using DTOs.CheckUpRecordDTOs.Requests.DTOs.CheckUpRecordDTOs.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/checkup-records")]
+    [Authorize]
+
     public class CheckupRecordController : Controller
     {
         private readonly ICheckupRecordService _checkupRecordService;
