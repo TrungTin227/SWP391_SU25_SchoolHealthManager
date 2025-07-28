@@ -188,8 +188,22 @@ namespace Services.Implementations
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CompleteCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Completed,
-                "hoàn thành", CheckupCampaignStatus.InProgress);
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                var campaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
+                if (campaign == null)
+                    return ApiResult<CheckupCampaignResponseDTO>.Failure(
+                        new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
+
+                // Không cho hoàn thành nếu chưa tới EndDate
+                if (_currentTime.GetVietnamTime() < campaign.EndDate)
+                    return ApiResult<CheckupCampaignResponseDTO>.Failure(
+                        new InvalidOperationException($"Chưa tới ngày kết thúc ({campaign.EndDate:dd/MM/yyyy}). Không thể hoàn thành."));
+
+                // Re-use logic cũ
+                return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Completed,
+                        "hoàn thành", CheckupCampaignStatus.InProgress);
+            });
         }
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CancelCampaignAsync(Guid campaignId, string? reason = null)

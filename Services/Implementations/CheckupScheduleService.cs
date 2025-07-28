@@ -108,6 +108,10 @@ namespace Services.Implementations
                     return ApiResult<List<CheckupScheduleResponseDTO>>.Failure(
                         new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
                 }
+                // Validate campaign not completed
+                if (campaign.Status == CheckupCampaignStatus.Completed)
+                    return ApiResult<List<CheckupScheduleResponseDTO>>.Failure(
+                        new InvalidOperationException("Chiến dịch đã hoàn thành, không thể thêm lịch khám."));
 
                 // Get student IDs based on request
                 var studentIds = await GetStudentIdsFromRequest(request);

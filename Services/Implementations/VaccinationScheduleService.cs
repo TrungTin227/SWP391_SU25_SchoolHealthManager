@@ -141,6 +141,10 @@ namespace Services.Implementations
 
                     // Validate campaign exists
                     var campaign = await _unitOfWork.VaccinationCampaignRepository.GetByIdAsync(request.CampaignId);
+                    VaccinationValidationHelper.EnsureCampaignNotCompleted(campaign.Status);
+                    VaccinationValidationHelper.EnsureCampaignNotCancelled(campaign.Status);
+                    VaccinationValidationHelper.EnsureNotPast(request.ScheduledAt, "Ngày tiêm");
+                    VaccinationValidationHelper.EnsureWithinCampaign(request.ScheduledAt, campaign.StartDate, campaign.EndDate);
                     if (campaign == null)
                     {
                         return ApiResult<List<VaccinationScheduleResponseDTO>>.Failure(
@@ -234,6 +238,17 @@ namespace Services.Implementations
                 try
                 {
                     var schedule = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsAsync(id);
+                    if (schedule.ScheduleStatus == ScheduleStatus.Completed)
+                        return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
+                            new InvalidOperationException("Không thể cập nhật lịch tiêm đã hoàn thành"));
+
+                    // Nếu thay đổi ScheduledAt
+                    if (request.ScheduledAt.HasValue)
+                    {
+                        var campaign = await _unitOfWork.VaccinationCampaignRepository.GetByIdAsync(schedule.CampaignId);
+                        VaccinationValidationHelper.EnsureNotPast(request.ScheduledAt.Value, "Ngày tiêm");
+                        VaccinationValidationHelper.EnsureWithinCampaign(request.ScheduledAt.Value, campaign.StartDate, campaign.EndDate);
+                    }   
                     if (schedule == null)
                     {
                         return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
@@ -375,6 +390,9 @@ namespace Services.Implementations
                 try
                 {
                     var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
+                    if (schedule.ScheduleStatus == ScheduleStatus.Completed)
+                        return ApiResult<bool>.Failure(
+                            new InvalidOperationException("Không thể thay đổi học sinh vì lịch tiêm đã hoàn thành"));
                     if (schedule == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -412,6 +430,10 @@ namespace Services.Implementations
                 try
                 {
                     var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
+
+                    if (schedule.ScheduleStatus == ScheduleStatus.Completed)
+                        return ApiResult<bool>.Failure(
+                            new InvalidOperationException("Không thể thay đổi học sinh vì lịch tiêm đã hoàn thành"));
                     if (schedule == null)
                     {
                         return ApiResult<bool>.Failure(
@@ -807,9 +829,36 @@ namespace Services.Implementations
 
         public async Task<ApiResult<bool>> CompleteScheduleAsync(Guid scheduleId)
         {
-            return await UpdateScheduleStatusAsync(scheduleId, ScheduleStatus.Completed);
-        }
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(scheduleId);
+                    if (schedule == null)
+                        return ApiResult<bool>.Failure(
+                            new KeyNotFoundException("Không tìm thấy lịch tiêm"));
 
+                    // 1. Phải đang ở trạng thái InProgress
+                    if (schedule.ScheduleStatus != ScheduleStatus.InProgress)
+                        return ApiResult<bool>.Failure(
+                            new InvalidOperationException("Chỉ có thể hoàn thành lịch đang thực hiện"));
+
+                    // 2. Ngày tiêm phải <= hôm nay
+                    var today = _currentTime.GetVietnamTime().Date;
+                    if (schedule.ScheduledAt.Date > today)
+                        return ApiResult<bool>.Failure(
+                            new InvalidOperationException("Chưa tới ngày tiêm, không thể hoàn thành"));
+
+                    // Gọi helper đã có
+                    return await UpdateScheduleStatusAsync(scheduleId, ScheduleStatus.Completed);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi khi hoàn thành lịch tiêm {ScheduleId}", scheduleId);
+                    return ApiResult<bool>.Failure(ex);
+                }
+            });
+        }
         #endregion
 
         #region Private Helper Methods
