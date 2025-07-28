@@ -16,5 +16,6 @@
 
         // Statistics
         Task<Dictionary<CheckupCampaignStatus, int>> GetCampaignStatusCountsAsync();
+        Task<PagedList<CheckupCampaign>> GetSoftDeletedCampaignsAsync(int pageNumber, int pageSize, string? searchTerm = null);
     }
 }

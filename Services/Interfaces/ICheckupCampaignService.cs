@@ -24,5 +24,7 @@
 
         // Statistics
         Task<ApiResult<Dictionary<CheckupCampaignStatus, int>>> GetCampaignStatusStatisticsAsync();
+
+        Task<ApiResult<PagedList<CheckupCampaignResponseDTO>>> GetSoftDeletedCampaignsAsync(int pageNumber, int pageSize, string? searchTerm = null);
     }
 }

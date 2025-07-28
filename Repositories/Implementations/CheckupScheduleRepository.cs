@@ -231,5 +231,35 @@ namespace Repositories.Implementations
 
             return predicate;
         }
+        public async Task<PagedList<CheckupSchedule>> GetSoftDeletedSchedulesAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            var predicate = PredicateBuilder.True<CheckupSchedule>()
+                .And(cs => cs.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                predicate = predicate.And(cs =>
+                    (cs.Student != null && cs.Student.FullName.ToLower().Contains(term)) ||
+                    (cs.Student != null && cs.Student.StudentCode.ToLower().Contains(term)) ||
+                    (cs.Campaign != null && cs.Campaign.Name.ToLower().Contains(term)));
+            }
+
+            var query = _context.CheckupSchedules
+                .Include(cs => cs.Campaign)
+                .Include(cs => cs.Student)
+                .Include(cs => cs.Record)
+                .Where(predicate)
+                .OrderByDescending(cs => cs.DeletedAt ?? cs.UpdatedAt);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedList<CheckupSchedule>(items, totalCount, pageNumber, pageSize);
+        }
     }
 }
