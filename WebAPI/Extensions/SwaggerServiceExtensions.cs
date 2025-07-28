@@ -25,26 +25,22 @@ namespace WebAPI.Extensions
                     Description = "Enter your token (no 'Bearer' prefix)."
                 });
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
-                { new OpenApiSecurityScheme
+                {
                     {
-                        Reference = new OpenApiReference
-                        { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" }
-                    }, new List<string>() }
-            });
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new List<string>()
+                    }
+                });
             });
             return services;
         }
 
-        public static IApplicationBuilder UseSwaggerPipeline(this IApplicationBuilder app)
-        {
-            if (app.ApplicationServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-            return app;
-        }
     }
-
 }
