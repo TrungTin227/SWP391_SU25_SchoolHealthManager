@@ -257,6 +257,7 @@ namespace Services.Implementations
                     return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Nhân viên không phải là y tá."));
                 var records = await _unitOfWork.CheckupRecordRepository
                             .GetQueryable()
+                            .Include(r => r.Schedule) // ✅ THÊM DÒNG NÀY
                             .Include(r => r.CounselingAppointments)
                             .Where(r => !r.IsDeleted && r.ExaminedByNurseId == id)
                             .ToListAsync();
@@ -286,6 +287,7 @@ namespace Services.Implementations
 
                 var records = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule) // ✅ THÊM DÒNG NÀY
                     .Include(r => r.CounselingAppointments)
                     .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();

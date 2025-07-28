@@ -69,7 +69,7 @@ namespace Services.Helpers.Mappers
                 BloodPressureDiastolic = entity.BloodPressureDiastolic,
                 ExaminedByNurseId = entity.ExaminedByNurseId,
                 ExaminedAt = entity.ExaminedAt,
-                Remarks = entity.Remarks,
+                Remarks = entity.Remarks,   
                 Status = entity.Status,
 
                 CounselingAppointments = entity.CounselingAppointments?
