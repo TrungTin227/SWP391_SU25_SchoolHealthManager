@@ -231,33 +231,44 @@ namespace Services.Implementations
 
         public async Task<ApiResult<UserResponse>> LoginAsync(UserLoginRequest req)
         {
-            if (req == null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+            // 1. Guard clause
+            if (req is null || string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Password))
                 return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
-            _logger.LogInformation("Login attempt: {Email}", req.Email);
+            _logger.LogInformation("Login attempt: {Login}", req.Login);
 
-            var user = await _userManager.FindByEmailAsync(req.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
+            // 2. Locate user (email OR username)
+            var user = req.Login.Contains('@', StringComparison.OrdinalIgnoreCase)
+                ? await _userManager.FindByEmailAsync(req.Login)
+                : await _userManager.FindByNameAsync(req.Login);
+
+            // 3. Validate credentials
+            if (user is null || !await _userManager.CheckPasswordAsync(user, req.Password))
             {
-                if (user != null) await _userManager.AccessFailedAsync(user);
-                return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Invalid email or password"));
+                if (user is not null)
+                    await _userManager.AccessFailedAsync(user);
+                return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Invalid username/email or password"));
             }
 
+            // 4. Verify account state
             if (!await _userManager.IsEmailConfirmedAsync(user))
                 return ApiResult<UserResponse>.Failure(new InvalidOperationException("Please confirm your email before logging in"));
 
             if (await _userManager.IsLockedOutAsync(user))
                 return ApiResult<UserResponse>.Failure(new InvalidOperationException("Account is locked"));
 
+            // 5. Reset failed-count & issue tokens
             await _userManager.ResetAccessFailedAsync(user);
 
-            var token = await _tokenService.GenerateToken(user);
+            var tokenResult = await _tokenService.GenerateToken(user);
             var refreshTokenInfo = _tokenService.GenerateRefreshToken();
             await _userManager.SetRefreshTokenAsync(user, refreshTokenInfo);
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshTokenInfo.Token), "Login successful");
-        }
+            var userResponse = await UserMappings.ToUserResponseAsync(
+                user, _userManager, tokenResult.Data, refreshTokenInfo.Token);
 
+            return ApiResult<UserResponse>.Success(userResponse, "Login successful");
+        }
         public async Task<ApiResult<UserResponse>> GetByIdAsync(Guid id)
         {
             var userDetails = await _userRepository.GetUserDetailsByIdAsync(id);
