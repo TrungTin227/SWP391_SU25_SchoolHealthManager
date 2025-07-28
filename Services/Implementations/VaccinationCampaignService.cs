@@ -103,6 +103,9 @@ namespace Services.Implementations
                             new ArgumentException("Ngày bắt đầu phải nhỏ hơn ngày kết thúc"));
                     }
 
+                    VaccinationValidationHelper.EnsureDateRange(request.StartDate, request.EndDate);
+                    VaccinationValidationHelper.EnsureNotPast(request.StartDate, "Ngày bắt đầu");
+
                     var campaign = VaccinationCampaignMapper.MapFromCreateRequest(request);
                     campaign.Status = VaccinationCampaignStatus.Pending; // Initial status
 
@@ -128,6 +131,7 @@ namespace Services.Implementations
                 try
                 {
                     var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(request.Id);
+                    VaccinationValidationHelper.EnsureCampaignNotCompleted(campaign.Status);
                     if (campaign == null)
                     {
                         return ApiResult<VaccinationCampaignResponseDTO>.Failure(
@@ -174,8 +178,19 @@ namespace Services.Implementations
 
         public async Task<ApiResult<VaccinationCampaignResponseDTO>> CompleteCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await UpdateCampaignStatusAsync(campaignId, VaccinationCampaignStatus.Resolved,
-                "hoàn thành", VaccinationCampaignStatus.InProgress);
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                var campaign = await _unitOfWork.VaccinationCampaignRepository.GetVaccinationCampaignByIdAsync(campaignId);
+                if (campaign == null)
+                    return ApiResult<VaccinationCampaignResponseDTO>.Failure(
+                        new KeyNotFoundException("Không tìm thấy chiến dịch tiêm chủng"));
+
+                VaccinationValidationHelper.EnsureCampaignNotCompleted(campaign.Status);
+                VaccinationValidationHelper.EnsureNotPast(campaign.EndDate, "Ngày kết thúc");
+
+                return await UpdateCampaignStatusAsync(campaignId, VaccinationCampaignStatus.Resolved,
+                    "hoàn thành", VaccinationCampaignStatus.InProgress);
+            });
         }
 
         public async Task<ApiResult<VaccinationCampaignResponseDTO>> CancelCampaignAsync(Guid campaignId, string? notes = null)
