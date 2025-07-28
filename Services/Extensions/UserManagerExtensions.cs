@@ -82,9 +82,15 @@ namespace Services.Helpers
         }
 
         public static async Task<IdentityResultWrapper> SetLockoutAsync(
-            this UserManager<User> mgr, User user, bool enable, DateTimeOffset until)
+    this UserManager<User> mgr, User user, bool enable, DateTimeOffset until)
         {
-            await mgr.SetLockoutEnabledAsync(user, enable);
+            // 1. Đảm bảo lockout được kích hoạt (chỉ cần 1 lần)
+            if (!await mgr.GetLockoutEnabledAsync(user))
+            {
+                await mgr.SetLockoutEnabledAsync(user, true);
+            }
+
+            // 2. Đặt thời điểm kết thúc lock
             var res = await mgr.SetLockoutEndDateAsync(user, until);
             return new IdentityResultWrapper(res);
         }
