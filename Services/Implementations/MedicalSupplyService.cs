@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Data;
 
 namespace Services.Implementations
@@ -20,22 +21,61 @@ namespace Services.Implementations
         #region Basic CRUD Operations
 
         public async Task<ApiResult<PagedList<MedicalSupplyResponseDTO>>> GetMedicalSuppliesAsync(
-                int pageNumber,
-                int pageSize,
-                string? searchTerm = null,
-                bool? isActive = null,
-                bool includeDeleted = false)
+    int pageNumber,
+    int pageSize,
+    string? searchTerm = null,
+    bool? isActive = null,
+    bool includeDeleted = false)
         {
             try
             {
-                var supplies = await _unitOfWork.MedicalSupplyRepository.GetMedicalSuppliesAsync(
+                // Lấy dữ liệu phân trang từ repository
+                var pagedSupplies = await _unitOfWork.MedicalSupplyRepository.GetMedicalSuppliesAsync(
                     pageNumber, pageSize, searchTerm, isActive, includeDeleted);
 
-                var dtoList = supplies.Select(MedicalSupplyMapper.MapToResponseDTO).ToList();
-                var resultPage = MedicalSupplyMapper.CreatePagedResult(supplies, dtoList);
+                // Lấy danh sách ID để truy vấn tồn kho từ lot
+                var supplyIds = pagedSupplies.Select(s => s.Id).ToList();
+
+                // Tính tồn kho theo lot
+                var lotStocks = await _unitOfWork.MedicalSupplyLotRepository
+                    .GetQueryable()
+                    .Where(lot => supplyIds.Contains(lot.MedicalSupplyId) &&
+                                  lot.ExpirationDate > DateTime.UtcNow &&
+                                  !lot.IsDeleted)
+                    .GroupBy(lot => lot.MedicalSupplyId)
+                    .Select(g => new
+                    {
+                        SupplyId = g.Key,
+                        CurrentStock = g.Sum(l => l.Quantity)
+                    })
+                    .ToListAsync();
+
+                // Map từ entity sang DTO và ghi đè CurrentStock
+                var dtoList = pagedSupplies.Select(s =>
+                {
+                    var dto = MedicalSupplyMapper.MapToResponseDTO(s);
+                    dto.CurrentStock = lotStocks
+                        .FirstOrDefault(ls => ls.SupplyId == s.Id)?.CurrentStock ?? 0;
+                    //dto.IsLowStock = dto.MinimumStock > 0 && dto.CurrentStock <= dto.MinimumStock;
+                    return dto;
+                }).ToList();
+
+                // Tạo PagedList<MedicalSupplyResponseDTO>
+                var totalCount = await _unitOfWork.MedicalSupplyRepository.CountAsync(
+                    s => (searchTerm == null || s.Name.Contains(searchTerm)) &&
+                         (isActive == null || s.IsActive == isActive) &&
+                         (includeDeleted || !s.IsDeleted)
+                );
+
+                var result = new PagedList<MedicalSupplyResponseDTO>(
+                    dtoList,
+                    totalCount,
+                    pageNumber,
+                    pageSize
+                );
 
                 return ApiResult<PagedList<MedicalSupplyResponseDTO>>.Success(
-                    resultPage, "Lấy danh sách vật tư y tế thành công");
+                    result, "Lấy danh sách vật tư y tế thành công");
             }
             catch (Exception ex)
             {
