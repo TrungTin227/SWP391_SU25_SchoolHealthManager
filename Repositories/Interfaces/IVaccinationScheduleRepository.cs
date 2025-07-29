@@ -40,6 +40,8 @@ namespace Repositories.Interfaces
 
         Task<List<SessionStudent>> GetSessionStudentsByScheduleAsync(Guid scheduleId);
 
+        Task<VaccinationSchedule?> GetScheduleWithDetailsWithParentAcptAsync(Guid id);
+
         // Status management
         Task<bool> UpdateScheduleStatusAsync(Guid scheduleId, ScheduleStatus newStatus, Guid updatedBy);
 
