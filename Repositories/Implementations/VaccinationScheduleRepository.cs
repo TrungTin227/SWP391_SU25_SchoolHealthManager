@@ -123,6 +123,31 @@ namespace Repositories.Implementations
                 .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
         }
 
+        public async Task<VaccinationSchedule?> GetScheduleWithDetailsWithParentAcptAsync(Guid id)
+        {
+            var schedule = await _context.VaccinationSchedules
+                .AsSplitQuery()
+                .Include(vs => vs.Campaign)
+                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.VaccinationRecords)
+                        .ThenInclude(vr => vr.VaccinatedBy)
+                .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
+
+            // 🔍 Lọc lại SessionStudents có Status == Approved
+            if (schedule != null)
+            {
+                schedule.SessionStudents = schedule.SessionStudents
+                    .Where(ss => ss.ConsentStatus == ParentConsentStatus.Approved)
+                    .ToList();
+            }
+
+            return schedule;
+        }
+
+
         // Tối ưu cho Campaign view - Include một số thông tin cần thiết
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(
             Guid campaignId, int pageNumber, int pageSize, string? searchTerm = null)
