@@ -73,6 +73,33 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesWithParentAcptAsync(
+            int pageNumber, int pageSize, Guid? campaignId = null,
+            CheckupScheduleStatus? status = null, string? searchTerm = null)
+        {
+            try
+            {
+                var schedulesPaged = await _unitOfWork.CheckupScheduleRepository
+                    .GetCheckupSchedulesAsyncWithParentAcpt(pageNumber, pageSize, campaignId, status, searchTerm);
+
+                var responseDTOs = schedulesPaged.Select(MapToResponseDTO).ToList();
+
+                var result = new PagedList<CheckupScheduleResponseDTO>(
+                    responseDTOs,
+                    schedulesPaged.MetaData.TotalCount,
+                    schedulesPaged.MetaData.CurrentPage,
+                    schedulesPaged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Success(
+                    result, "Lấy danh sách lịch khám thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch khám");
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Failure(ex);
+            }
+        }
+
         public async Task<ApiResult<CheckupScheduleDetailResponseDTO>> GetCheckupScheduleByIdAsync(Guid id)
         {
             try

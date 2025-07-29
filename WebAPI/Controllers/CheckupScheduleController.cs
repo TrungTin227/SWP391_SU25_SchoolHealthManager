@@ -39,6 +39,28 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet]
+        [Route("with-parent-acpt")]
+        public async Task<IActionResult> GetCheckupSchedulesWithParentAcpt(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] Guid? campaignId = null,
+            [FromQuery] CheckupScheduleStatus? status = null,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] Guid? id = null)
+        {
+            if (id.HasValue)
+            {
+                var single = await _checkupScheduleService.GetCheckupScheduleByIdAsync(id.Value);
+                return single.IsSuccess ? Ok(single) : NotFound(single);
+            }
+
+            var result = await _checkupScheduleService.GetCheckupSchedulesWithParentAcptAsync(
+                pageNumber, pageSize, campaignId, status, searchTerm);
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet]
         [Route("Student")]
         public async Task<IActionResult> GetCheckupScheduleByStudentId(Guid StudentId)
         {

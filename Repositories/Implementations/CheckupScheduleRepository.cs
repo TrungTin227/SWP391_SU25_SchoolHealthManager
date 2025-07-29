@@ -69,6 +69,29 @@ namespace Repositories.Implementations
             return new PagedList<CheckupSchedule>(items, totalCount, pageNumber, pageSize);
         }
 
+        public async Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsyncWithParentAcpt(
+            int pageNumber, int pageSize, Guid? campaignId = null,
+            CheckupScheduleStatus? status = null, string? searchTerm = null)
+        {
+            var predicate = BuildSchedulePredicate(campaignId, status, searchTerm);
+
+            var query = _context.CheckupSchedules
+                .Include(cs => cs.Campaign)
+                .Include(cs => cs.Student)
+                .Include(cs => cs.Record)
+                .Where(predicate)
+                .Where(cs => cs.ParentConsentStatus == CheckupScheduleStatus.Approved)
+                .OrderByDescending(cs => cs.ScheduledAt);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedList<CheckupSchedule>(items, totalCount, pageNumber, pageSize);
+        }
+
         public async Task<List<CheckupSchedule>> GetSchedulesByCampaignAsync(Guid campaignId)
         {
             return await _context.CheckupSchedules
