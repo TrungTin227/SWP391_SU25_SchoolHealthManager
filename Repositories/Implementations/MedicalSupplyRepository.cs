@@ -16,21 +16,21 @@ namespace Repositories.Implementations
         #region Query Operations
 
         public async Task<PagedList<MedicalSupply>> GetMedicalSuppliesAsync(
-                int pageNumber,
-                int pageSize,
-                string? searchTerm = null,
-                bool? isActive = null,
-                bool includeDeleted = false)
+            int pageNumber,
+            int pageSize,
+            string? searchTerm = null,
+            bool? isActive = null,
+            bool includeDeleted = false)
         {
-            // Luôn bỏ qua global filter nếu có
+            // Start with base query
             var query = _context.MedicalSupplies
-                .IgnoreQueryFilters() // nếu bạn dùng Global Query Filter cho IsDeleted
+                .IgnoreQueryFilters()
                 .AsQueryable();
 
-            // Lọc theo trạng thái đã xóa hay chưa
+            // Filter by deleted status
             query = query.Where(ms => ms.IsDeleted == includeDeleted);
 
-            // Lọc theo từ khóa
+            // Filter by search term
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.Trim().ToLower();
@@ -39,17 +39,21 @@ namespace Repositories.Implementations
                     ms.Unit.ToLower().Contains(term));
             }
 
-            // Lọc theo trạng thái hoạt động
+            // Filter by active status
             if (isActive.HasValue)
                 query = query.Where(ms => ms.IsActive == isActive.Value);
 
-            // Sắp xếp
+            // Sort
             query = query.OrderByDescending(ms => ms.IsActive)
                          .ThenBy(ms => ms.Name);
 
-            // Phân trang
-            var totalCount = await query.CountAsync();
-            var items = await query
+            // Include lots (only non-deleted)
+            var finalQuery = query
+                .Include(ms => ms.Lots.Where(l => !l.IsDeleted));
+
+            // Pagination
+            var totalCount = await finalQuery.CountAsync();
+            var items = await finalQuery
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -124,23 +128,60 @@ namespace Repositories.Implementations
 
         public async Task<List<MedicalSupply>> GetLowStockSuppliesAsync()
         {
-            return await _context.MedicalSupplies
-                .Where(ms => !ms.IsDeleted && ms.IsActive && ms.MinimumStock > 0 && ms.CurrentStock <= ms.MinimumStock)
+            // 1. Lấy tất cả các vật tư đang hoạt động và có đặt mức tối thiểu
+            //    Bắt buộc phải .Include(ms => ms.Lots) để có thể truy cập thuộc tính CurrentStock
+            var allActiveSupplies = await _context.MedicalSupplies
+                .Include(ms => ms.Lots.Where(l => !l.IsDeleted))
+                .Where(ms => !ms.IsDeleted && ms.IsActive && ms.MinimumStock > 0)
+                .ToListAsync(); // <-- Chuyển sang thực thi trong bộ nhớ
+
+            // 2. Lọc trong bộ nhớ bằng cách sử dụng thuộc tính CurrentStock (đã được tính toán)
+            var lowStockSupplies = allActiveSupplies
+                .Where(ms => ms.CurrentStock <= ms.MinimumStock) // Logic này giờ chạy trên C#
                 .OrderBy(ms => ms.CurrentStock)
                 .ThenBy(ms => ms.Name)
-                .ToListAsync();
+                .ToList();
+
+            return lowStockSupplies;
         }
 
-        public async Task<bool> UpdateCurrentStockAsync(Guid id, int newStock)
+        public async Task<bool> ReconcileStockAsync(Guid supplyId, int actualPhysicalCount)
         {
+            // Phải Include("Lots") để có thể tính toán CurrentStock chính xác
             var supply = await _context.MedicalSupplies
-                .Where(ms => !ms.IsDeleted && ms.Id == id)
-                .FirstOrDefaultAsync();
+                .Include(s => s.Lots)
+                .FirstOrDefaultAsync(ms => ms.Id == supplyId && !ms.IsDeleted);
+
             if (supply == null) return false;
 
-            supply.CurrentStock = newStock;
-            supply.UpdatedAt = _currentTime.GetVietnamTime();
+            // Lấy tồn kho hiện tại trên hệ thống (được tính toán tự động)
+            int systemStock = supply.CurrentStock;
+
+            // Tính toán lượng chênh lệch cần điều chỉnh
+            int adjustmentQuantity = actualPhysicalCount - systemStock;
+
+            if (adjustmentQuantity == 0)
+            {
+                // Không có gì để thay đổi
+                return true;
+            }
+
+            // Tạo một lô hàng đặc biệt để ghi nhận sự điều chỉnh này
+            var adjustmentLot = new MedicalSupplyLot
+            {
+                Id = Guid.NewGuid(),
+                MedicalSupplyId = supply.Id,
+                // Dùng số lô đặc biệt để dễ nhận biết
+                LotNumber = $"ADJUST-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                Quantity = adjustmentQuantity, // Có thể là số âm (nếu thất thoát) hoặc dương (nếu dư)
+                                               // Lô điều chỉnh thường không có ngày hết hạn thực tế, hoặc có thể gán một ngày rất xa
+                ExpirationDate = DateTime.UtcNow.AddYears(10),
+                CreatedAt = _currentTime.GetVietnamTime(),
+            };
+
+            await _context.MedicalSupplyLots.AddAsync(adjustmentLot);
             await _context.SaveChangesAsync();
+
             return true;
         }
 

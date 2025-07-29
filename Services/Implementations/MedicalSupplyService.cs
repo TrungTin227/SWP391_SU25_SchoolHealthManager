@@ -29,44 +29,20 @@ namespace Services.Implementations
         {
             try
             {
-                // Lấy dữ liệu phân trang từ repository
+                // 1. Lấy dữ liệu đã bao gồm 'Lots' từ repository
                 var pagedSupplies = await _unitOfWork.MedicalSupplyRepository.GetMedicalSuppliesAsync(
                     pageNumber, pageSize, searchTerm, isActive, includeDeleted);
 
-                // Lấy danh sách ID để truy vấn tồn kho từ lot
-                var supplyIds = pagedSupplies.Select(s => s.Id).ToList();
+                // 2. Map thẳng từ entity sang DTO.
+                var dtoList = pagedSupplies.Select(MedicalSupplyMapper.MapToResponseDTO).ToList();
 
-                // Tính tồn kho theo lot
-                var lotStocks = await _unitOfWork.MedicalSupplyLotRepository
-                    .GetQueryable()
-                    .Where(lot => supplyIds.Contains(lot.MedicalSupplyId) &&
-                                  lot.ExpirationDate > DateTime.UtcNow &&
-                                  !lot.IsDeleted)
-                    .GroupBy(lot => lot.MedicalSupplyId)
-                    .Select(g => new
-                    {
-                        SupplyId = g.Key,
-                        CurrentStock = g.Sum(l => l.Quantity)
-                    })
-                    .ToListAsync();
-
-                // Map từ entity sang DTO và ghi đè CurrentStock
-                var dtoList = pagedSupplies.Select(s =>
-                {
-                    var dto = MedicalSupplyMapper.MapToResponseDTO(s);
-                    dto.CurrentStock = lotStocks
-                        .FirstOrDefault(ls => ls.SupplyId == s.Id)?.CurrentStock ?? 0;
-                    //dto.IsLowStock = dto.MinimumStock > 0 && dto.CurrentStock <= dto.MinimumStock;
-                    return dto;
-                }).ToList();
-
-                // Tạo PagedList<MedicalSupplyResponseDTO>
-                var totalCount = await _unitOfWork.MedicalSupplyRepository.CountAsync(
-                    s => (searchTerm == null || s.Name.Contains(searchTerm)) &&
-                         (isActive == null || s.IsActive == isActive) &&
-                         (includeDeleted || !s.IsDeleted)
+                // 3. Lấy tổng số bản ghi (TotalCount) từ repository
+                var totalCount = await _unitOfWork.MedicalSupplyRepository.CountAsync(s =>
+                    (string.IsNullOrEmpty(searchTerm) || s.Name.Contains(searchTerm)) &&
+                    (!isActive.HasValue || s.IsActive == isActive.Value) &&
+                    (includeDeleted || !s.IsDeleted)
                 );
-
+                // 4. Tạo kết quả PagedList cho DTO
                 var result = new PagedList<MedicalSupplyResponseDTO>(
                     dtoList,
                     totalCount,
@@ -369,37 +345,36 @@ namespace Services.Implementations
         }
 
 
-        public async Task<ApiResult<bool>> UpdateCurrentStockAsync(Guid id, int newStock)
+        public async Task<ApiResult<bool>> ReconcileStockAsync(Guid id, int actualPhysicalCount)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
                 try
                 {
-                    if (newStock < 0)
+                    if (actualPhysicalCount < 0)
                     {
                         return ApiResult<bool>.Failure(
-                            new ArgumentException("Số lượng tồn kho không được âm"));
+                            new ArgumentException("Số lượng tồn kho thực tế không được âm"));
                     }
 
-                    var success = await _unitOfWork.MedicalSupplyRepository.UpdateCurrentStockAsync(id, newStock);
+                    var success = await _unitOfWork.MedicalSupplyRepository.ReconcileStockAsync(id, actualPhysicalCount);
                     if (!success)
                     {
                         return ApiResult<bool>.Failure(
-                            new KeyNotFoundException("Không tìm thấy vật tư y tế"));
+                            new KeyNotFoundException("Không tìm thấy vật tư y tế để kiểm kê"));
                     }
 
-                    _logger.LogInformation("Updated current stock for supply {SupplyId} to {Stock}", id, newStock);
+                    _logger.LogInformation("Reconciled stock for supply {SupplyId} to {ActualCount}", id, actualPhysicalCount);
 
-                    return ApiResult<bool>.Success(true, "Cập nhật tồn kho thành công");
+                    return ApiResult<bool>.Success(true, "Kiểm kê và điều chỉnh tồn kho thành công");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error updating current stock for supply: {SupplyId}", id);
+                    _logger.LogError(ex, "Error reconciling stock for supply: {SupplyId}", id);
                     return ApiResult<bool>.Failure(ex);
                 }
             });
         }
-
         public async Task<ApiResult<bool>> UpdateMinimumStockAsync(Guid id, int newMinimumStock)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>

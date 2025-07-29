@@ -8,7 +8,6 @@
             {
                 Name = request.Name,
                 Unit = request.Unit,
-                CurrentStock = 0, // Mặc định bằng 0 khi tạo mới
                 MinimumStock = request.MinimumStock,
                 IsActive = request.IsActive
             };

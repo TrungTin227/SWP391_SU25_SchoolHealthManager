@@ -25,7 +25,7 @@
 
         #region Business Logic Operations
         Task<List<MedicalSupply>> GetLowStockSuppliesAsync();
-        Task<bool> UpdateCurrentStockAsync(Guid id, int newStock);
+        Task<bool> ReconcileStockAsync(Guid supplyId, int actualPhysicalCount);
         Task<bool> UpdateMinimumStockAsync(Guid id, int newMinimumStock);
         #endregion
 
