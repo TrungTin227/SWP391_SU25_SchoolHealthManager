@@ -16,9 +16,10 @@ namespace Services.Implementations
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
         private readonly ISchoolHealthEmailService _emailService;
+        private readonly ISchoolHealthEmailService _schoolHealthEmailService;
 
         // Constructor sử dụng base service để khởi tạo repository, current user service và unit of work
-        public ParentMedicationDeliveryService(
+        public ParentMedicationDeliveryService(ISchoolHealthEmailService schoolHealthEmailService ,
             IGenericRepository<ParentMedicationDelivery, Guid> parentMedicationDeliveryRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
@@ -31,6 +32,7 @@ namespace Services.Implementations
         {
             _dbContext = dbContext;
             _emailService = emailService;
+            _schoolHealthEmailService = schoolHealthEmailService;
         }
 
         public async Task<ApiResult<bool>> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
@@ -64,7 +66,12 @@ namespace Services.Implementations
                 parentMedicationDelivery.UpdatedAt = _currentTime.GetVietnamTime();
                 parentMedicationDelivery.UpdatedBy = currentUserId.Value;
                 parentMedicationDelivery.ReceivedBy = currentUserId.Value;
-
+                if (status == StatusMedicationDelivery.Delivered)
+                {
+                    var parent = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(parentMedicationDelivery.ParentId);
+                    var student = await _unitOfWork.StudentRepository.GetByIdAsync(parentMedicationDelivery.StudentId);
+                    await _emailService.SendMedicationDeliverdAsync(parent.Email, student.FullName, parentMedicationDelivery.MedicationName);
+                }
                 await _unitOfWork.SaveChangesAsync();
 
                 return ApiResult<bool>.Success(true, "Cập nhật trạng thái giao thuốc phụ huynh thành công!");
