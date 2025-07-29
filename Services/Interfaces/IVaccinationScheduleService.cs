@@ -11,7 +11,7 @@
             string? searchTerm,
             int pageNumber,
             int pageSize);
-
+        Task<ApiResult<VaccinationScheduleDetailResponseDTO>> GetScheduleByIdWithParentAcptAsync(Guid id);
         Task<ApiResult<List<VaccinationScheduleResponseDTO>>> CreateSchedulesAsync(CreateVaccinationScheduleRequest request);
 
         Task<ApiResult<VaccinationScheduleDetailResponseDTO>> UpdateScheduleAsync(Guid id, UpdateVaccinationScheduleRequest request);

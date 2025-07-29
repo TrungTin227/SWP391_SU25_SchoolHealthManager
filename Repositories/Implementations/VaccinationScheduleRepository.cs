@@ -60,12 +60,14 @@ namespace Repositories.Implementations
             return await _context.VaccinationSchedules
                 .AsSplitQuery()
                 .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents.Where(ss => studentIds.Contains(ss.StudentId) && !ss.IsDeleted))
-                    .ThenInclude(ss => ss.Student)         
-                .Where(vs => !vs.IsDeleted && vs.SessionStudents.Any(ss => studentIds.Contains(ss.StudentId)))
-                .OrderBy(vs => vs.ScheduledAt)
+                .Include(vs => vs.SessionStudents
+                    .Where(ss => studentIds.Contains(ss.StudentId)
+                              && !ss.IsDeleted
+                              && ss.ConsentStatus != ParentConsentStatus.Rejected)) // 💥 Chỉ lấy SS chưa bị phụ huynh từ chối
+                    .ThenInclude(ss => ss.Student)              
                 .ToListAsync();
         }
+
 
 
         public async Task<PagedList<VaccinationScheduleResponseDTO>> GetScheduleSummariesAsync(
@@ -120,6 +122,31 @@ namespace Repositories.Implementations
                         .ThenInclude(vr => vr.VaccinatedBy)
                 .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
         }
+
+        public async Task<VaccinationSchedule?> GetScheduleWithDetailsWithParentAcptAsync(Guid id)
+        {
+            var schedule = await _context.VaccinationSchedules
+                .AsSplitQuery()
+                .Include(vs => vs.Campaign)
+                .Include(vs => vs.VaccinationType)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.Student)
+                .Include(vs => vs.SessionStudents)
+                    .ThenInclude(ss => ss.VaccinationRecords)
+                        .ThenInclude(vr => vr.VaccinatedBy)
+                .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
+
+            // 🔍 Lọc lại SessionStudents có Status == Approved
+            if (schedule != null)
+            {
+                schedule.SessionStudents = schedule.SessionStudents
+                    .Where(ss => ss.ConsentStatus == ParentConsentStatus.Approved)
+                    .ToList();
+            }
+
+            return schedule;
+        }
+
 
         // Tối ưu cho Campaign view - Include một số thông tin cần thiết
         public async Task<PagedList<VaccinationSchedule>> GetSchedulesByCampaignAsync(

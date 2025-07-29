@@ -8,6 +8,9 @@
         Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null);
+        Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsyncWithParentAcpt(
+           int pageNumber, int pageSize, Guid? campaignId = null,
+           CheckupScheduleStatus? status = null, string? searchTerm = null);
 
         // Campaign Related
         Task<List<CheckupSchedule>> GetSchedulesByCampaignAsync(Guid campaignId);

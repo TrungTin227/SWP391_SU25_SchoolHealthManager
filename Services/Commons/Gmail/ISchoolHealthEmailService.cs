@@ -7,6 +7,7 @@
         Task SendHealthCheckupNotificationAsync(string parentEmail, string studentName, DateTime checkupDate);
         Task SendMedicationDeliveryConfirmationAsync(string parentEmail, string studentName, string medicationName);
         Task SendHealthEventNotificationAsync(string parentEmail, string studentName, string eventDescription, string treatmentProvided);
+        Task SendMedicationDeliverdAsync(string parentEmail, string studentName, string medicationName);
 
         // Nurse notifications
         Task SendDailyHealthReportAsync(List<string> nurseEmails, string reportContent);

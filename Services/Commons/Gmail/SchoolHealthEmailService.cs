@@ -39,6 +39,12 @@ namespace Services.Implementations
             var message = GenerateMedicationDeliveryConfirmationEmail(studentName, medicationName);
             await QueueEmailAsync(parentEmail, subject, message);
         }
+        public async Task SendMedicationDeliverdAsync(string parentEmail, string studentName, string medicationName)
+        {
+            var subject = $"[{_emailSettings.SchoolName}] Xác nhận nhận thuốc cho học sinh {studentName}";
+            var message = GenerateMedicationDeliveredEmail(studentName, medicationName);
+            await QueueEmailAsync(parentEmail, subject, message);
+        }
 
         public async Task SendHealthEventNotificationAsync(string parentEmail, string studentName, string eventDescription, string treatmentProvided)
         {
@@ -311,6 +317,45 @@ namespace Services.Implementations
                                 <li>Ghi chép đầy đủ trong sổ theo dõi</li>
                                 <li>Thông báo nếu có bất thường</li>
                             </ul>
+                        </div>
+                    </div>
+                </body>
+                </html>";
+        }
+
+        private string GenerateMedicationDeliveredEmail(string studentName, string medicationName)
+        {
+            return $@"
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }}
+                        .container {{ max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                        .header {{ text-align: center; border-bottom: 3px solid #9c27b0; padding-bottom: 20px; margin-bottom: 30px; }}
+                        .school-name {{ color: #9c27b0; font-size: 24px; font-weight: bold; }}
+                        .content {{ line-height: 1.6; }}
+                        .highlight {{ background-color: #f3e5f5; padding: 15px; border-left: 4px solid #9c27b0; margin: 20px 0; }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <div class='header'>
+                            <div class='school-name'>{_emailSettings.SchoolName}</div>
+                            <div>XÁC NHẬN ĐÃ GIAO THUỐC</div>
+                        </div>
+                        
+                        <div class='content'>
+                            <h2 style='color: #9c27b0;'>XÁC NHẬN GIAO NHẬN THUỐC</h2>
+                            
+                            <p>Kính gửi Quý phụ huynh học sinh <strong>{studentName}</strong>,</p>
+                            
+                            <div class='highlight'>
+                                <strong>💊 Thuốc đã giao:</strong><br>
+                                • Tên thuốc: <strong>{medicationName}</strong><br>
+                                • Thời gian nhận: <strong>{DateTime.Now:dd/MM/yyyy HH:mm}</strong><br>
+                                • Người giao: Cô/Thầy y tế trường<br>
+                                • Trạng thái: Đã giao an toàn
+                            </div>
                         </div>
                     </div>
                 </body>
