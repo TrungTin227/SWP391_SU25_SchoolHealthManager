@@ -60,12 +60,14 @@ namespace Repositories.Implementations
             return await _context.VaccinationSchedules
                 .AsSplitQuery()
                 .Include(vs => vs.VaccinationType)
-                .Include(vs => vs.SessionStudents.Where(ss => studentIds.Contains(ss.StudentId) && !ss.IsDeleted))
-                    .ThenInclude(ss => ss.Student)         
-                .Where(vs => !vs.IsDeleted && vs.SessionStudents.Any(ss => studentIds.Contains(ss.StudentId)))
-                .OrderBy(vs => vs.ScheduledAt)
+                .Include(vs => vs.SessionStudents
+                    .Where(ss => studentIds.Contains(ss.StudentId)
+                              && !ss.IsDeleted
+                              && ss.ConsentStatus != ParentConsentStatus.Rejected)) // 💥 Chỉ lấy SS chưa bị phụ huynh từ chối
+                    .ThenInclude(ss => ss.Student)              
                 .ToListAsync();
         }
+
 
 
         public async Task<PagedList<VaccinationScheduleResponseDTO>> GetScheduleSummariesAsync(
