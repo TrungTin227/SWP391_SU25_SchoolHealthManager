@@ -73,6 +73,33 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesWithParentAcptAsync(
+            int pageNumber, int pageSize, Guid? campaignId = null,
+            CheckupScheduleStatus? status = null, string? searchTerm = null)
+        {
+            try
+            {
+                var schedulesPaged = await _unitOfWork.CheckupScheduleRepository
+                    .GetCheckupSchedulesAsyncWithParentAcpt(pageNumber, pageSize, campaignId, status, searchTerm);
+
+                var responseDTOs = schedulesPaged.Select(MapToResponseDTO).ToList();
+
+                var result = new PagedList<CheckupScheduleResponseDTO>(
+                    responseDTOs,
+                    schedulesPaged.MetaData.TotalCount,
+                    schedulesPaged.MetaData.CurrentPage,
+                    schedulesPaged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Success(
+                    result, "Lấy danh sách lịch khám thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch khám");
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Failure(ex);
+            }
+        }
+
         public async Task<ApiResult<CheckupScheduleDetailResponseDTO>> GetCheckupScheduleByIdAsync(Guid id)
         {
             try
@@ -108,6 +135,10 @@ namespace Services.Implementations
                     return ApiResult<List<CheckupScheduleResponseDTO>>.Failure(
                         new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
                 }
+                // Validate campaign not completed
+                if (campaign.Status == CheckupCampaignStatus.Completed)
+                    return ApiResult<List<CheckupScheduleResponseDTO>>.Failure(
+                        new InvalidOperationException("Chiến dịch đã hoàn thành, không thể thêm lịch khám."));
 
                 // Get student IDs based on request
                 var studentIds = await GetStudentIdsFromRequest(request);
@@ -368,6 +399,30 @@ namespace Services.Implementations
             catch (Exception ex)
             {
                 return ApiResult<List<CheckupScheduleDetailResponseDTO>>.Failure(new Exception("Lỗi khi lấy lịch khám theo Id học sinh!!"));
+            }
+        }
+
+        public async Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetSoftDeletedSchedulesAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            try
+            {
+                var paged = await _unitOfWork.CheckupScheduleRepository
+                    .GetSoftDeletedSchedulesAsync(pageNumber, pageSize, searchTerm);
+
+                var dtos = paged.Select(MapToResponseDTO).ToList();
+
+                var result = new PagedList<CheckupScheduleResponseDTO>(
+                    dtos, paged.MetaData.TotalCount,
+                    paged.MetaData.CurrentPage, paged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Success(
+                    result, "Lấy danh sách lịch khám đã xóa thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách lịch khám đã xóa");
+                return ApiResult<PagedList<CheckupScheduleResponseDTO>>.Failure(ex);
             }
         }
 

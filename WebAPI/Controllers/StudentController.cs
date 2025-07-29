@@ -1,10 +1,12 @@
 ﻿using DTOs.StudentDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/students")]
+    [Authorize]
     public class StudentController : Controller
     {
         private readonly IStudentService _studentService;

@@ -20,8 +20,13 @@ namespace DTOs.CheckUpRecordDTOs.Requests
 
         [Required(ErrorMessage = "Cân nặng là bắt buộc.")]
         public decimal WeightKg { get; set; }
-        public VisionLevel VisionLeft { get; set; }
-        public VisionLevel VisionRight { get; set; }
+        [Required(ErrorMessage = "Thị lực mắt trái là bắt buộc.")]
+        [Range(1, 10, ErrorMessage = "Thị lực mắt trái phải là một số từ 1 đến 10.")]
+        public int VisionLeft { get; set; }
+
+        [Required(ErrorMessage = "Thị lực mắt phải là bắt buộc.")]
+        [Range(1, 10, ErrorMessage = "Thị lực mắt phải phải là một số từ 1 đến 10.")]
+        public int VisionRight { get; set; }
         public HearingLevel Hearing { get; set; }
         public decimal? BloodPressureDiastolic { get; set; }
         public Guid? ExaminedByNurseId { get; set; }

@@ -6,7 +6,9 @@
         Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null);
-
+        Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetCheckupSchedulesWithParentAcptAsync(
+            int pageNumber, int pageSize, Guid? campaignId = null,
+            CheckupScheduleStatus? status = null, string? searchTerm = null);
         Task<ApiResult<CheckupScheduleDetailResponseDTO>> GetCheckupScheduleByIdAsync(Guid id);
         Task<ApiResult<List<CheckupScheduleDetailResponseDTO>>> GetCheckupScheduleByStudentIdAsync(Guid id);
         Task<ApiResult<List<CheckupScheduleResponseDTO>>> CreateCheckupSchedulesAsync(CreateCheckupScheduleRequest request);
@@ -25,5 +27,6 @@
         // Statistics
         Task<ApiResult<Dictionary<CheckupScheduleStatus, int>>> GetScheduleStatusStatisticsAsync(Guid? campaignId = null);
         Task<ApiResult<List<CheckupScheduleForParentResponseDTO>>> GetSchedulesForParentAsync();
+        Task<ApiResult<PagedList<CheckupScheduleResponseDTO>>> GetSoftDeletedSchedulesAsync(int pageNumber, int pageSize, string? searchTerm = null);
     }
 }

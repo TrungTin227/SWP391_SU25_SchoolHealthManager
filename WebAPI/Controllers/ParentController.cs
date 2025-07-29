@@ -1,5 +1,6 @@
 ﻿using DTOs.ParentDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Org.BouncyCastle.Crypto;
 
@@ -7,6 +8,8 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/parents")]
+    [Authorize]
+
     public class ParentController : Controller
     {
         private readonly IParentService _parentService;

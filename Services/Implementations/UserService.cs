@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Repositories.Interfaces;
@@ -188,6 +189,24 @@ namespace Services.Implementations
             return ApiResult<string>.Success("Password reset successfully", "Password has been reset successfully");
         }
 
+        public async Task<ApiResult<PagedList<UserDetailsDTO>>> SearchUsersAsync(
+    string? searchTerm,
+    RoleType? roleId,
+    int page,
+    int size)
+        {
+            if (page < 1 || size < 1)
+                return ApiResult<PagedList<UserDetailsDTO>>.Failure(
+                    new ArgumentException("Tham số phân trang không hợp lệ"));
+
+            var list = await _userRepository.SearchUsersAsync(searchTerm, roleId, page, size);
+
+            var dtoList = list.Select(u => UserMappings.ToUserDetailsDTO(u, _userManager)).ToList();
+
+            return ApiResult<PagedList<UserDetailsDTO>>.Success(
+                new PagedList<UserDetailsDTO>(dtoList, list.MetaData.TotalCount, page, size),
+                $"Tìm thấy {list.MetaData.TotalCount} kết quả");
+        }
         public async Task<ApiResult<string>> Send2FACodeAsync()
         {
             var userId = _currentUserService.GetUserId();
@@ -231,33 +250,44 @@ namespace Services.Implementations
 
         public async Task<ApiResult<UserResponse>> LoginAsync(UserLoginRequest req)
         {
-            if (req == null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+            // 1. Guard clause
+            if (req is null || string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Password))
                 return ApiResult<UserResponse>.Failure(new ArgumentException("Invalid request"));
 
-            _logger.LogInformation("Login attempt: {Email}", req.Email);
+            _logger.LogInformation("Login attempt: {Login}", req.Login);
 
-            var user = await _userManager.FindByEmailAsync(req.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
+            // 2. Locate user (email OR username)
+            var user = req.Login.Contains('@', StringComparison.OrdinalIgnoreCase)
+                ? await _userManager.FindByEmailAsync(req.Login)
+                : await _userManager.FindByNameAsync(req.Login);
+
+            // 3. Validate credentials
+            if (user is null || !await _userManager.CheckPasswordAsync(user, req.Password))
             {
-                if (user != null) await _userManager.AccessFailedAsync(user);
-                return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Invalid email or password"));
+                if (user is not null)
+                    await _userManager.AccessFailedAsync(user);
+                return ApiResult<UserResponse>.Failure(new UnauthorizedAccessException("Invalid username/email or password"));
             }
 
+            // 4. Verify account state
             if (!await _userManager.IsEmailConfirmedAsync(user))
                 return ApiResult<UserResponse>.Failure(new InvalidOperationException("Please confirm your email before logging in"));
 
             if (await _userManager.IsLockedOutAsync(user))
                 return ApiResult<UserResponse>.Failure(new InvalidOperationException("Account is locked"));
 
+            // 5. Reset failed-count & issue tokens
             await _userManager.ResetAccessFailedAsync(user);
 
-            var token = await _tokenService.GenerateToken(user);
+            var tokenResult = await _tokenService.GenerateToken(user);
             var refreshTokenInfo = _tokenService.GenerateRefreshToken();
             await _userManager.SetRefreshTokenAsync(user, refreshTokenInfo);
 
-            return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager, token.Data, refreshTokenInfo.Token), "Login successful");
-        }
+            var userResponse = await UserMappings.ToUserResponseAsync(
+                user, _userManager, tokenResult.Data, refreshTokenInfo.Token);
 
+            return ApiResult<UserResponse>.Success(userResponse, "Login successful");
+        }
         public async Task<ApiResult<UserResponse>> GetByIdAsync(Guid id)
         {
             var userDetails = await _userRepository.GetUserDetailsByIdAsync(id);
@@ -351,17 +381,22 @@ namespace Services.Implementations
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
+                // 1. Cập nhật thông tin user
                 UserMappings.ApplyUpdate(req, user);
                 user.UpdatedAt = DateTime.UtcNow;
 
+                // 2. Cập nhật role
                 if (req.Roles?.Any() == true && _currentUserService.IsAdmin())
-                    await _userManager.UpdateRolesAsync(user, req.Roles);
+                {
+                    await _userRepository.UpdateRolesAsync(user, req.Roles);
+                }
 
-                var upd = await _userManager.UpdateAsync(user);
-                if (!upd.Succeeded)
-                    return ApiResult<UserResponse>.Failure(new InvalidOperationException(string.Join(", ", upd.Errors.Select(e => e.Description))));
+                // 3. Lưu toàn bộ thay đổi
+                await _unitOfWork.SaveChangesAsync();
 
-                return ApiResult<UserResponse>.Success(await UserMappings.ToUserResponseAsync(user, _userManager), "User updated successfully");
+                return ApiResult<UserResponse>.Success(
+                    await UserMappings.ToUserResponseAsync(user, _userManager),
+                    "User updated successfully");
             });
         }
 
@@ -414,7 +449,12 @@ namespace Services.Implementations
         public async Task<ApiResult<object>> DeleteUsersAsync(List<Guid> ids)
         {
             if (ids == null || !ids.Any())
-                return ApiResult<object>.Success(null, "No users to delete");
+                return ApiResult<object>.Success(null, "Không có người dùng để xóa");
+
+            // Lấy user đang đăng nhập
+            var currentUserId = _currentUserService.GetUserId();
+            if (currentUserId.HasValue && ids.Contains(currentUserId.Value))
+                return ApiResult<object>.Failure(new InvalidOperationException("Không thể xóa chính mình khi đang đăng nhập"));
 
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
@@ -428,10 +468,9 @@ namespace Services.Implementations
                     if (!del.Succeeded)
                         return ApiResult<object>.Failure(new InvalidOperationException(string.Join(", ", del.Errors.Select(e => e.Description))));
                 }
-                return ApiResult<object>.Success(null, $"Successfully deleted {ids.Count} user(s)");
+                return ApiResult<object>.Success(null, $"Đã xóa thành công {ids.Count} người dùng");
             });
         }
-
         public async Task<ApiResult<PagedList<UserDetailsDTO>>> GetUsersAsync(int page, int size)
         {
             if (page < 1 || size < 1)
@@ -441,6 +480,5 @@ namespace Services.Implementations
             return ApiResult<PagedList<UserDetailsDTO>>.Success(list, $"Retrieved {list.Count} users from page {page}");
         }
 
-        
     }
 }

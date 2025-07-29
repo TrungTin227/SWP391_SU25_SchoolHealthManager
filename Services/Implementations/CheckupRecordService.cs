@@ -53,6 +53,8 @@ namespace Services.Implementations
                 if (!IsWithinWorkingHours(request.ExaminedAt))
                     throw new Exception("Lịch khám không nằm trong giờ làm việc của trường!!");
 
+                if (request.ExaminedAt < schedule.ScheduledAt)
+                    throw new Exception("Vẫn chưa tới lịch khám, bạn nên chờ tới lịch khám!!");
                 if (schedule.ParentConsentStatus != CheckupScheduleStatus.Approved)
                     throw new Exception("Phụ huynh chưa đồng ý lịch khám này!!");
 
@@ -255,6 +257,7 @@ namespace Services.Implementations
                     return ApiResult<List<CheckupRecordRespondDTO?>>.Failure(new Exception("Nhân viên không phải là y tá."));
                 var records = await _unitOfWork.CheckupRecordRepository
                             .GetQueryable()
+                            .Include(r => r.Schedule) // ✅ THÊM DÒNG NÀY
                             .Include(r => r.CounselingAppointments)
                             .Where(r => !r.IsDeleted && r.ExaminedByNurseId == id)
                             .ToListAsync();
@@ -284,6 +287,7 @@ namespace Services.Implementations
 
                 var records = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule) // ✅ THÊM DÒNG NÀY
                     .Include(r => r.CounselingAppointments)
                     .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();
@@ -313,6 +317,7 @@ namespace Services.Implementations
 
                 var records = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule)
                     .Include(r => r.CounselingAppointments)
                     .Where(r => r.Schedule.StudentId == student.Id && !r.IsDeleted)
                     .ToListAsync();
@@ -337,6 +342,7 @@ namespace Services.Implementations
             {
                 var record = await _unitOfWork.CheckupRecordRepository
                     .GetQueryable()
+                    .Include(r => r.Schedule)
                     .Include(r => r.CounselingAppointments)
                     .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
 

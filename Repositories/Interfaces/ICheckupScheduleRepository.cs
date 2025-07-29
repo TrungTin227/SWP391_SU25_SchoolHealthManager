@@ -8,6 +8,9 @@
         Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsync(
             int pageNumber, int pageSize, Guid? campaignId = null,
             CheckupScheduleStatus? status = null, string? searchTerm = null);
+        Task<PagedList<CheckupSchedule>> GetCheckupSchedulesAsyncWithParentAcpt(
+           int pageNumber, int pageSize, Guid? campaignId = null,
+           CheckupScheduleStatus? status = null, string? searchTerm = null);
 
         // Campaign Related
         Task<List<CheckupSchedule>> GetSchedulesByCampaignAsync(Guid campaignId);
@@ -26,6 +29,7 @@
         // Statistics
         Task<Dictionary<CheckupScheduleStatus, int>> GetScheduleStatusStatisticsAsync(Guid? campaignId = null);
         Task<List<CheckupSchedule>> GetCheckupSchedulesByStudentIdsAsync(IEnumerable<Guid> studentIds);
+        Task<PagedList<CheckupSchedule>> GetSoftDeletedSchedulesAsync(int pageNumber, int pageSize, string? searchTerm = null);
 
     }
 }

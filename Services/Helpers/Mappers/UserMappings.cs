@@ -92,5 +92,24 @@ namespace Services.Helpers.Mapers
                 Gender = user?.Gender.ToString()
             };
         }
+        // Thêm vào cuối class UserMappings
+        public static UserDetailsDTO ToUserDetailsDTO(this User user, UserManager<User> userManager)
+        {
+            return new UserDetailsDTO
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                Gender = user.Gender.ToString(),
+                CreateAt = user.CreatedAt,
+                UpdateAt = user.UpdatedAt,
+                IsLockedOut = user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow,
+                LockoutEnd = user.LockoutEnd,
+                EmailConfirmed = user.EmailConfirmed,
+                Roles = (userManager.GetRolesAsync(user).GetAwaiter().GetResult()).ToList()
+            };
+        }
     }
 }

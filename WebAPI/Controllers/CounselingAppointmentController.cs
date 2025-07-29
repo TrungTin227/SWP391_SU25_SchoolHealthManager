@@ -1,10 +1,13 @@
 ﻿using DTOs.CounselingAppointmentDTOs.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/counseling-appointments")]
+    [Authorize]
+
     public class CounselingAppointmentController : Controller
     {
         private readonly ICounselingAppointmentService _counselingAppointmentService;

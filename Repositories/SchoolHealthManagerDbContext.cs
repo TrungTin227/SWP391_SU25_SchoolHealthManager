@@ -539,19 +539,7 @@ namespace Repositories
                 .HasMaxLength(50)
                 .IsUnicode(true);
 
-            // CheckupRecord enums
-            builder.Entity<CheckupRecord>()
-                .Property(e => e.VisionLeft)
-                .HasConversion(new EnumToStringConverter<VisionLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            builder.Entity<CheckupRecord>()
-                .Property(e => e.VisionRight)
-                .HasConversion(new EnumToStringConverter<VisionLevel>())
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
+            // CheckupRecord enums       
             builder.Entity<CheckupRecord>()
                 .Property(e => e.Hearing)
                 .HasConversion(new EnumToStringConverter<HearingLevel>())

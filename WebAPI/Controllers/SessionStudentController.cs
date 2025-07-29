@@ -1,10 +1,13 @@
 ﻿using DTOs.SessionStudentDTOs.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/session-students")]
+    [Authorize]
+
     public class SessionStudentController : Controller
     {
         private readonly ISessionStudentService _sessionStudentService;

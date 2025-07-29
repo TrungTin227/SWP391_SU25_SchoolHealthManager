@@ -59,6 +59,7 @@ namespace Services.Helpers.Mappers
             return new CheckupRecordRespondDTO
             {
                 Id = entity.Id,
+                StudentId = entity.Schedule.StudentId,
                 ScheduleId = entity.ScheduleId,
                 HeightCm = entity.HeightCm,
                 WeightKg = entity.WeightKg,
@@ -68,7 +69,7 @@ namespace Services.Helpers.Mappers
                 BloodPressureDiastolic = entity.BloodPressureDiastolic,
                 ExaminedByNurseId = entity.ExaminedByNurseId,
                 ExaminedAt = entity.ExaminedAt,
-                Remarks = entity.Remarks,
+                Remarks = entity.Remarks,   
                 Status = entity.Status,
 
                 CounselingAppointments = entity.CounselingAppointments?

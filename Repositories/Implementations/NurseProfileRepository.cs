@@ -58,12 +58,14 @@ namespace Repositories.Implementations
         public async Task<List<NurseProfileRespondDTOs>> GetNurseDtoAsync()
         {
             return await _dbcontext.NurseProfiles
-                .Include(p => p.User) // nếu cần username
+                .Include(p => p.User) 
                 .Where(p => !p.IsDeleted)
                 .Select(p => new NurseProfileRespondDTOs
                 {
                     UserId = p.UserId,
-                    Name = p.User != null ? p.User.UserName : null,
+                    Position = p.Position,
+                    Department = p.Department,
+                    Name = p.User.LastName + " " + p.User.FirstName
                 })
                 .ToListAsync();
         }

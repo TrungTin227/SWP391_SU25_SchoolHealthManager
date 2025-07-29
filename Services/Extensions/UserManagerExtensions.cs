@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Repositories;
 using System.Text.Json;
 
 namespace Services.Helpers
@@ -82,9 +84,15 @@ namespace Services.Helpers
         }
 
         public static async Task<IdentityResultWrapper> SetLockoutAsync(
-            this UserManager<User> mgr, User user, bool enable, DateTimeOffset until)
+    this UserManager<User> mgr, User user, bool enable, DateTimeOffset until)
         {
-            await mgr.SetLockoutEnabledAsync(user, enable);
+            // 1. Đảm bảo lockout được kích hoạt (chỉ cần 1 lần)
+            if (!await mgr.GetLockoutEnabledAsync(user))
+            {
+                await mgr.SetLockoutEnabledAsync(user, true);
+            }
+
+            // 2. Đặt thời điểm kết thúc lock
             var res = await mgr.SetLockoutEndDateAsync(user, until);
             return new IdentityResultWrapper(res);
         }
@@ -94,11 +102,41 @@ namespace Services.Helpers
             => mgr.UpdateSecurityStampAsync(user);
 
         public static async Task UpdateRolesAsync(
-            this UserManager<User> mgr, User user, IEnumerable<string> roles)
+    this SchoolHealthManagerDbContext context,
+    UserManager<User> userMgr,
+    User user,
+    IEnumerable<string> roleNames,
+    CancellationToken ct = default)
         {
-            var oldRoles = await mgr.GetRolesAsync(user);
-            await mgr.RemoveFromRolesAsync(user, oldRoles);
-            await mgr.AddToRolesAsync(user, roles ?? new[] { "USER" });
+            // 1. Make sure the roles exist
+            var normalizedRoles = roleNames.Select(r => r.ToUpper()).ToList();
+            var existingRoles = await context.Roles
+                .Where(r => normalizedRoles.Contains(r.NormalizedName))
+                .ToListAsync(ct);
+
+            if (existingRoles.Count != normalizedRoles.Count)
+            {
+                var missing = normalizedRoles
+                    .Except(existingRoles.Select(r => r.NormalizedName));
+                throw new InvalidOperationException($"Role(s) not found: {string.Join(',', missing)}");
+            }
+
+            // 2. Remove old links
+            var oldLinks = context.UserRoles.Where(ur => ur.UserId == user.Id);
+            context.UserRoles.RemoveRange(oldLinks);
+
+            // 3. Add new links
+            foreach (var role in existingRoles)
+            {
+                context.UserRoles.Add(new IdentityUserRole<Guid>
+                {
+                    UserId = user.Id,
+                    RoleId = role.Id
+                });
+            }
+
+            // 4. Let EF save everything inside the same transaction
         }
+       
     }
 }

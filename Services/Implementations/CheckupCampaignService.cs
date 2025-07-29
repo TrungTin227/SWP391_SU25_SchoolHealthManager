@@ -188,8 +188,22 @@ namespace Services.Implementations
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CompleteCampaignAsync(Guid campaignId, string? notes = null)
         {
-            return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Completed,
-                "hoàn thành", CheckupCampaignStatus.InProgress);
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                var campaign = await _unitOfWork.CheckupCampaignRepository.GetCheckupCampaignByIdAsync(campaignId);
+                if (campaign == null)
+                    return ApiResult<CheckupCampaignResponseDTO>.Failure(
+                        new KeyNotFoundException("Không tìm thấy chiến dịch khám định kỳ"));
+
+                // Không cho hoàn thành nếu chưa tới EndDate
+                if (_currentTime.GetVietnamTime() < campaign.EndDate)
+                    return ApiResult<CheckupCampaignResponseDTO>.Failure(
+                        new InvalidOperationException($"Chưa tới ngày kết thúc ({campaign.EndDate:dd/MM/yyyy}). Không thể hoàn thành."));
+
+                // Re-use logic cũ
+                return await UpdateCampaignStatusAsync(campaignId, CheckupCampaignStatus.Completed,
+                        "hoàn thành", CheckupCampaignStatus.InProgress);
+            });
         }
 
         public async Task<ApiResult<CheckupCampaignResponseDTO>> CancelCampaignAsync(Guid campaignId, string? reason = null)
@@ -659,5 +673,30 @@ namespace Services.Implementations
         }
 
         #endregion
+        public async Task<ApiResult<PagedList<CheckupCampaignResponseDTO>>> GetSoftDeletedCampaignsAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            try
+            {
+                var paged = await _unitOfWork.CheckupCampaignRepository
+                    .GetSoftDeletedCampaignsAsync(pageNumber, pageSize, searchTerm);
+
+                var dtos = new List<CheckupCampaignResponseDTO>();
+                foreach (var c in paged)
+                    dtos.Add(await MapToResponseDTO(c));
+
+                var result = new PagedList<CheckupCampaignResponseDTO>(
+                    dtos, paged.MetaData.TotalCount,
+                    paged.MetaData.CurrentPage, paged.MetaData.PageSize);
+
+                return ApiResult<PagedList<CheckupCampaignResponseDTO>>.Success(
+                    result, "Lấy danh sách chiến dịch đã xóa thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách chiến dịch đã xóa");
+                return ApiResult<PagedList<CheckupCampaignResponseDTO>>.Failure(ex);
+            }
+        }
     }
 }

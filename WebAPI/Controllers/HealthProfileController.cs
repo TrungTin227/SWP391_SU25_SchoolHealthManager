@@ -1,4 +1,5 @@
 ﻿using DTOs.HealProfile.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quartz.Util;
 
@@ -6,6 +7,8 @@ namespace WebAPI.Controllers
 {
     [ApiController]
     [Route("api/health-profiles")]
+    [Authorize]
+
     public class HealthProfileController : Controller
     {
         private readonly IHealProfileService _healProfileService;

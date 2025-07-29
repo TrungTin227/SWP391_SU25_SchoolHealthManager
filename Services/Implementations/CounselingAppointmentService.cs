@@ -240,6 +240,7 @@ namespace Services.Implementations
 
                 var appointments = await _unitOfWork.CounselingAppointmentRepository
                     .GetQueryable()
+                    .Include(a => a.Student)
                     .Where(a => a.StaffUserId == id && !a.IsDeleted)
                     .OrderByDescending(a => a.AppointmentDate)
                     .ToListAsync();

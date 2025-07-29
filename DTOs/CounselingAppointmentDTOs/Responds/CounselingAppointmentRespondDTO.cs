@@ -12,6 +12,7 @@ namespace DTOs.CounselingAppointmentDTOs.Responds
     {
         public Guid id { get; set; }
         public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = string.Empty;
 
         public Guid ParentId { get; set; }
 

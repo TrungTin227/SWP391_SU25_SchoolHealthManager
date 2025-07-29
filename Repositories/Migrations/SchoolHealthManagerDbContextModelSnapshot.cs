@@ -138,17 +138,11 @@ namespace Repositories.Migrations
                     b.Property<Guid>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("VisionLeft")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("VisionLeft")
+                        .HasColumnType("int");
 
-                    b.Property<string>("VisionRight")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("VisionRight")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("WeightKg")
                         .HasPrecision(5, 2)

@@ -12,13 +12,20 @@
 
         public string Email { get; set; } = string.Empty;
 
+        public string? PhoneNumber { get; set; }   // thêm
+
         public string? Gender { get; set; }
 
         public DateTime CreateAt { get; set; }
 
         public DateTime UpdateAt { get; set; }
 
-        public List<string> Roles { get; set; } = new List<string>();
+        public bool IsLockedOut { get; set; }      // thêm
 
+        public DateTimeOffset? LockoutEnd { get; set; } // thêm chi tiết khóa
+
+        public bool EmailConfirmed { get; set; }   // thêm
+
+        public List<string> Roles { get; set; } = new();
     }
 }

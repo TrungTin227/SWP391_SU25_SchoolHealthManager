@@ -151,5 +151,33 @@ namespace Repositories.Implementations
 
             return predicate;
         }
+        public async Task<PagedList<CheckupCampaign>> GetSoftDeletedCampaignsAsync(
+    int pageNumber, int pageSize, string? searchTerm = null)
+        {
+            var predicate = PredicateBuilder
+                .True<CheckupCampaign>()
+                .And(c => c.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.Trim();
+                predicate = predicate.And(c =>
+                    c.Name.Contains(term) ||
+                    c.SchoolYear.Contains(term) ||
+                    (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(term)));
+            }
+
+            var query = _context.CheckupCampaigns
+                .Where(predicate)
+                .OrderByDescending(c => c.DeletedAt ?? c.UpdatedAt);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedList<CheckupCampaign>(items, totalCount, pageNumber, pageSize);
+        }
     }
 }
