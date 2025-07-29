@@ -76,8 +76,6 @@ namespace Services.Implementations
                     // BaseService sẽ tự động xử lý audit fields
                     var created = await CreateAsync(entity);
 
-                    await UpdateSupplyCurrentStockAsync(request.MedicalSupplyId);
-
                     var lot = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(created.Id)
                               ?? throw new InvalidOperationException("Không thể lấy lô vừa tạo");
                     var dto = MedicalSupplyLotMapper.ToResponseDTO(lot);
@@ -119,7 +117,6 @@ namespace Services.Implementations
                     await UpdateAsync(lot);
 
                     // Update stock for the affected supply
-                    await UpdateSupplyCurrentStockAsync(oldSupplyId);
 
                     var updated = await _unitOfWork.MedicalSupplyLotRepository.GetLotWithSupplyAsync(id)
                                    ?? throw new InvalidOperationException("Không thể lấy lô đã cập nhật");
@@ -237,10 +234,6 @@ namespace Services.Implementations
                             // Update stock for all affected supplies
                             var affectedSupplyIds = deletedLots.Where(l => deletedLotIds.Contains(l.Id))
                                                              .Select(l => l.MedicalSupplyId).Distinct();
-                            foreach (var supplyId in affectedSupplyIds)
-                            {
-                                await UpdateSupplyCurrentStockAsync(supplyId);
-                            }
 
                             result.SuccessCount = restoredCount;
                             result.SuccessIds = deletedLotIds.Select(id => id.ToString()).ToList();
@@ -383,8 +376,6 @@ namespace Services.Implementations
                             new InvalidOperationException("Không thể cập nhật số lượng"));
                     }
 
-                    await UpdateSupplyCurrentStockAsync(supplyId);
-
                     _logger.LogInformation("Updated quantity for lot {LotId} to {Quantity}", lotId, newQuantity);
 
                     return ApiResult<bool>.Success(true, "Cập nhật số lượng thành công");
@@ -441,11 +432,6 @@ namespace Services.Implementations
 
                 if (deletedCount > 0)
                 {
-                    // Update stock for all affected supplies
-                    foreach (var supplyId in affectedSupplyIds)
-                    {
-                        await UpdateSupplyCurrentStockAsync(supplyId);
-                    }
 
                     result.SuccessCount = deletedCount;
                     result.SuccessIds = existingIds.Select(id => id.ToString()).ToList();
@@ -490,8 +476,6 @@ namespace Services.Implementations
                     var deleteResult = await DeleteAsync(id);
                     if (deleteResult)
                     {
-                        await UpdateSupplyCurrentStockAsync(supplyId);
-
                         result.SuccessIds.Add(id.ToString());
                         result.SuccessCount++;
                     }
@@ -596,20 +580,7 @@ namespace Services.Implementations
             return (true, "Valid");
         }
 
-        private async Task UpdateSupplyCurrentStockAsync(Guid medicalSupplyId)
-        {
-            try
-            {
-                var currentStock = await _unitOfWork.MedicalSupplyLotRepository.CalculateCurrentStockForSupplyAsync(medicalSupplyId);
-                await _unitOfWork.MedicalSupplyRepository.UpdateCurrentStockAsync(medicalSupplyId, currentStock);
-                // Note: SaveChanges is handled by the transaction extension
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating current stock for supply: {SupplyId}", medicalSupplyId);
-                throw; // Re-throw to ensure transaction rollback
-            }
-        }
+       
 
         private static PagedList<MedicalSupplyLotResponseDTO> CreatePagedResult(
             PagedList<MedicalSupplyLot> sourcePaged,

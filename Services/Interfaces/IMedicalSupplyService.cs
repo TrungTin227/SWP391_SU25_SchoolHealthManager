@@ -13,6 +13,7 @@
         Task<ApiResult<MedicalSupplyDetailResponseDTO>> GetMedicalSupplyDetailByIdAsync(Guid id);
         Task<ApiResult<MedicalSupplyResponseDTO>> CreateMedicalSupplyAsync(CreateMedicalSupplyRequest request);
         Task<ApiResult<MedicalSupplyResponseDTO>> UpdateMedicalSupplyAsync(Guid id, UpdateMedicalSupplyRequest request);
+        Task<ApiResult<bool>> ReconcileStockAsync(Guid id, int actualPhysicalCount);
         #endregion
 
         #region Soft Delete Operations
@@ -29,7 +30,6 @@
 
         #region Business Logic Operations
         Task<ApiResult<List<MedicalSupplyResponseDTO>>> GetLowStockSuppliesAsync();
-        Task<ApiResult<bool>> UpdateCurrentStockAsync(Guid id, int newStock);
         Task<ApiResult<bool>> UpdateMinimumStockAsync(Guid id, int newMinimumStock);
         #endregion
     }

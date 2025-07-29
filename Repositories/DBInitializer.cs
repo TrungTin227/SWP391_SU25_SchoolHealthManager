@@ -628,7 +628,6 @@ namespace Repositories
                 Id = Guid.NewGuid(),
                 Name = name,
                 Unit = unit,
-                CurrentStock = currentStock,
                 MinimumStock = minimumStock,
                 IsActive = true,
                 CreatedAt = now,

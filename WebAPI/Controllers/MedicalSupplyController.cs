@@ -130,6 +130,29 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        /// <summary>
+        /// Điều chỉnh tồn kho của một vật tư y tế sau khi kiểm kê thực tế.
+        /// </summary>
+        /// <param name="id">ID của vật tư y tế cần điều chỉnh.</param>
+        /// <param name="request">Thông tin về số lượng thực tế đếm được và lý do.</param>
+        /// <remarks>
+        /// API này sẽ so sánh số lượng thực tế với số lượng hiện có trên hệ thống 
+        /// và tạo ra một giao dịch điều chỉnh (tăng hoặc giảm) để làm cho hai số này khớp nhau.
+        /// </remarks>
+        [HttpPatch("{id:guid}/reconcile-stock")]
+        public async Task<IActionResult> ReconcileStock(Guid id, [FromBody] ReconcileStockRequest request)
+        {
+            if (id == Guid.Empty)
+            {
+                return BadRequest("ID vật tư y tế không hợp lệ.");
+            }
+
+            // Gọi phương thức mới trong service
+            var result = await _medicalSupplyService.ReconcileStockAsync(id, request.ActualPhysicalCount);
+
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         #endregion
 
         #region Private Helper Methods
