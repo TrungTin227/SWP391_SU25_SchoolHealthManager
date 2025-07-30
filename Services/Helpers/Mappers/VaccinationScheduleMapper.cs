@@ -80,7 +80,8 @@
                 VaccinationTypeName = schedule.VaccinationType?.Name ?? string.Empty,
                 ScheduledAt        = schedule.ScheduledAt,
                 ScheduleStatus     = schedule.ScheduleStatus,
-                StudentName        = ss.Student?.FullName ?? string.Empty
+                StudentName        = ss.Student?.FullName ?? string.Empty,
+                ConsentStatus = ss.ConsentStatus, // thêm
             };
         }
 
