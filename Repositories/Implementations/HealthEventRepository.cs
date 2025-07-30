@@ -30,9 +30,14 @@ namespace Repositories.Implementations
             {
                 var term = searchTerm.ToLower();
                 query = query.Where(he =>
-                    he.Description.ToLower().Contains(term) ||
-                    (he.Student.FirstName + " " + he.Student.LastName).ToLower().Contains(term) ||
-                    (he.ReportedUser.FirstName + " " + he.ReportedUser.LastName).ToLower().Contains(term));
+                        EF.Functions.Like(he.Description.ToLower(), $"%{term}%") ||
+                        EF.Functions.Like(
+                            (he.Student.FirstName ?? "") + " " + (he.Student.LastName ?? ""),
+                            $"%{term}%") ||
+                        EF.Functions.Like(
+                            (he.ReportedUser.FirstName ?? "") + " " + (he.ReportedUser.LastName ?? ""),
+                            $"%{term}%")
+                    );
             }
 
             if (status.HasValue)
@@ -58,6 +63,7 @@ namespace Repositories.Implementations
         public async Task<HealthEvent?> GetHealthEventWithDetailsAsync(Guid id)
         {
             return await _context.HealthEvents
+                 .AsNoTracking()
                 .Include(he => he.Student)
                 .Include(he => he.ReportedUser)
                 .Include(he => he.EventMedications)
@@ -167,15 +173,14 @@ namespace Repositories.Implementations
             return await PagedList<HealthEvent>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
-        public async Task<Dictionary<EventStatus, int>> GetEventStatusStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
+        public async Task<Dictionary<EventStatus, int>> GetEventStatusStatisticsAsync(
+    DateTime? fromDate = null, DateTime? toDate = null)
         {
-            var query = _context.HealthEvents.Where(he => !he.IsDeleted);
+            // Bắt đầu với truy vấn gọn nhất có thể
+            var query = _context.HealthEvents.AsNoTracking().Where(he => !he.IsDeleted);
 
-            if (fromDate.HasValue)
-                query = query.Where(he => he.OccurredAt >= fromDate.Value);
-
-            if (toDate.HasValue)
-                query = query.Where(he => he.OccurredAt <= toDate.Value);
+            if (fromDate.HasValue) query = query.Where(he => he.OccurredAt >= fromDate.Value);
+            if (toDate.HasValue) query = query.Where(he => he.OccurredAt <= toDate.Value);
 
             return await query
                 .GroupBy(he => he.EventStatus)

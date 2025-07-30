@@ -1,7 +1,7 @@
 ﻿using BusinessObjects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Services.Commons;
-using Services.Mappers;
 using System.Data;
 
 namespace Services.Implementations
@@ -61,14 +61,12 @@ namespace Services.Implementations
             {
                 var healthEvent = await _unitOfWork.HealthEventRepository.GetHealthEventWithDetailsAsync(id);
                 if (healthEvent == null)
-                {
                     return ApiResult<HealthEventDetailResponseDTO>.Failure(
                         new Exception("Không tìm thấy sự kiện y tế"));
-                }
 
-                var detailDTO = HealthEventMapper.MapToDetailResponseDTO(healthEvent);
                 return ApiResult<HealthEventDetailResponseDTO>.Success(
-                    detailDTO, "Lấy thông tin chi tiết sự kiện y tế thành công");
+                    HealthEventMapper.MapToDetailResponseDTO(healthEvent),
+                    "Lấy thông tin chi tiết sự kiện y tế thành công");
             }
             catch (Exception ex)
             {
@@ -83,6 +81,7 @@ namespace Services.Implementations
             {
                 try
                 {
+
                     var validationResult = await ValidateCreateRequestAsync(request);
                     if (!validationResult.IsSuccess)
                     {
@@ -91,6 +90,11 @@ namespace Services.Implementations
                     }
 
                     var healthEvent = HealthEventMapper.MapFromCreateRequest(request);
+                    var today = _currentTime.GetVietnamTime().Date;
+                    var todayCount = await _unitOfWork.HealthEventRepository
+                                                      .GetQueryable()
+                                                      .CountAsync(e => e.CreatedAt >= today);
+                    healthEvent.EventCode = $"EV-{today:yyyyMMdd}-{todayCount + 1:000}";
 
                     // Tự động set trạng thái là Pending
                     healthEvent.EventStatus = EventStatus.Pending;
@@ -124,71 +128,71 @@ namespace Services.Implementations
                 {
                     var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     if (healthEvent == null)
-                    {
                         return ApiResult<HealthEventResponseDTO>.Failure(
                             new Exception("Không tìm thấy sự kiện y tế"));
-                    }
 
-                    // Kiểm tra trạng thái có thể cập nhật
                     if (healthEvent.EventStatus == EventStatus.Resolved)
-                    {
                         return ApiResult<HealthEventResponseDTO>.Failure(
                             new Exception("Không thể cập nhật sự kiện y tế đã hoàn thành"));
-                    }
 
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
                     var vietnamTime = _currentTime.GetVietnamTime();
                     var hasAnyTreatment = false;
 
-                    // Xử lý thuốc
-                    //if (request.EventMedications != null && request.EventMedications.Any())
-                    //{
-                    //    var medicationValidation = await ValidateEventMedicationsAsync(request.EventMedications);
-                    //    if (!medicationValidation.IsSuccess)
-                    //    {
-                    //        return ApiResult<HealthEventResponseDTO>.Failure(
-                    //            new Exception(medicationValidation.Message));
-                    //    }
-
-                    //    await ProcessEventMedicationsAsync(request.HealthEventId, request.EventMedications, currentUserId, vietnamTime);
-                    //    hasAnyTreatment = true;
-                    //}
+                    // Cập nhật thông tin chi tiết (tất cả đều optional)
+                    if (request.Location != null) healthEvent.Location = request.Location;
+                    if (request.InjuredBodyPartsRaw != null) healthEvent.InjuredBodyPartsRaw = request.InjuredBodyPartsRaw;
+                    if (request.Severity != null) healthEvent.Severity = request.Severity;
+                    if (request.Symptoms != null) healthEvent.Symptoms = request.Symptoms;
+                    if (request.FirstAidAt != null) healthEvent.FirstAidAt = request.FirstAidAt;
+                    if (request.FirstResponderId != null) healthEvent.FirstResponderId = request.FirstResponderId;
+                    if (request.FirstAidDescription != null) healthEvent.FirstAidDescription = request.FirstAidDescription;
+                    if (request.ParentNotifiedAt != null) healthEvent.ParentNotifiedAt = request.ParentNotifiedAt;
+                    if (request.ParentNotificationMethod != null) healthEvent.ParentNotificationMethod = request.ParentNotificationMethod;
+                    if (request.ParentNotificationNote != null) healthEvent.ParentNotificationNote = request.ParentNotificationNote;
+                    if (request.IsReferredToHospital != null) healthEvent.IsReferredToHospital = request.IsReferredToHospital;
+                    if (request.ReferralHospital != null) healthEvent.ReferralHospital = request.ReferralHospital;
+                    if (request.ReferralDepartureTime != null) healthEvent.ReferralDepartureTime = request.ReferralDepartureTime;
+                    if (request.ReferralTransportBy != null) healthEvent.ReferralTransportBy = request.ReferralTransportBy;
+                    if (request.ParentSignatureUrl != null) healthEvent.ParentSignatureUrl = request.ParentSignatureUrl;
+                    if (request.ParentArrivalAt != null) healthEvent.ParentArrivalAt = request.ParentArrivalAt;
+                    if (request.ParentReceivedBy != null) healthEvent.ParentReceivedBy = request.ParentReceivedBy;
+                    if (request.AdditionalNotes != null) healthEvent.AdditionalNotes = request.AdditionalNotes;
+                    if (request.AttachmentUrlsRaw != null) healthEvent.AttachmentUrlsRaw = request.AttachmentUrlsRaw;
+                    if (request.WitnessesRaw != null) healthEvent.WitnessesRaw = request.WitnessesRaw;
 
                     // Xử lý vật tư y tế
                     if (request.SupplyUsages != null && request.SupplyUsages.Any())
                     {
                         var supplyValidation = await ValidateSupplyUsagesAsync(request.SupplyUsages, currentUserId);
                         if (!supplyValidation.IsSuccess)
-                        {
-                            return ApiResult<HealthEventResponseDTO>.Failure(
-                                new Exception(supplyValidation.Message));
-                        }
+                            return ApiResult<HealthEventResponseDTO>.Failure(new Exception(supplyValidation.Message));
 
                         await ProcessSupplyUsagesAsync(request.HealthEventId, request.SupplyUsages, currentUserId, vietnamTime);
                         hasAnyTreatment = true;
                     }
 
-                    // Cập nhật trạng thái dựa trên logic business
+                    // Chuyển trạng thái nếu có điều trị
                     if (hasAnyTreatment && healthEvent.EventStatus == EventStatus.Pending)
                     {
-                        // Có điều trị và đang Pending -> chuyển sang InProgress
-                        await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(request.HealthEventId, EventStatus.InProgress, currentUserId);
+                        await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(
+                            request.HealthEventId, EventStatus.InProgress, currentUserId);
                     }
 
+                    await UpdateAsync(healthEvent);   // chứa UpdatedAt/UpdatedBy
                     await _unitOfWork.SaveChangesAsync();
 
-                    // Lấy lại dữ liệu để trả về
                     var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
                     var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
 
-                    var statusMessage = hasAnyTreatment && updatedEvent!.EventStatus == EventStatus.InProgress
-                        ? "Thêm điều trị thành công và trạng thái được cập nhật thành InProgress"
+                    var message = hasAnyTreatment && updatedEvent!.EventStatus == EventStatus.InProgress
+                        ? "Cập nhật điều trị thành công – trạng thái chuyển sang InProgress"
                         : "Cập nhật điều trị sự kiện y tế thành công";
 
                     _logger.LogInformation("Health event {EventId} updated with treatment, new status: {Status}",
                         request.HealthEventId, updatedEvent.EventStatus);
 
-                    return ApiResult<HealthEventResponseDTO>.Success(eventDTO, statusMessage);
+                    return ApiResult<HealthEventResponseDTO>.Success(eventDTO, message);
                 }
                 catch (Exception ex)
                 {
@@ -720,6 +724,13 @@ namespace Services.Implementations
                     CreatedAt = e.CreatedAt,
                     UpdatedAt = e.UpdatedAt,
                     IsDeleted = e.IsDeleted,
+
+                    EventCode = e.EventCode ?? string.Empty,
+                    Location = e.Location,
+                    Severity = e.Severity?.ToString(),
+                    ResolvedAt = e.ResolvedAt,
+                    TotalMedications = e.EventMedications?.Count ?? 0,
+                    TotalSupplies = e.SupplyUsages?.Count ?? 0
                 }).ToList();
 
                 return ApiResult<List<HealthEventResponseDTO>>.Success(result,"Lấy danh sách sự kiện y tế của con bạn thành công!!!");
