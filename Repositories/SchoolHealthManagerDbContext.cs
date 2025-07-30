@@ -525,6 +525,11 @@ namespace Repositories
                 .HasConversion(new EnumToStringConverter<EventStatus>())
                 .HasMaxLength(50)
                 .IsUnicode(true);
+            builder.Entity<HealthEvent>()
+                .Property(e => e.Severity)
+                .HasConversion(new EnumToStringConverter<SeverityLevel>()) // Chuyển đổi enum SeverityLevel sang chuỗi
+                .HasMaxLength(50)
+                .IsUnicode(true);
 
             // HealthProfile enums
             builder.Entity<HealthProfile>()

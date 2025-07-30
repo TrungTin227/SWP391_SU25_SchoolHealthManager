@@ -88,4 +88,6 @@
         Completed = 3,      // Đã khám xong
         NoShow = 4          // Không đến khám
     }
+    public enum SeverityLevel { Minor, Moderate, Severe }
+
 }
