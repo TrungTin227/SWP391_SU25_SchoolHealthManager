@@ -18,5 +18,20 @@
         Task SendVaccinationCampaignReminderAsync(List<string> staffEmails, string campaignName, DateTime startDate);
         Task SendHealthCheckupCampaignReminderAsync(List<string> staffEmails, string campaignName, DateTime startDate);
         Task SendMonthlyHealthReportAsync(List<string> adminEmails, string reportPeriod, string reportSummary);
+        Task SendHealthEventAckMailAsync(
+    string parentEmail,
+    string studentName,
+    string eventDescription,
+    string treatmentProvided,
+    Guid eventId,
+    string ackToken);   // token để API validate
+        Task SendHospitalReferralAckAsync(
+   string parentEmail,
+   string studentName,
+   string referralHospital,
+   DateTime departureTime,
+   string transportBy,
+   Guid eventId,
+   string ackToken);
     }
 }

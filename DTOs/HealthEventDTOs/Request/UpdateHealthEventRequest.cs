@@ -8,7 +8,6 @@ namespace DTOs.HealthEventDTOs.Request
         [Required(ErrorMessage = "ID sự kiện y tế là bắt buộc")]
         public Guid HealthEventId { get; set; }
         [MaxLength(1000)] public string? Description { get; set; }
-        public EventStatus? EventStatus { get; set; }
 
         [MaxLength(100)] public string? Location { get; set; }
         [MaxLength(200)] public string? InjuredBodyPartsRaw { get; set; }
@@ -29,7 +28,6 @@ namespace DTOs.HealthEventDTOs.Request
         [MaxLength(50)] public string? ReferralTransportBy { get; set; }
 
         [MaxLength(500)] public string? ParentSignatureUrl { get; set; }
-        public DateTime? ResolvedAt { get; set; }
         public DateTime? ParentArrivalAt { get; set; }
         [MaxLength(100)] public string? ParentReceivedBy { get; set; }
 
@@ -39,7 +37,7 @@ namespace DTOs.HealthEventDTOs.Request
         /// <summary>
         /// Danh sách thuốc cần thêm vào sự kiện y tế
         /// </summary>
-        //public List<CreateEventMedicationRequest>? EventMedications { get; set; }
+        public List<CreateEventMedicationRequest>? EventMedications { get; set; }
 
         /// <summary>
         /// Danh sách vật tư y tế cần thêm vào sự kiện

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories;
 
@@ -11,9 +12,11 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    partial class SchoolHealthManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250731051510_AttributeParentAcknowledgedAtHealthEvents")]
+    partial class AttributeParentAcknowledgedAtHealthEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2340,8 +2343,7 @@ namespace Repositories.Migrations
                 {
                     b.HasOne("BusinessObjects.HealthEvent", "HealthEvent")
                         .WithMany("Reports")
-                        .HasForeignKey("HealthEventId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("HealthEventId");
 
                     b.Navigation("HealthEvent");
                 });
@@ -2381,7 +2383,7 @@ namespace Repositories.Migrations
                     b.HasOne("BusinessObjects.HealthEvent", "HealthEvent")
                         .WithMany("SupplyUsages")
                         .HasForeignKey("HealthEventId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.MedicalSupplyLot", "MedicalSupplyLot")

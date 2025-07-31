@@ -148,6 +148,20 @@ namespace Repositories
                       .WithMany(cr => cr.HealthEvents)    
                       .HasForeignKey(he => he.CheckupRecordId)
                       .OnDelete(DeleteBehavior.NoAction);
+                // HealthEvent <-> EventMedication
+                builder.Entity<EventMedication>()
+                    .HasOne(em => em.HealthEvent)
+                    .WithMany(he => he.EventMedications)
+                    .HasForeignKey(em => em.HealthEventId)
+                    .OnDelete(DeleteBehavior.Cascade); // <-- SỬA Ở ĐÂY
+
+                // HealthEvent <-> Report
+                builder.Entity<Report>()
+                    .HasOne(r => r.HealthEvent)
+                    .WithMany(he => he.Reports)
+                    .HasForeignKey(r => r.HealthEventId)
+                    .IsRequired(false) // Giả sử Report có thể không có HealthEvent
+                    .OnDelete(DeleteBehavior.Cascade); // <-- SỬA Ở ĐÂY
             });
 
             // CheckupRecord relationships
@@ -309,7 +323,8 @@ namespace Repositories
             {
                 entity.HasOne(su => su.HealthEvent)
                       .WithMany(he => he.SupplyUsages)
-                      .OnDelete(DeleteBehavior.NoAction);
+                      .HasForeignKey(su => su.HealthEventId) 
+                      .OnDelete(DeleteBehavior.Cascade); 
 
                 entity.HasOne(su => su.UsedByNurse)
                       .WithMany()
@@ -528,6 +543,11 @@ namespace Repositories
             builder.Entity<HealthEvent>()
                 .Property(e => e.Severity)
                 .HasConversion(new EnumToStringConverter<SeverityLevel>()) // Chuyển đổi enum SeverityLevel sang chuỗi
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<HealthEvent>()
+                .Property(e => e.ParentAckStatus)
+                .HasConversion(new EnumToStringConverter<ParentAcknowledgmentStatus>()) 
                 .HasMaxLength(50)
                 .IsUnicode(true);
 

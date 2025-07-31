@@ -13,110 +13,148 @@
                 Description = dto.Description,
                 OccurredAt = dto.OccurredAt,
 
-                // ---- thêm mới -----
+                // Các thông tin ban đầu
                 Location = dto.Location,
                 InjuredBodyPartsRaw = dto.InjuredBodyPartsRaw,
                 Severity = dto.Severity,
                 Symptoms = dto.Symptoms,
-                FirstAidAt = dto.FirstAidAt,
-                FirstResponderId = dto.FirstResponderId,
-                FirstAidDescription = dto.FirstAidDescription,
-                ParentNotifiedAt = dto.ParentNotifiedAt,
-                ParentNotificationMethod = dto.ParentNotificationMethod,
-                ParentNotificationNote = dto.ParentNotificationNote,
-                IsReferredToHospital = dto.IsReferredToHospital,
-                ReferralHospital = dto.ReferralHospital,
-                ReferralDepartureTime = dto.ReferralDepartureTime,
-                ReferralTransportBy = dto.ReferralTransportBy,
-                ParentSignatureUrl = dto.ParentSignatureUrl,
-                AdditionalNotes = dto.AdditionalNotes,
-                AttachmentUrlsRaw = dto.AttachmentUrlsRaw,
-                WitnessesRaw = dto.WitnessesRaw
             };
         }
+        /// <summary>
+        /// Map từ HealthEvent → HealthEventResponseDTO (bản response cơ bản)
+        /// </summary>
         public static HealthEventResponseDTO MapToResponseDTO(HealthEvent he)
         {
             return new HealthEventResponseDTO
             {
                 Id = he.Id,
+                EventCode = he.EventCode,
                 StudentId = he.StudentId,
-                StudentName = (he.Student?.FirstName ?? "") + " " + (he.Student?.LastName ?? ""),
+                StudentName = $"{he.Student?.FirstName} {he.Student?.LastName}".Trim(),
                 EventCategory = he.EventCategory.ToString(),
-                VaccinationRecordId = he.VaccinationRecordId,
                 EventType = he.EventType.ToString(),
                 Description = he.Description,
                 OccurredAt = he.OccurredAt,
                 EventStatus = he.EventStatus.ToString(),
                 ReportedBy = he.ReportedUserId,
-                ReportedByName = (he.ReportedUser?.FirstName ?? "") + " " + (he.ReportedUser?.LastName ?? ""),
+                ReportedByName = $"{he.ReportedUser?.FirstName} {he.ReportedUser?.LastName}".Trim(),
                 CreatedAt = he.CreatedAt,
                 UpdatedAt = he.UpdatedAt,
                 IsDeleted = he.IsDeleted,
-                EventCode = he.EventCode,
+
+                // Thông tin hiện có
                 Location = he.Location,
+                InjuredBodyPartsRaw = he.InjuredBodyPartsRaw,
                 Severity = he.Severity?.ToString(),
+                Symptoms = he.Symptoms,
+
+                // Các trường sẽ có giá trị sau bước treat
+                FirstAidAt = he.FirstAidAt,
+                FirstResponderName = he.FirstResponder?.User?.FullName,
+                FirstAidDescription = he.FirstAidDescription,
                 ResolvedAt = he.ResolvedAt,
+                ParentAcknowledgmentStatus = he.ParentAckStatus,
+                ParentAcknowledgedAt = he.ParentAcknowledgedAt,
+                ParentNotifiedAt = he.ParentNotifiedAt,
+                IsReferredToHospital = he.IsReferredToHospital,
+                ReferralHospital = he.ReferralHospital,
+                AdditionalNotes = he.AdditionalNotes,
+                AttachmentUrlsRaw = he.AttachmentUrlsRaw,
+                WitnessesRaw = he.WitnessesRaw,
+
                 TotalMedications = he.EventMedications?.Count ?? 0,
                 TotalSupplies = he.SupplyUsages?.Count ?? 0
             };
         }
 
-        // 3. Map chi tiết
+        /// <summary>
+        /// Map chi tiết (đã có đầy đủ)
+        /// </summary>
         public static HealthEventDetailResponseDTO MapToDetailResponseDTO(HealthEvent he)
         {
-            // Bước 1: Gọi phương thức map cơ bản để lấy các thông tin chung
-            var baseDto = MapToResponseDTO(he);
-
-            // Bước 2: Tạo đối tượng chi tiết và gán các giá trị từ DTO cơ bản
-            // và bổ sung thêm các trường chi tiết.
-            return new HealthEventDetailResponseDTO
+            // Tạo một đối tượng DTO chi tiết ngay từ đầu
+            var dto = new HealthEventDetailResponseDTO
             {
-                // Gán lại toàn bộ các trường từ DTO cơ bản
-                Id = baseDto.Id,
-                EventCode = baseDto.EventCode,
-                StudentId = baseDto.StudentId,
-                StudentName = baseDto.StudentName,
-                EventCategory = baseDto.EventCategory,
-                VaccinationRecordId = baseDto.VaccinationRecordId,
-                EventType = baseDto.EventType,
-                Description = baseDto.Description,
-                OccurredAt = baseDto.OccurredAt,
-                EventStatus = baseDto.EventStatus,
-                Location = baseDto.Location,
-                Severity = baseDto.Severity,
-                ResolvedAt = baseDto.ResolvedAt,
-                ReportedBy = baseDto.ReportedBy,
-                ReportedByName = baseDto.ReportedByName,
-                CreatedAt = baseDto.CreatedAt,
-                UpdatedAt = baseDto.UpdatedAt,
-                IsDeleted = baseDto.IsDeleted,
-                TotalMedications = baseDto.TotalMedications,
-                TotalSupplies = baseDto.TotalSupplies,
+                // --- Phần 1: Gán TẤT CẢ các trường được kế thừa từ HealthEventResponseDTO ---
 
-                // Bổ sung các trường chỉ có trong DTO chi tiết
+                // Identification
+                Id = he.Id,
+                EventCode = he.EventCode,
+
+                // Student
+                StudentId = he.StudentId,
+                StudentName = $"{he.Student?.FirstName} {he.Student?.LastName}".Trim(),
+
+                // Event core
+                EventCategory = he.EventCategory.ToString(),
+                EventType = he.EventType.ToString(),
+                Description = he.Description,
+                OccurredAt = he.OccurredAt,
+                EventStatus = he.EventStatus.ToString(),
+
+                // Optional vaccination link
+                VaccinationRecordId = he.VaccinationRecordId,
+
+                // Location & injury details
+                Location = he.Location,
                 InjuredBodyPartsRaw = he.InjuredBodyPartsRaw,
+                Severity = he.Severity?.ToString(),
                 Symptoms = he.Symptoms,
+
+                // First aid (phần cơ bản)
                 FirstAidAt = he.FirstAidAt,
-                FirstResponderName = he.FirstResponder?.User.FullName, // Ví dụ: bạn có thể muốn lấy tên người sơ cứu
-                FirstAidDescription = he.FirstAidDescription,
+                FirstResponderName = he.FirstResponder?.User?.FullName, // Đã sửa để an toàn với null
+
+                // Parent notification (phần cơ bản)
                 ParentNotifiedAt = he.ParentNotifiedAt,
-                ParentNotificationMethod = he.ParentNotificationMethod,
-                ParentNotificationNote = he.ParentNotificationNote,
+                ParentAcknowledgmentStatus = he.ParentAckStatus,
+                ParentAcknowledgedAt = he.ParentAcknowledgedAt,
+
+                // Referral (phần cơ bản)
                 IsReferredToHospital = he.IsReferredToHospital,
                 ReferralHospital = he.ReferralHospital,
+                ResolvedAt = he.ResolvedAt,
+
+                // Audit
+                ReportedBy = he.ReportedUserId,
+                ReportedByName = $"{he.ReportedUser?.FirstName} {he.ReportedUser?.LastName}".Trim(),
+                CreatedAt = he.CreatedAt,
+                UpdatedAt = he.UpdatedAt,
+                IsDeleted = he.IsDeleted,
+
+                // Statistics (phần này thực chất là tính toán, không phải kế thừa trực tiếp)
+                TotalMedications = he.EventMedications?.Count ?? 0,
+                TotalSupplies = he.SupplyUsages?.Count ?? 0,
+
+                // --- Phần 2: Gán các trường CHỈ CÓ trong HealthEventDetailResponseDTO ---
+
+                // Extended first-aid info
+                FirstAidDescription = he.FirstAidDescription,
+
+                // Extended parent notification
+                ParentNotificationMethod = he.ParentNotificationMethod,
+                ParentNotificationNote = he.ParentNotificationNote,
+
+                // Extended referral
                 ReferralDepartureTime = he.ReferralDepartureTime,
                 ReferralTransportBy = he.ReferralTransportBy,
+
+                // Parent arrival
                 ParentSignatureUrl = he.ParentSignatureUrl,
                 ParentArrivalAt = he.ParentArrivalAt,
                 ParentReceivedBy = he.ParentReceivedBy,
+
+                // Extra notes & evidence
                 AdditionalNotes = he.AdditionalNotes,
                 AttachmentUrlsRaw = he.AttachmentUrlsRaw,
                 WitnessesRaw = he.WitnessesRaw,
 
-                // Bổ sung các danh sách chi tiết
-                Medications = he.EventMedications?.Select(MapToEventMedicationResponseDTO).ToList() ?? new(),
-                Supplies = he.SupplyUsages?.Select(MapToSupplyUsageResponseDTO).ToList() ?? new()
+                // Detailed lists
+                Medications = he.EventMedications?.Select(MapToEventMedicationResponseDTO).ToList() ?? new List<EventMedicationResponseDTO>(),
+                Supplies = he.SupplyUsages?.Select(MapToSupplyUsageResponseDTO).ToList() ?? new List<SupplyUsageResponseDTO>()
             };
+
+            return dto;
         }
         //public static HealthEvent MapFromCreateRequest(CreateHealthEventRequestDTO request)
         //{
@@ -237,5 +275,6 @@
             var mappedItems = pagedHealthEvents.ToResponseDTOList();
             return CreatePagedResult(pagedHealthEvents, mappedItems);
         }
+
     }
 }

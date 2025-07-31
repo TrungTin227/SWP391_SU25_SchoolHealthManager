@@ -1,4 +1,6 @@
-﻿namespace Services.Interfaces
+﻿using BusinessObjects.Common;
+
+namespace Services.Interfaces
 {
     public interface IHealthEventService
     {
@@ -21,11 +23,13 @@
 
         // Workflow Operations
         Task<ApiResult<HealthEventResponseDTO>> UpdateHealthEventWithTreatmentAsync(UpdateHealthEventRequest request);
-        Task<ApiResult<HealthEventResponseDTO>> ResolveHealthEventAsync(ResolveHealthEventRequest request);
+        Task<ApiResult<HealthEventDetailResponseDTO>> ResolveHealthEventAsync(Guid id, ResolveHealthEventRequest request);
 
         // Statistics
         Task<ApiResult<HealthEventStatisticsResponseDTO>> GetStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
 
-        Task<ApiResult<List<HealthEventResponseDTO>>> GetHealthForParentAsync();
+        Task<ApiResult<List<HealthEventDetailResponseDTO>>> GetHealthForParentAsync();
+        Task<ApiResult<HealthEventResponseDTO>> TreatHealthEventAsync(TreatHealthEventRequest request);
+        Task<ApiResult<bool>> RecordParentAckAsync(Guid eventId);
     }
 }

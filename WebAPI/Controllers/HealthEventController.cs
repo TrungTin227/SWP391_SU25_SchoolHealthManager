@@ -71,11 +71,7 @@ namespace WebAPI.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-
-            // Ensure the request has the correct HealthEventId
-            request.HealthEventId = id;
-
-            var result = await _healthEventService.ResolveHealthEventAsync(request);
+            var result = await _healthEventService.ResolveHealthEventAsync(id, request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
@@ -84,15 +80,18 @@ namespace WebAPI.Controllers
         #region Unified Workflow Operations (Combined Medication + Supply)
 
         /// <summary>
-        /// Cập nhật sự kiện y tế với điều trị (thuốc + vật tư y tế) và trạng thái tự động
+        /// Điều trị / cập nhật hồ sơ y tế đã được tạo trước đó.
         /// </summary>
-        [HttpPut("treatment")]
-        public async Task<IActionResult> UpdateHealthEventWithTreatment([FromBody] UpdateHealthEventRequest request)
+        [HttpPut("{id:guid}/treat")]
+        public async Task<IActionResult> TreatHealthEvent(
+     Guid id,
+     [FromBody] TreatHealthEventRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            // đảm bảo id trong route khớp id trong body
+            if (id != request.HealthEventId)
+                return BadRequest("ID không khớp.");
 
-            var result = await _healthEventService.UpdateHealthEventWithTreatmentAsync(request);
+            var result = await _healthEventService.TreatHealthEventAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
