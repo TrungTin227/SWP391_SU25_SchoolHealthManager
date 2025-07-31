@@ -1,30 +1,23 @@
-﻿using BusinessObjects.Common;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using BusinessObjects;
+using BusinessObjects.Common;
 
-namespace BusinessObjects
+public class ParentMedicationDelivery : BaseEntity
 {
-    public class ParentMedicationDelivery : BaseEntity
-    {
-        [Key]
-        public Guid Id { get; set; }
+    public Guid Id { get; set; }
 
-        public string MedicationName { get; set; } // Thêm tên thuốc để dễ quản lý
-        public Guid StudentId { get; set; }
-        public Student Student { get; set; }
+    public Guid StudentId { get; set; }
+    public Student Student { get; set; } = default!;
 
-        // SỬA: Đổi từ DeliveredBy thành ParentId để rõ ràng
-        public Guid ParentId { get; set; }
-        [ForeignKey(nameof(ParentId))]
-        public Parent Parent { get; set; }
+    public Guid ParentId { get; set; }
+    public Parent Parent { get; set; } = default!;
 
-        public Guid ReceivedBy { get; set; }
-        [ForeignKey(nameof(ReceivedBy))]
-        public User ReceivedUser { get; set; }
+    public Guid? ReceivedBy { get; set; }
+    public User? ReceivedUser { get; set; } = default!;
 
-        public int QuantityDelivered { get; set; }
-        public DateTime DeliveredAt { get; set; }
-        public string Notes { get; set; }
-        public StatusMedicationDelivery Status { get; set; }
-    }
+    public DateTime DeliveredAt { get; set; }
+    public string? Notes { get; set; }
+    public StatusMedicationDelivery Status { get; set; }
+
+    // Quan hệ
+    public List<ParentMedicationDeliveryDetail> Details { get; set; } = new();
 }
