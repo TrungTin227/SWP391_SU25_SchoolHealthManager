@@ -78,15 +78,15 @@ namespace WebAPI.Controllers
             return Ok(result);
         }
 
-        //[HttpPost("medication-deliveries")]
-        //public async Task<IActionResult> CreateParentMedicationDelivery([FromBody] CreateParentMedicationDeliveryRequestDTO request)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
+        [HttpPost("medication-deliveries")]
+        public async Task<IActionResult> CreateParentMedicationDelivery([FromBody] CreateParentMedicationDeliveryRequestDTO request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        //    var result = await _ParentMedicationDeliveryService.CreateAsync(request);
-        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
-        //}
+            var result = await _ParentMedicationDeliveryService.CreateDeliveryAsync(request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
         //[HttpPut("medication-deliveries")]
         //public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
@@ -101,12 +101,12 @@ namespace WebAPI.Controllers
         //    return result.IsSuccess ? Ok(result) : BadRequest(result);
         //}
 
-        //[HttpGet("medication-deliveries")]
-        //public async Task<IActionResult> GetAllParentMedicationDelivery()
-        //{
-        //    var result = await _ParentMedicationDeliveryService.GetAllAsync();
-        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
-        //}
+        [HttpGet("medication-deliveries")]
+        public async Task<IActionResult> GetAllParentMedicationDelivery()
+        {
+            var result = await _ParentMedicationDeliveryService.GetAllAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
         //[HttpGet("medication-deliveries/by-parent/{parentId}")]
         //public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
@@ -126,25 +126,25 @@ namespace WebAPI.Controllers
         //}
 
 
-        //[HttpGet("medication-deliveries/{id}")]
-        //public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
-        //{
-        //    if (id == Guid.Empty)
-        //        return BadRequest(new { Message = "ID is required" });
+        [HttpGet("medication-deliveries/{id}")]
+        public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
+        {
+            if (id == Guid.Empty)
+                return BadRequest(new { Message = "ID is required" });
 
-        //    var result = await _ParentMedicationDeliveryService.GetByIdAsync(id);
-        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
-        //}
+            var result = await _ParentMedicationDeliveryService.GetByIdAsync(id);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
-        //[HttpPost("medication-deliveries/update-status")]
-        //public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
-        //{
-        //    if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
-        //        return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
+        [HttpPost("medication-deliveries/update-status")]
+        public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
+        {
+            if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
+                return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
 
-        //    var result = await _ParentMedicationDeliveryService.UpdateStatus(parentMedicationDeliveryid, status);
-        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
-        //}
+            var result = await _ParentMedicationDeliveryService.UpdateStatusAsync(parentMedicationDeliveryid, status);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
 
 
     }

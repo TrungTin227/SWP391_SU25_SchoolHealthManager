@@ -13,6 +13,8 @@ namespace DTOs.MedicationUsageRecord.Respond
         public DateTime UsedAt { get; set; }
         public bool IsTaken { get; set; }
         public string? Note { get; set; }
+        public Guid StudentId { get; set; }         // Add this
+        public string? StudentName { get; set; }    // Add this
     }
 
 }

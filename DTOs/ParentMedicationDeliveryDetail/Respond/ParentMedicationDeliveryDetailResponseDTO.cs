@@ -11,7 +11,15 @@ namespace DTOs.ParentMedicationDeliveryDetail.Respond
         public Guid Id { get; set; }
         public string MedicationName { get; set; } = string.Empty;
         public int QuantityDelivered { get; set; }
-        public string DosageInstruction { get; set; } = string.Empty;
+        public string? DosageInstruction { get; set; }
+        public List<MedicationScheduleResponseDTO> DailySchedule { get; set; } = new();
     }
-
+    
+    public class MedicationScheduleResponseDTO
+    {
+        public Guid Id { get; set; }
+        public TimeSpan Time { get; set; }
+        public int Dosage { get; set; }
+        public string? Note { get; set; }
+    }
 }

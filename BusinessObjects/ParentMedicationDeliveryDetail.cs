@@ -15,12 +15,13 @@ namespace BusinessObjects
 
         public string MedicationName { get; set; }
         public int TotalQuantity { get; set; }
-        public string DosageInstruction { get; set; } // ví dụ: "2 viên sáng, 1 viên chiều"
+        public string? DosageInstruction { get; set; } // Hướng dẫn chung về cách uống thuốc
 
         public int? ReturnedQuantity { get; set; }
         public DateTime? ReturnedAt { get; set; }
 
         // Quan hệ
+        public List<MedicationSchedule> MedicationSchedules { get; set; } = new();
         public List<MedicationUsageRecord> UsageRecords { get; set; } = new();
     }
 

@@ -13,6 +13,10 @@ namespace BusinessObjects
         public Guid DeliveryDetailId { get; set; }
         public ParentMedicationDeliveryDetail DeliveryDetail { get; set; } = default!;
 
+        // Quan hệ với lịch uống thuốc
+        public Guid MedicationScheduleId { get; set; }
+        public MedicationSchedule MedicationSchedule { get; set; } = default!;
+
         public DateTime ScheduledAt { get; set; }
         public DateTime? TakenAt { get; set; }
         public bool IsTaken { get; set; }

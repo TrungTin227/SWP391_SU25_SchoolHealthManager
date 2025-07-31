@@ -32,6 +32,9 @@ namespace Repositories
         public DbSet<Dispense> Dispenses { get; set; }
         public DbSet<EventMedication> EventMedications { get; set; }
         public DbSet<ParentMedicationDelivery> ParentMedicationDeliveries { get; set; }
+        public DbSet<ParentMedicationDeliveryDetail> ParentMedicationDeliveryDetails { get; set; }
+        public DbSet<MedicationSchedule> MedicationSchedules { get; set; }
+        public DbSet<MedicationUsageRecord> MedicationUsageRecords { get; set; }
         #endregion
 
         #region Vaccination Management
@@ -196,6 +199,43 @@ namespace Repositories
                       .WithMany(vt => vt.MedicationLots)
                       .HasForeignKey(ml => ml.VaccineTypeId)
                       .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ParentMedicationDeliveryDetail configuration
+            builder.Entity<ParentMedicationDeliveryDetail>(entity =>
+            {
+                entity.HasOne(d => d.ParentMedicationDelivery)
+                      .WithMany(p => p.Details)
+                      .HasForeignKey(d => d.ParentMedicationDeliveryId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MedicationSchedule configuration
+            builder.Entity<MedicationSchedule>(entity =>
+            {
+                entity.HasOne(ms => ms.ParentMedicationDeliveryDetail)
+                      .WithMany(d => d.MedicationSchedules)
+                      .HasForeignKey(ms => ms.ParentMedicationDeliveryDetailId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MedicationUsageRecord configuration
+            builder.Entity<MedicationUsageRecord>(entity =>
+            {
+                entity.HasOne(mur => mur.DeliveryDetail)
+                      .WithMany(d => d.UsageRecords)
+                      .HasForeignKey(mur => mur.DeliveryDetailId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(mur => mur.MedicationSchedule)
+                      .WithMany(ms => ms.UsageRecords)
+                      .HasForeignKey(mur => mur.MedicationScheduleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(mur => mur.Nurse)
+                      .WithMany()
+                      .HasForeignKey(mur => mur.CheckedBy)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
         #endregion
