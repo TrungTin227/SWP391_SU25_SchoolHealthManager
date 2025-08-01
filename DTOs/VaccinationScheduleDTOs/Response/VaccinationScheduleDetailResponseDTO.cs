@@ -8,5 +8,9 @@ namespace DTOs.VaccinationScheduleDTOs.Response
         public string VaccinationTypeCode { get; set; } = string.Empty;
         public List<SessionStudentResponseDTO> SessionStudents { get; set; } = new List<SessionStudentResponseDTO>();
         public List<VaccinationRecordSummaryDTO> Records { get; set; } = new List<VaccinationRecordSummaryDTO>();
+        // Thêm thống kê consent
+        public int PendingConsentCount { get; set; }
+        public int ApprovedConsentCount { get; set; }
+        public int RejectedConsentCount { get; set; }
     }
 }

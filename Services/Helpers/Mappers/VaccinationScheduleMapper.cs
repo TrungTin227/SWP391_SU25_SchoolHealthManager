@@ -17,6 +17,8 @@
 
         public static VaccinationScheduleDetailResponseDTO MapToDetailResponseDTO(VaccinationSchedule schedule)
         {
+            var sessionStudents = schedule.SessionStudents?.ToList() ?? new List<SessionStudent>();
+
             return new VaccinationScheduleDetailResponseDTO
             {
                 Id = schedule.Id,
@@ -24,11 +26,22 @@
                 VaccinationTypeCode = schedule.VaccinationType?.Code ?? string.Empty,
                 ScheduledAt = schedule.ScheduledAt,
                 ScheduleStatus = schedule.ScheduleStatus,
-                TotalStudents = schedule.SessionStudents?.Count ?? 0,
-                CompletedRecords = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Count() ?? 0,
+                TotalStudents = sessionStudents.Count,
+                CompletedRecords = sessionStudents.SelectMany(ss => ss.VaccinationRecords).Count(),
                 CampaignName = schedule.Campaign?.Name ?? string.Empty,
-                SessionStudents = schedule.SessionStudents?.Select(MapToSessionStudentResponseDTO).ToList() ?? new List<SessionStudentResponseDTO>(),
-                Records = schedule.SessionStudents?.SelectMany(ss => ss.VaccinationRecords).Select(MapToVaccinationRecordSummaryDTO).ToList() ?? new List<VaccinationRecordSummaryDTO>()
+
+                // Tính thống kê consent
+                PendingConsentCount = sessionStudents.Count(ss =>
+                    ss.ConsentStatus == ParentConsentStatus.Pending ||
+                    ss.ConsentStatus == ParentConsentStatus.Sent),
+                ApprovedConsentCount = sessionStudents.Count(ss =>
+                    ss.ConsentStatus == ParentConsentStatus.Approved),
+                RejectedConsentCount = sessionStudents.Count(ss =>
+                    ss.ConsentStatus == ParentConsentStatus.Rejected),
+
+                SessionStudents = sessionStudents.Select(MapToSessionStudentResponseDTO).ToList(),
+                Records = sessionStudents.SelectMany(ss => ss.VaccinationRecords)
+                    .Select(MapToVaccinationRecordSummaryDTO).ToList()
             };
         }
 
@@ -43,7 +56,13 @@
                 Status = sessionStudent.Status,
                 CheckInTime = sessionStudent.CheckInTime,
                 Notes = sessionStudent.Notes,
-                ParentNotifiedAt = sessionStudent.ParentNotifiedAt
+                ParentNotifiedAt = sessionStudent.ParentNotifiedAt,
+                // Thêm các trường consent
+            ConsentStatus = sessionStudent.ConsentStatus,
+                ParentSignedAt = sessionStudent.ParentSignedAt,
+                ParentNotes = sessionStudent.ParentNotes,
+                ParentSignature = sessionStudent.ParentSignature,
+                ConsentDeadline = sessionStudent.ConsentDeadline
             };
         }
 

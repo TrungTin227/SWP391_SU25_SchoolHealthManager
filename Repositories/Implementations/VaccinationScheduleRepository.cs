@@ -137,12 +137,12 @@ namespace Repositories.Implementations
                 .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
 
             // 🔍 Lọc lại SessionStudents có Status == Approved
-            if (schedule != null)
-            {
-                schedule.SessionStudents = schedule.SessionStudents
-                    .Where(ss => ss.ConsentStatus == ParentConsentStatus.Approved)
-                    .ToList();
-            }
+            //if (schedule != null)
+            //{
+            //    schedule.SessionStudents = schedule.SessionStudents
+            //        .Where(ss => ss.ConsentStatus == ParentConsentStatus.Approved)
+            //        .ToList();
+            //}
 
             return schedule;
         }
