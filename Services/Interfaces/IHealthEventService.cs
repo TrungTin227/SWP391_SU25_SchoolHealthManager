@@ -28,7 +28,7 @@
         Task<ApiResult<HealthEventStatisticsResponseDTO>> GetStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
 
         Task<ApiResult<List<HealthEventDetailResponseDTO>>> GetHealthForParentAsync();
-        Task<ApiResult<HealthEventResponseDTO>> TreatHealthEventAsync(TreatHealthEventRequest request);
+        Task<ApiResult<HealthEventResponseDTO>> TreatHealthEventAsync(Guid id, TreatHealthEventRequest request);
         Task<ApiResult<bool>> RecordParentAckAsync(Guid eventId);
         Task<ApiResult<HealthEventDetailResponseDTO>> RecordParentHandoverAsync(Guid id, RecordParentHandoverRequest request);
 

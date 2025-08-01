@@ -21,22 +21,55 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ParentAcknowledge(Guid id, [FromQuery] string token)
         {
-            var secret = _config["Jwt:Secret"];
-            var payload = $"{id}|{DateTime.UtcNow:yyyyMMdd}";
-            var computed = Convert.ToBase64String(
-                System.Security.Cryptography.HMACSHA256
-                    .Create(secret)
-                    .ComputeHash(Encoding.UTF8.GetBytes(payload)));
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                    return BadRequest("Token không hợp lệ.");
 
-            if (token != computed)
-                return BadRequest("Liên kết không hợp lệ hoặc đã hết hạn.");
+                var correctedToken = token.Replace(' ', '+');
 
-            var result = await _service.RecordParentAckAsync(id);
+                var secret = _config["JwtSettings:Key"];
 
-            if (result.IsSuccess)
-                return Redirect("https://localhost:5173/parent/ack-success");
+                if (string.IsNullOrWhiteSpace(secret))
+                    return StatusCode(500, "Cấu hình hệ thống không hợp lệ.");
 
-            return BadRequest(result.Message ?? "Lỗi khi xác nhận");
+                var isValidToken = false;
+                var maxDaysValid = 7;
+
+                // ✅ SỬA: Dùng Vietnam Time như lúc tạo
+                var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+                var currentVietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+
+                for (int i = 0; i < maxDaysValid; i++)
+                {
+                    var checkDate = currentVietnamTime.AddDays(-i);
+                    var payload = $"{id}|{checkDate:yyyyMMdd}";
+
+                    using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret));
+                    var computed = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
+
+                    if (correctedToken == computed)
+                    {
+                        isValidToken = true;
+                        break;
+                    }
+                }
+
+                if (!isValidToken)
+                    return BadRequest("Liên kết không hợp lệ hoặc đã hết hạn.");
+
+                // Tiếp tục logic...
+                var result = await _service.RecordParentAckAsync(id);
+
+                if (result.IsSuccess)
+                    return Redirect("https://localhost:5173/parent/ack-success");
+
+                return BadRequest(result.Message ?? "Lỗi khi xác nhận");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Có lỗi xảy ra, vui lòng thử lại sau.");
+            }
         }
     }
 }
