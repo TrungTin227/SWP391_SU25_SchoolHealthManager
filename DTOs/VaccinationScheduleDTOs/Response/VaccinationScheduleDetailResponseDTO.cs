@@ -12,5 +12,7 @@ namespace DTOs.VaccinationScheduleDTOs.Response
         public int PendingConsentCount { get; set; }
         public int ApprovedConsentCount { get; set; }
         public int RejectedConsentCount { get; set; }
+        // vaccine dự kiến
+        public int VaccineExpectedCount { get; set; }
     }
 }
