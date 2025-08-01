@@ -149,99 +149,51 @@ namespace Services.Implementations
 
         #region Workflow Operations
 
-        public async Task<ApiResult<HealthEventResponseDTO>> UpdateHealthEventWithTreatmentAsync(UpdateHealthEventRequest request)
+        public async Task<ApiResult<HealthEventDetailResponseDTO>> UpdateHealthEventAsync(Guid id, UpdateHealthEventRequest request)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                try
+                var healthEvent = await _unitOfWork.HealthEventRepository.GetHealthEventWithDetailsAsync(id);
+                if (healthEvent == null)
                 {
-                    var healthEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
-                    if (healthEvent == null)
-                        return ApiResult<HealthEventResponseDTO>.Failure(
-                            new Exception("Không tìm thấy sự kiện y tế"));
-
-                    if (healthEvent.EventStatus == EventStatus.Resolved)
-                        return ApiResult<HealthEventResponseDTO>.Failure(
-                            new Exception("Không thể cập nhật sự kiện y tế đã hoàn thành"));
-
-                    var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
-                    var vietnamTime = _currentTime.GetVietnamTime();
-                    var hasAnyTreatment = false;
-
-                    // Cập nhật thông tin chi tiết (tất cả đều optional)
-                    if (request.Description != null) healthEvent.Description = request.Description;
-                    if (request.Location != null) healthEvent.Location = request.Location;
-                    if (request.InjuredBodyPartsRaw != null) healthEvent.InjuredBodyPartsRaw = request.InjuredBodyPartsRaw;
-                    if (request.Severity != null) healthEvent.Severity = request.Severity;
-                    if (request.Symptoms != null) healthEvent.Symptoms = request.Symptoms;
-                    if (request.FirstAidAt != null) healthEvent.FirstAidAt = request.FirstAidAt;
-                    if (request.FirstResponderId != null) healthEvent.FirstResponderId = request.FirstResponderId;
-                    if (request.FirstAidDescription != null) healthEvent.FirstAidDescription = request.FirstAidDescription;
-                    if (request.ParentNotifiedAt != null) healthEvent.ParentNotifiedAt = request.ParentNotifiedAt;
-                    if (request.ParentNotificationMethod != null) healthEvent.ParentNotificationMethod = request.ParentNotificationMethod;
-                    if (request.ParentNotificationNote != null) healthEvent.ParentNotificationNote = request.ParentNotificationNote;
-                    if (request.IsReferredToHospital != null) healthEvent.IsReferredToHospital = request.IsReferredToHospital;
-                    if (request.ReferralHospital != null) healthEvent.ReferralHospital = request.ReferralHospital;
-                    if (request.ReferralDepartureTime != null) healthEvent.ReferralDepartureTime = request.ReferralDepartureTime;
-                    if (request.ReferralTransportBy != null) healthEvent.ReferralTransportBy = request.ReferralTransportBy;
-                    if (request.ParentSignatureUrl != null) healthEvent.ParentSignatureUrl = request.ParentSignatureUrl;
-                    if (request.ParentArrivalAt != null) healthEvent.ParentArrivalAt = request.ParentArrivalAt;
-                    if (request.ParentReceivedBy != null) healthEvent.ParentReceivedBy = request.ParentReceivedBy;
-                    if (request.AdditionalNotes != null) healthEvent.AdditionalNotes = request.AdditionalNotes;
-                    if (request.AttachmentUrlsRaw != null) healthEvent.AttachmentUrlsRaw = request.AttachmentUrlsRaw;
-                    if (request.WitnessesRaw != null) healthEvent.WitnessesRaw = request.WitnessesRaw;
-
-                    // Xử lý vật tư y tế
-                    if (request.SupplyUsages != null && request.SupplyUsages.Any())
-                    {
-                        var supplyValidation = await ValidateSupplyUsagesAsync(request.SupplyUsages, currentUserId);
-                        if (!supplyValidation.IsSuccess)
-                            return ApiResult<HealthEventResponseDTO>.Failure(new Exception(supplyValidation.Message));
-
-                        await ProcessSupplyUsagesAsync(request.HealthEventId, request.SupplyUsages, currentUserId, vietnamTime);
-                        hasAnyTreatment = true;
-                    }
-
-                    if (request.EventMedications != null && request.EventMedications.Any())
-                    {
-                        var medicationValidation = await ValidateEventMedicationsAsync(request.EventMedications);
-                        if (!medicationValidation.IsSuccess)
-                            return ApiResult<HealthEventResponseDTO>.Failure(new Exception(medicationValidation.Message));
-
-                        await ProcessEventMedicationsAsync(request.HealthEventId, request.EventMedications, currentUserId, vietnamTime);
-                        hasAnyTreatment = true; // Thuốc cũng là một hình thức điều trị
-                    }
-
-                    // Chuyển trạng thái nếu có điều trị
-                    if (hasAnyTreatment && healthEvent.EventStatus == EventStatus.Pending)
-                    {
-                        await _unitOfWork.HealthEventRepository.UpdateEventStatusAsync(
-                            request.HealthEventId, EventStatus.InProgress, currentUserId);
-                    }
-
-                    await UpdateAsync(healthEvent);   // chứa UpdatedAt/UpdatedBy
-                    await _unitOfWork.SaveChangesAsync();
-
-                    var updatedEvent = await _unitOfWork.HealthEventRepository.GetByIdAsync(request.HealthEventId);
-                    var eventDTO = HealthEventMapper.MapToResponseDTO(updatedEvent!);
-
-                    var message = hasAnyTreatment && updatedEvent!.EventStatus == EventStatus.InProgress
-                        ? "Cập nhật điều trị thành công – trạng thái chuyển sang InProgress"
-                        : "Cập nhật điều trị sự kiện y tế thành công";
-
-                    _logger.LogInformation("Health event {EventId} updated with treatment, new status: {Status}",
-                        request.HealthEventId, updatedEvent.EventStatus);
-
-                    return ApiResult<HealthEventResponseDTO>.Success(eventDTO, message);
+                    return ApiResult<HealthEventDetailResponseDTO>.Failure(new Exception("Không tìm thấy sự kiện y tế."));
                 }
-                catch (Exception ex)
+                if (healthEvent.EventStatus == EventStatus.Resolved)
                 {
-                    _logger.LogError(ex, "Error updating health event with treatment: {EventId}", request.HealthEventId);
-                    return ApiResult<HealthEventResponseDTO>.Failure(ex);
+                    return ApiResult<HealthEventDetailResponseDTO>.Failure(new Exception("Không thể chỉnh sửa sự kiện đã hoàn thành."));
                 }
+
+                // Ánh xạ các giá trị từ request sang entity
+                healthEvent.EventCategory = request.EventCategory;
+                healthEvent.EventType = request.EventType;
+                healthEvent.Description = request.Description;
+                healthEvent.OccurredAt = request.OccurredAt;
+                healthEvent.Location = request.Location;
+                healthEvent.InjuredBodyPartsRaw = request.InjuredBodyPartsRaw;
+                healthEvent.Severity = request.Severity;
+                healthEvent.Symptoms = request.Symptoms;
+                healthEvent.VaccinationRecordId = request.VaccinationRecordId;
+                healthEvent.FirstAidAt = request.FirstAidAt;
+                healthEvent.FirstResponderId = request.FirstResponderId;
+                healthEvent.FirstAidDescription = request.FirstAidDescription;
+                healthEvent.ParentNotifiedAt = request.ParentNotifiedAt;
+                healthEvent.ParentNotificationMethod = request.ParentNotificationMethod;
+                healthEvent.ParentNotificationNote = request.ParentNotificationNote;
+                healthEvent.IsReferredToHospital = request.IsReferredToHospital;
+                healthEvent.ReferralHospital = request.ReferralHospital;
+                healthEvent.AdditionalNotes = request.AdditionalNotes;
+                healthEvent.AttachmentUrlsRaw = request.AttachmentUrlsRaw;
+                healthEvent.WitnessesRaw = request.WitnessesRaw;
+
+                healthEvent.UpdatedAt = _currentTime.GetVietnamTime();
+                healthEvent.UpdatedBy = _currentUserService.GetUserId() ?? Guid.Empty;
+
+                await _unitOfWork.SaveChangesAsync();
+
+                var dto = HealthEventMapper.MapToDetailResponseDTO(healthEvent);
+                return ApiResult<HealthEventDetailResponseDTO>.Success(dto, "Cập nhật sự kiện y tế thành công.");
             });
         }
-
 
         public async Task<ApiResult<HealthEventDetailResponseDTO>> ResolveHealthEventAsync(Guid id, ResolveHealthEventRequest request)
         {
@@ -389,7 +341,9 @@ namespace Services.Implementations
                             var ackToken = Convert.ToBase64String(
                                 new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret))
                                 .ComputeHash(Encoding.UTF8.GetBytes(payload)));
-
+                            var studentName = $"{he.Student?.FirstName} {he.Student?.LastName}".Trim();
+                            if (string.IsNullOrWhiteSpace(studentName))
+                                studentName = "Học sinh";
                             await _emailService.SendHospitalReferralAckAsync(
                                     parentEmail,
                                     $"{he.Student.FirstName} {he.Student.LastName}".Trim(),
@@ -882,6 +836,58 @@ namespace Services.Implementations
         }
 
         #endregion
+        public async Task<ApiResult<HealthEventDetailResponseDTO>> RecordParentHandoverAsync(Guid id, RecordParentHandoverRequest request)
+        {
+            return await _unitOfWork.ExecuteTransactionAsync(async () =>
+            {
+                try
+                {
+                    var healthEvent = await _unitOfWork.HealthEventRepository.GetHealthEventWithDetailsAsync(id);
+                    if (healthEvent == null)
+                    {
+                        return ApiResult<HealthEventDetailResponseDTO>.Failure(new Exception("Không tìm thấy sự kiện y tế."));
+                    }
+
+                    // Lấy thông tin người dùng từ Claims, không cần gọi DB
+                    var currentUserId = _currentUserService.GetUserId();
+                    var currentUserFullName = _currentUserService.GetUserFullName();
+
+                    // Kiểm tra thông tin người dùng
+                    if (!currentUserId.HasValue || string.IsNullOrEmpty(currentUserFullName))
+                    {
+                        return ApiResult<HealthEventDetailResponseDTO>.Failure(new Exception("Không thể xác định thông tin người dùng thực hiện hành động."));
+                    }
+
+                    // Xử lý upload chữ ký (giả sử bạn có IFileStorageService)
+                    string? finalSignatureUrl = request.ParentSignatureUrl;
+                    if (request.ParentSignatureUrl != null && request.ParentSignatureUrl.StartsWith("data:image"))
+                    {
+                        // Giả định có dịch vụ IFileStorageService để xử lý upload
+                        // finalSignatureUrl = await _fileStorageService.UploadImageFromBase64Async(request.ParentSignatureUrl, "signatures");
+                    }
+
+                    // Cập nhật các trường thông tin bàn giao
+                    healthEvent.ParentArrivalAt = request.ParentArrivalAt;
+                    healthEvent.ParentReceivedBy = currentUserFullName; // Lấy từ FullName của User
+                    healthEvent.ParentSignatureUrl = finalSignatureUrl;
+
+                    // Cập nhật thông tin audit
+                    healthEvent.UpdatedAt = _currentTime.GetVietnamTime();
+                    healthEvent.UpdatedBy = currentUserId.Value;
+
+                    await _unitOfWork.SaveChangesAsync();
+
+                    var dto = HealthEventMapper.MapToDetailResponseDTO(healthEvent);
+                    return ApiResult<HealthEventDetailResponseDTO>.Success(dto, "Ghi nhận thông tin bàn giao cho phụ huynh thành công.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi khi ghi nhận bàn giao cho phụ huynh tại sự kiện {EventId}", id);
+                    return ApiResult<HealthEventDetailResponseDTO>.Failure(ex);
+                }
+            });
+        }
+
         public async Task<ApiResult<bool>> RecordParentAckAsync(Guid eventId)
         {
             try

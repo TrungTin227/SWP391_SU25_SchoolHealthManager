@@ -27,5 +27,15 @@ namespace Services.Implementations
             // Giả sử role admin có tên "ADMIN"
             return _httpContextAccessor.HttpContext?.User?.IsInRole("ADMIN") ?? false;
         }
+        public string? GetUserFullName()
+        {
+            // Lấy từ claim "FullName" hoặc ghép từ "FirstName" và "LastName"
+            // Ví dụ:
+            var firstName = _httpContextAccessor.HttpContext?.User?.FindFirst("FirstName")?.Value;
+            var lastName = _httpContextAccessor.HttpContext?.User?.FindFirst("LastName")?.Value;
+            if (string.IsNullOrEmpty(firstName) && string.IsNullOrEmpty(lastName))
+                return null;
+            return $"{firstName} {lastName}".Trim();
+        }
     }
 }

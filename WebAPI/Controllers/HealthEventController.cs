@@ -64,6 +64,36 @@ namespace WebAPI.Controllers
         }
 
         /// <summary>
+        /// Cập nhật thông tin chi tiết của một sự kiện y tế.
+        /// </summary>
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateHealthEvent(Guid id, [FromBody] UpdateHealthEventRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _healthEventService.UpdateHealthEventAsync(id, request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Ghi nhận thông tin bàn giao sự kiện cho phụ huynh (khi phụ huynh có mặt).
+        /// </summary>
+        [HttpPut("{id:guid}/handover")]
+        public async Task<IActionResult> RecordParentHandover(Guid id, [FromBody] RecordParentHandoverRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _healthEventService.RecordParentHandoverAsync(id, request);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
         /// Hoàn thành xử lý sự kiện y tế (chuyển trạng thái từ InProgress sang Resolved)
         /// </summary>
         [HttpPut("{id}/resolve")]
