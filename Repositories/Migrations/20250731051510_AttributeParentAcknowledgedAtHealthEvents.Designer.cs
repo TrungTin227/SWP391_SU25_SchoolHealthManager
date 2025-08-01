@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories;
 
@@ -11,9 +12,11 @@ using Repositories;
 namespace Repositories.Migrations
 {
     [DbContext(typeof(SchoolHealthManagerDbContext))]
-    partial class SchoolHealthManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250731051510_AttributeParentAcknowledgedAtHealthEvents")]
+    partial class AttributeParentAcknowledgedAtHealthEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -937,111 +940,6 @@ namespace Repositories.Migrations
                     b.ToTable("MedicationLots");
                 });
 
-            modelBuilder.Entity("BusinessObjects.MedicationSchedule", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Dosage")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ParentMedicationDeliveryDetailId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<TimeSpan>("Time")
-                        .HasColumnType("time");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentMedicationDeliveryDetailId");
-
-                    b.ToTable("MedicationSchedules");
-                });
-
-            modelBuilder.Entity("BusinessObjects.MedicationUsageRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("CheckedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("DeliveryDetailId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsTaken")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("MedicationScheduleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ScheduledAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TakenAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CheckedBy");
-
-                    b.HasIndex("DeliveryDetailId");
-
-                    b.HasIndex("MedicationScheduleId");
-
-                    b.ToTable("MedicationUsageRecords");
-                });
-
             modelBuilder.Entity("BusinessObjects.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1185,7 +1083,7 @@ namespace Repositories.Migrations
                     b.ToTable("Parents");
                 });
 
-            modelBuilder.Entity("BusinessObjects.ParentMedicationDeliveryDetail", b =>
+            modelBuilder.Entity("BusinessObjects.ParentMedicationDelivery", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1203,8 +1101,8 @@ namespace Repositories.Migrations
                     b.Property<Guid?>("DeletedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("DosageInstruction")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime>("DeliveredAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -1213,17 +1111,30 @@ namespace Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("ParentMedicationDeliveryId")
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ParentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<Guid?>("ParentUserId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("ReturnedQuantity")
+                    b.Property<int>("QuantityDelivered")
                         .HasColumnType("int");
 
-                    b.Property<int>("TotalQuantity")
-                        .HasColumnType("int");
+                    b.Property<Guid>("ReceivedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1233,9 +1144,15 @@ namespace Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentMedicationDeliveryId");
+                    b.HasIndex("ParentId");
 
-                    b.ToTable("ParentMedicationDeliveryDetails");
+                    b.HasIndex("ParentUserId");
+
+                    b.HasIndex("ReceivedBy");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ParentMedicationDeliveries");
                 });
 
             modelBuilder.Entity("BusinessObjects.ParentVaccinationRecord", b =>
@@ -2106,70 +2023,6 @@ namespace Repositories.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("ParentMedicationDelivery", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DeliveredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("ParentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ParentUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ReceivedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.HasIndex("ParentUserId");
-
-                    b.HasIndex("ReceivedBy");
-
-                    b.HasIndex("StudentId");
-
-                    b.ToTable("ParentMedicationDeliveries");
-                });
-
             modelBuilder.Entity("BusinessObjects.CheckupRecord", b =>
                 {
                     b.HasOne("BusinessObjects.User", "ExaminedByNurse")
@@ -2385,43 +2238,6 @@ namespace Repositories.Migrations
                     b.Navigation("VaccineType");
                 });
 
-            modelBuilder.Entity("BusinessObjects.MedicationSchedule", b =>
-                {
-                    b.HasOne("BusinessObjects.ParentMedicationDeliveryDetail", "ParentMedicationDeliveryDetail")
-                        .WithMany("MedicationSchedules")
-                        .HasForeignKey("ParentMedicationDeliveryDetailId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ParentMedicationDeliveryDetail");
-                });
-
-            modelBuilder.Entity("BusinessObjects.MedicationUsageRecord", b =>
-                {
-                    b.HasOne("BusinessObjects.User", "Nurse")
-                        .WithMany()
-                        .HasForeignKey("CheckedBy")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BusinessObjects.ParentMedicationDeliveryDetail", "DeliveryDetail")
-                        .WithMany("UsageRecords")
-                        .HasForeignKey("DeliveryDetailId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObjects.MedicationSchedule", "MedicationSchedule")
-                        .WithMany("UsageRecords")
-                        .HasForeignKey("MedicationScheduleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("DeliveryDetail");
-
-                    b.Navigation("MedicationSchedule");
-
-                    b.Navigation("Nurse");
-                });
-
             modelBuilder.Entity("BusinessObjects.Notification", b =>
                 {
                     b.HasOne("BusinessObjects.MedicalSupply", "MedicalSupply")
@@ -2465,15 +2281,35 @@ namespace Repositories.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("BusinessObjects.ParentMedicationDeliveryDetail", b =>
+            modelBuilder.Entity("BusinessObjects.ParentMedicationDelivery", b =>
                 {
-                    b.HasOne("ParentMedicationDelivery", "ParentMedicationDelivery")
-                        .WithMany("Details")
-                        .HasForeignKey("ParentMedicationDeliveryId")
+                    b.HasOne("BusinessObjects.Parent", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ParentMedicationDelivery");
+                    b.HasOne("BusinessObjects.Parent", null)
+                        .WithMany("ParentMedicationDeliveries")
+                        .HasForeignKey("ParentUserId");
+
+                    b.HasOne("BusinessObjects.User", "ReceivedUser")
+                        .WithMany()
+                        .HasForeignKey("ReceivedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObjects.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("ReceivedUser");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("BusinessObjects.ParentVaccinationRecord", b =>
@@ -2507,8 +2343,7 @@ namespace Repositories.Migrations
                 {
                     b.HasOne("BusinessObjects.HealthEvent", "HealthEvent")
                         .WithMany("Reports")
-                        .HasForeignKey("HealthEventId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("HealthEventId");
 
                     b.Navigation("HealthEvent");
                 });
@@ -2548,7 +2383,7 @@ namespace Repositories.Migrations
                     b.HasOne("BusinessObjects.HealthEvent", "HealthEvent")
                         .WithMany("SupplyUsages")
                         .HasForeignKey("HealthEventId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("BusinessObjects.MedicalSupplyLot", "MedicalSupplyLot")
@@ -2685,36 +2520,6 @@ namespace Repositories.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ParentMedicationDelivery", b =>
-                {
-                    b.HasOne("BusinessObjects.Parent", "Parent")
-                        .WithMany()
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObjects.Parent", null)
-                        .WithMany("ParentMedicationDeliveries")
-                        .HasForeignKey("ParentUserId");
-
-                    b.HasOne("BusinessObjects.User", "ReceivedUser")
-                        .WithMany()
-                        .HasForeignKey("ReceivedBy")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BusinessObjects.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Parent");
-
-                    b.Navigation("ReceivedUser");
-
-                    b.Navigation("Student");
-                });
-
             modelBuilder.Entity("BusinessObjects.CheckupCampaign", b =>
                 {
                     b.Navigation("Schedules");
@@ -2760,11 +2565,6 @@ namespace Repositories.Migrations
                     b.Navigation("VaccinationRecords");
                 });
 
-            modelBuilder.Entity("BusinessObjects.MedicationSchedule", b =>
-                {
-                    b.Navigation("UsageRecords");
-                });
-
             modelBuilder.Entity("BusinessObjects.NurseProfile", b =>
                 {
                     b.Navigation("CounselingAppointments");
@@ -2783,13 +2583,6 @@ namespace Repositories.Migrations
                     b.Navigation("ParentVaccinationRecords");
 
                     b.Navigation("Students");
-                });
-
-            modelBuilder.Entity("BusinessObjects.ParentMedicationDeliveryDetail", b =>
-                {
-                    b.Navigation("MedicationSchedules");
-
-                    b.Navigation("UsageRecords");
                 });
 
             modelBuilder.Entity("BusinessObjects.SessionStudent", b =>
@@ -2846,11 +2639,6 @@ namespace Repositories.Migrations
             modelBuilder.Entity("BusinessObjects.VaccineDoseInfo", b =>
                 {
                     b.Navigation("NextDoses");
-                });
-
-            modelBuilder.Entity("ParentMedicationDelivery", b =>
-                {
-                    b.Navigation("Details");
                 });
 #pragma warning restore 612, 618
         }

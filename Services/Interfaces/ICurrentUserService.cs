@@ -4,6 +4,7 @@
     {
         public Guid? GetUserId();
         public bool IsAdmin();
+        string? GetUserFullName();
 
     }
 }
