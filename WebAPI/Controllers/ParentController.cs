@@ -3,6 +3,7 @@ using DTOs.ParentMedicationDeliveryDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Org.BouncyCastle.Crypto;
+using Services.Interfaces;
 
 namespace WebAPI.Controllers
 {
@@ -14,11 +15,16 @@ namespace WebAPI.Controllers
     {
         private readonly IParentService _parentService;
         private readonly IParentMedicationDeliveryService _ParentMedicationDeliveryService;
+        private readonly IParentMedicationDeliveryDetailService _parentMedicationDeliveryDetailService;
 
-        public ParentController(IParentService parentService, IParentMedicationDeliveryService parentMedicationDeliveryService)
+        public ParentController(
+            IParentService parentService, 
+            IParentMedicationDeliveryService parentMedicationDeliveryService,
+            IParentMedicationDeliveryDetailService parentMedicationDeliveryDetailService)
         {
             _parentService = parentService;
             _ParentMedicationDeliveryService = parentMedicationDeliveryService;
+            _parentMedicationDeliveryDetailService = parentMedicationDeliveryDetailService;
         }
 
         [HttpPost("register")]
@@ -143,6 +149,34 @@ namespace WebAPI.Controllers
                 return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
 
             var result = await _ParentMedicationDeliveryService.UpdateStatusAsync(parentMedicationDeliveryid, status);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Cập nhật ReturnedQuantity cho một delivery detail
+        /// </summary>
+        [HttpPost("medication-deliveries/delivery-details/{deliveryDetailId}/update-returned-quantity")]
+        [Authorize(Roles = "Admin,Nurse")]
+        public async Task<IActionResult> UpdateReturnedQuantity(Guid deliveryDetailId)
+        {
+            if (deliveryDetailId == Guid.Empty)
+                return BadRequest(new { Message = "Delivery Detail ID is required" });
+
+            var result = await _parentMedicationDeliveryDetailService.UpdateReturnedQuantityAsync(deliveryDetailId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Cập nhật ReturnedQuantity cho tất cả delivery details của một delivery
+        /// </summary>
+        [HttpPost("medication-deliveries/{deliveryId}/update-returned-quantity")]
+        [Authorize(Roles = "Admin,Nurse")]
+        public async Task<IActionResult> UpdateReturnedQuantityForDelivery(Guid deliveryId)
+        {
+            if (deliveryId == Guid.Empty)
+                return BadRequest(new { Message = "Delivery ID is required" });
+
+            var result = await _parentMedicationDeliveryDetailService.UpdateReturnedQuantityForDeliveryAsync(deliveryId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

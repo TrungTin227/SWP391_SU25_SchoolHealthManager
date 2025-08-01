@@ -143,6 +143,8 @@ namespace Services.Implementations
                         Id = Guid.NewGuid(),
                         MedicationName = m.MedicationName,
                         TotalQuantity = m.QuantityDelivered,
+                        QuantityUsed = 0, // Khởi tạo số lượng đã sử dụng = 0
+                        QuantityRemaining = m.QuantityDelivered, // Khởi tạo số lượng còn lại = tổng số lượng
                         DosageInstruction = m.DosageInstruction,
                         MedicationSchedules = m.DailySchedule.Select(schedule => new MedicationSchedule
                         {
@@ -442,8 +444,12 @@ namespace Services.Implementations
                 {
                     Id = md.Id,
                     MedicationName = md.MedicationName,
-                    QuantityDelivered = md.TotalQuantity,
+                    TotalQuantity = md.TotalQuantity,
+                    QuantityUsed = md.QuantityUsed,
+                    QuantityRemaining = md.QuantityRemaining,
                     DosageInstruction = md.DosageInstruction,
+                    ReturnedQuantity = md.ReturnedQuantity,
+                    ReturnedAt = md.ReturnedAt,
                     DailySchedule = md.MedicationSchedules?.Select(ms => new MedicationScheduleResponseDTO
                     {
                         Id = ms.Id,

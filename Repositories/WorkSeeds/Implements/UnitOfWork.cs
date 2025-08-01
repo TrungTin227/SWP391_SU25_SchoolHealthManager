@@ -37,6 +37,7 @@ namespace Repositories.WorkSeeds.Implements
         private IVaccinationRecordRepository? _vaccinationRecordRepository;
         private IMedicationUsageRecordRepository? _medicationUsageRecordRepository;
         private IParentMedicationDeliveryDetailRepository? _parentMedicationDeliveryDetailRepository;
+        private IMedicationScheduleRepository? _medicationScheduleRepository;
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory, ILogger<UnitOfWork> logger)
         {
             _context = context;
@@ -97,6 +98,9 @@ namespace Repositories.WorkSeeds.Implements
 
         public IParentMedicationDeliveryDetailRepository ParentMedicationDeliveryDetailRepository =>
             _parentMedicationDeliveryDetailRepository ??= _repositoryFactory.GetCustomRepository<IParentMedicationDeliveryDetailRepository>();
+
+        public IMedicationScheduleRepository MedicationScheduleRepository =>
+            _medicationScheduleRepository ??= _repositoryFactory.GetCustomRepository<IMedicationScheduleRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {

@@ -15,6 +15,8 @@ namespace BusinessObjects
 
         public string MedicationName { get; set; }
         public int TotalQuantity { get; set; }
+        public int QuantityUsed { get; set; } = 0; // Số lượng thuốc đã sử dụng
+        public int QuantityRemaining { get; set; } // Số lượng thuốc còn lại
         public string? DosageInstruction { get; set; } // Hướng dẫn chung về cách uống thuốc
 
         public int? ReturnedQuantity { get; set; }
