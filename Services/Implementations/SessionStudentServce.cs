@@ -84,14 +84,14 @@ namespace Services.Implementations
                             continue;
                         }
 
-                        if (sessionStudent.ConsentDeadline.HasValue && now > sessionStudent.ConsentDeadline.Value)
-                        {
-                            result.IsSuccess = false;
-                            result.Message = "Đã hết hạn đồng ý tiêm chủng.";
-                            resultList.Add(result);
-                            sessionStudent.ConsentStatus = ParentConsentStatus.Expired;
-                            continue;
-                        }
+                        //if (sessionStudent.ConsentDeadline.HasValue && now > sessionStudent.ConsentDeadline.Value)
+                        //{
+                        //    result.IsSuccess = false;
+                        //    result.Message = "Đã hết hạn đồng ý tiêm chủng.";
+                        //    resultList.Add(result);
+                        //    sessionStudent.ConsentStatus = ParentConsentStatus.Expired;
+                        //    continue;
+                        //}
 
                         // Update sessionStudent
                         sessionStudent.ConsentStatus = request.ConsentStatus;
