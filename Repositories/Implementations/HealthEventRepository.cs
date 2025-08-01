@@ -17,6 +17,7 @@ namespace Repositories.Implementations
             var query = _context.HealthEvents
                 .Include(he => he.Student)
                 .Include(he => he.ReportedUser)
+                    .ThenInclude(u => u.StaffProfile)
                 .Include(he => he.EventMedications)
                 .Include(he => he.SupplyUsages)
                 .Where(he => !he.IsDeleted);
@@ -30,9 +31,14 @@ namespace Repositories.Implementations
             {
                 var term = searchTerm.ToLower();
                 query = query.Where(he =>
-                    he.Description.ToLower().Contains(term) ||
-                    (he.Student.FirstName + " " + he.Student.LastName).ToLower().Contains(term) ||
-                    (he.ReportedUser.FirstName + " " + he.ReportedUser.LastName).ToLower().Contains(term));
+                        EF.Functions.Like(he.Description.ToLower(), $"%{term}%") ||
+                        EF.Functions.Like(
+                            (he.Student.FirstName ?? "") + " " + (he.Student.LastName ?? ""),
+                            $"%{term}%") ||
+                        EF.Functions.Like(
+                            (he.ReportedUser.FirstName ?? "") + " " + (he.ReportedUser.LastName ?? ""),
+                            $"%{term}%")
+                    );
             }
 
             if (status.HasValue)
@@ -58,19 +64,23 @@ namespace Repositories.Implementations
         public async Task<HealthEvent?> GetHealthEventWithDetailsAsync(Guid id)
         {
             return await _context.HealthEvents
+                //.AsNoTracking()
                 .Include(he => he.Student)
+                    .ThenInclude(s => s.Parent)
+                        .ThenInclude(p => p.User)
                 .Include(he => he.ReportedUser)
+                .Include(he => he.FirstResponder)
+                            .ThenInclude(fr => fr.User) 
                 .Include(he => he.EventMedications)
                     .ThenInclude(em => em.MedicationLot)
-                    .ThenInclude(ml => ml.Medication)
+                        .ThenInclude(ml => ml.Medication)
                 .Include(he => he.SupplyUsages)
                     .ThenInclude(su => su.MedicalSupplyLot)
-                    .ThenInclude(msl => msl.MedicalSupply)
+                        .ThenInclude(msl => msl.MedicalSupply)
                 .Include(he => he.SupplyUsages)
                     .ThenInclude(su => su.UsedByNurse)
                 .FirstOrDefaultAsync(he => he.Id == id && !he.IsDeleted);
         }
-
         public async Task<List<HealthEvent>> GetHealthEventsByIdsAsync(List<Guid> ids, bool includeDeleted = false)
         {
             var query = _context.HealthEvents.AsQueryable();
@@ -121,12 +131,20 @@ namespace Repositories.Implementations
 
         public async Task<int> PermanentDeleteHealthEventsAsync(List<Guid> ids)
         {
-            var events = await _context.HealthEvents
+            // Lấy các sự kiện cần xóa CÙNG VỚI các bản ghi con của chúng
+            var eventsToDelete = await _context.HealthEvents
+                .Include(he => he.SupplyUsages)       // Tải các SupplyUsage liên quan
+                .Include(he => he.EventMedications) // Tải các EventMedication liên quan
                 .Where(he => ids.Contains(he.Id))
                 .ToListAsync();
 
-            _context.HealthEvents.RemoveRange(events);
-            return events.Count;
+            if (!eventsToDelete.Any())
+            {
+                return 0;
+            }         
+            _context.HealthEvents.RemoveRange(eventsToDelete);
+
+            return await _context.SaveChangesAsync();
         }
 
         public async Task<bool> UpdateEventStatusAsync(Guid eventId, EventStatus newStatus, Guid updatedBy)
@@ -167,15 +185,14 @@ namespace Repositories.Implementations
             return await PagedList<HealthEvent>.ToPagedListAsync(query, pageNumber, pageSize);
         }
 
-        public async Task<Dictionary<EventStatus, int>> GetEventStatusStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
+        public async Task<Dictionary<EventStatus, int>> GetEventStatusStatisticsAsync(
+    DateTime? fromDate = null, DateTime? toDate = null)
         {
-            var query = _context.HealthEvents.Where(he => !he.IsDeleted);
+            // Bắt đầu với truy vấn gọn nhất có thể
+            var query = _context.HealthEvents.AsNoTracking().Where(he => !he.IsDeleted);
 
-            if (fromDate.HasValue)
-                query = query.Where(he => he.OccurredAt >= fromDate.Value);
-
-            if (toDate.HasValue)
-                query = query.Where(he => he.OccurredAt <= toDate.Value);
+            if (fromDate.HasValue) query = query.Where(he => he.OccurredAt >= fromDate.Value);
+            if (toDate.HasValue) query = query.Where(he => he.OccurredAt <= toDate.Value);
 
             return await query
                 .GroupBy(he => he.EventStatus)
@@ -197,11 +214,41 @@ namespace Repositories.Implementations
                 .ToDictionaryAsync(g => g.Key, g => g.Count());
         }
 
+        // File: Repositories/Implementations/HealthEventRepository.cs
+
         public async Task<List<HealthEvent>> GetHealthEventsByStudentIdsAsync(HashSet<Guid> studentIds)
         {
             return await _context.HealthEvents
                 .Where(e => studentIds.Contains(e.StudentId) && !e.IsDeleted)
-                .OrderByDescending(e => e.EventStatus)
+
+                // --- BỔ SUNG ĐẦY ĐỦ CÁC INCLUDE DƯỚI ĐÂY ---
+
+                // Tải thông tin cơ bản
+                .Include(he => he.Student)
+                .Include(he => he.ReportedUser)
+
+                // Tải thông tin người sơ cứu (Y tá)
+                .Include(he => he.FirstResponder)
+                    .ThenInclude(fr => fr.User) // Quan trọng: Phải ThenInclude để lấy được User từ NurseProfile
+
+                // Tải danh sách thuốc đã sử dụng và thông tin chi tiết của thuốc
+                .Include(he => he.EventMedications)
+                    .ThenInclude(em => em.MedicationLot)
+                        .ThenInclude(ml => ml.Medication)
+
+                // Tải danh sách vật tư đã sử dụng và thông tin chi tiết của vật tư
+                .Include(he => he.SupplyUsages)
+                    .ThenInclude(su => su.MedicalSupplyLot)
+                        .ThenInclude(msl => msl.MedicalSupply)
+
+                // Tải thông tin y tá đã sử dụng vật tư
+                .Include(he => he.SupplyUsages)
+                    .ThenInclude(su => su.UsedByNurse)
+                        .ThenInclude(un => un.User) // Quan trọng: Lấy User từ NurseProfile của người dùng vật tư
+
+                // ---------------------------------------------------
+
+                .OrderByDescending(e => e.OccurredAt)// Sắp xếp theo ngày tạo mới nhất để phụ huynh dễ theo dõi
                 .ToListAsync();
         }
     }

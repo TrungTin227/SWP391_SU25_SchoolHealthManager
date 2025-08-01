@@ -86,6 +86,9 @@ namespace BusinessObjects
         [MaxLength(500)]
         public string? ParentSignatureUrl { get; set; }
 
+        public ParentAcknowledgmentStatus ParentAckStatus { get; set; } = ParentAcknowledgmentStatus.None;
+        public DateTime? ParentAcknowledgedAt { get; set; }
+
         // 10. Thời tiết / nhân chứng (ghi chú tự do)
         [MaxLength(500)]
         public string? AdditionalNotes { get; set; }

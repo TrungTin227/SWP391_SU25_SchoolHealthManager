@@ -18,80 +18,80 @@ namespace Repositories.Implementations
         {
         }
 
-        public async Task<CreateParentMedicationDeliveryRequestDTO> CreateParentMedicationDeliveryRequestDTO(CreateParentMedicationDeliveryRequestDTO request)
-        {
-            var parentmedicationDelivery = new ParentMedicationDelivery
-            {
-                StudentId = request.StudentId,
-                ParentId = request.ParentId,
-                QuantityDelivered = request.QuantityDelivered,
-                ReceivedBy = request.ParentId, // Sửa: Thêm trường ReceivedBy
-                DeliveredAt = request.DeliveredAt,
-                Notes = request.Notes,
-                Status = StatusMedicationDelivery.Pending // Mặc định là Pending
-            };
-            await _context.AddAsync(parentmedicationDelivery);
-            await _context.SaveChangesAsync();
-            return request;
-        }
+        //public async Task<CreateParentMedicationDeliveryRequestDTO> CreateParentMedicationDeliveryRequestDTO(CreateParentMedicationDeliveryRequestDTO request)
+        //{
+        //    var parentmedicationDelivery = new ParentMedicationDelivery
+        //    {
+        //        StudentId = request.StudentId,
+        //        ParentId = request.ParentId,
+        //        QuantityDelivered = request.QuantityDelivered,
+        //        ReceivedBy = request.ParentId, // Sửa: Thêm trường ReceivedBy
+        //        DeliveredAt = request.DeliveredAt,
+        //        Notes = request.Notes,
+        //        Status = StatusMedicationDelivery.Pending // Mặc định là Pending
+        //    };
+        //    await _context.AddAsync(parentmedicationDelivery);
+        //    await _context.SaveChangesAsync();
+        //    return request;
+        //}
 
-        public async Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryByParentIdDTO(Guid id)
-        {
-            return await _context.ParentMedicationDeliveries
-                   .Where(s => !s.IsDeleted && s.ParentId == id)
-                   .OrderBy(s => s.CreatedAt)
-                   .Select(s => new GetParentMedicationDeliveryRespondDTO
-                   {
-                       medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
-                       ParentMedicationDeliveryId = s.Id,
-                       ParentId = s.ParentId,
-                       StudentId = s.StudentId,
-                       ReceivedBy = s.ReceivedBy,
-                       QuantityDelivered = s.QuantityDelivered,
-                       DeliveredAt = s.DeliveredAt,
-                       Notes = s.Notes,
-                       Status = s.Status.ToString(),
-                   })
+        //public async Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryByParentIdDTO(Guid id)
+        //{
+        //    return await _context.ParentMedicationDeliveries
+        //           .Where(s => !s.IsDeleted && s.ParentId == id)
+        //           .OrderBy(s => s.CreatedAt)
+        //           .Select(s => new GetParentMedicationDeliveryRespondDTO
+        //           {
+        //               medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
+        //               ParentMedicationDeliveryId = s.Id,
+        //               ParentId = s.ParentId,
+        //               StudentId = s.StudentId,
+        //               ReceivedBy = s.ReceivedBy,
+        //               QuantityDelivered = s.QuantityDelivered,
+        //               DeliveredAt = s.DeliveredAt,
+        //               Notes = s.Notes,
+        //               Status = s.Status.ToString(),
+        //           })
 
-                   .ToListAsync();
-        }
+        //           .ToListAsync();
+        //}
 
-        public async Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryDTO()
-        {
-            return await _context.ParentMedicationDeliveries
-                   .Where(s => !s.IsDeleted)
-                   .OrderBy(s => s.CreatedAt)
-                   .Select(s => new GetParentMedicationDeliveryRespondDTO
-                   {
-                       medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
-                       ParentMedicationDeliveryId = s.Id,
-                       ParentId = s.ParentId,
-                       StudentId = s.StudentId,
-                       ReceivedBy = s.ReceivedBy,
-                       QuantityDelivered = s.QuantityDelivered,
-                       DeliveredAt = s.DeliveredAt,
-                       Notes = s.Notes,
-                       Status = s.Status.ToString(),
-                   }).ToListAsync();
-        }
+        //public async Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryDTO()
+        //{
+        //    return await _context.ParentMedicationDeliveries
+        //           .Where(s => !s.IsDeleted)
+        //           .OrderBy(s => s.CreatedAt)
+        //           .Select(s => new GetParentMedicationDeliveryRespondDTO
+        //           {
+        //               medicationName = s.MedicationName, // Assuming MedicationName is a property in ParentMedicationDelivery
+        //               ParentMedicationDeliveryId = s.Id,
+        //               ParentId = s.ParentId,
+        //               StudentId = s.StudentId,
+        //               ReceivedBy = s.ReceivedBy,
+        //               QuantityDelivered = s.QuantityDelivered,
+        //               DeliveredAt = s.DeliveredAt,
+        //               Notes = s.Notes,
+        //               Status = s.Status.ToString(),
+        //           }).ToListAsync();
+        //}
 
-        public async Task<GetParentMedicationDeliveryRespondDTO?> GetParentMedicationDeliveryByIdDTO(Guid id)
-        {
-            return await _context.ParentMedicationDeliveries
-                .Where(s => !s.IsDeleted && s.Id == id)
-                .Select(s => new GetParentMedicationDeliveryRespondDTO
-                {
-                    ParentMedicationDeliveryId = s.Id,
-                    ParentId = s.ParentId,
-                    StudentId = s.StudentId,
-                    ReceivedBy = s.ReceivedBy,
-                    QuantityDelivered = s.QuantityDelivered,
-                    DeliveredAt = s.DeliveredAt,
-                    Notes = s.Notes,
-                    Status = s.Status.ToString(),
-                })
-                .FirstOrDefaultAsync(); // Lúc này mới đúng nghĩa là lấy 1 cái DTO ra
-        }
+        //public async Task<GetParentMedicationDeliveryRespondDTO?> GetParentMedicationDeliveryByIdDTO(Guid id)
+        //{
+        //    return await _context.ParentMedicationDeliveries
+        //        .Where(s => !s.IsDeleted && s.Id == id)
+        //        .Select(s => new GetParentMedicationDeliveryRespondDTO
+        //        {
+        //            ParentMedicationDeliveryId = s.Id,
+        //            ParentId = s.ParentId,
+        //            StudentId = s.StudentId,
+        //            ReceivedBy = s.ReceivedBy,
+        //            QuantityDelivered = s.QuantityDelivered,
+        //            DeliveredAt = s.DeliveredAt,
+        //            Notes = s.Notes,
+        //            Status = s.Status.ToString(),
+        //        })
+        //        .FirstOrDefaultAsync(); // Lúc này mới đúng nghĩa là lấy 1 cái DTO ra
+        //}
 
     }
 }

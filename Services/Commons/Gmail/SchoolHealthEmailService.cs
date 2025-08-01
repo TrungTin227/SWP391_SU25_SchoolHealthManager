@@ -96,6 +96,98 @@ namespace Services.Implementations
         }
 
         #region Email Templates
+        public async Task SendHospitalReferralAckAsync(
+    string parentEmail,
+    string studentName,
+    string referralHospital,
+    DateTime departureTime,
+    string transportBy,
+    Guid eventId,
+    string ackToken)
+        {
+            var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
+
+            var message = $@"
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #fff3e0; }}
+                .container {{ max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #e53935; }}
+                .btn {{ background-color: #4caf50; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 20px 0; }}
+                .footer {{ font-size: 12px; color: #666; margin-top: 30px; }}
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <h2 style='color: #e53935;'>🚑 THÔNG BÁO CHUYỂN VIỆN</h2>
+
+                <p>Kính gửi Quý phụ huynh học sinh <strong>{studentName}</strong>,</p>
+
+                <p>Chúng tôi thông báo rằng con em Quý vị đã được chuyển đến cơ sở y tế để theo dõi và điều trị thêm.</p>
+                
+                <ul>
+                    <li><strong>Bệnh viện:</strong> {referralHospital}</li>
+                    <li><strong>Thời gian rời trường:</strong> {departureTime:HH:mm, dd/MM/yyyy}</li>
+                    <li><strong>Phương tiện:</strong> {transportBy}</li>
+                </ul>
+
+                <p>Vui lòng xác nhận đã nhận thông báo:</p>
+                <a href='{ackLink}' class='btn'>✅ Tôi đã biết và xác nhận</a>
+
+                <div class='footer'>
+                    <strong>{_emailSettings.SchoolName}</strong><br>
+                    📞 Liên hệ khẩn cấp: {_emailSettings.SchoolPhone}<br>
+                    📧 Email: {_emailSettings.HealthDepartmentEmail}
+                </div>
+            </div>
+        </body>
+        </html>";
+
+            var subject = $"[{_emailSettings.SchoolName}] THÔNG BÁO CHUYỂN VIỆN - {studentName}";
+            await QueueEmailAsync(parentEmail, subject, message);
+        }
+
+        public async Task SendHealthEventAckMailAsync(
+    string parentEmail,
+    string studentName,
+    string eventDescription,
+    string treatmentProvided,
+    Guid eventId,
+    string ackToken)
+        {
+            var subject = $"[{_emailSettings.SchoolName}] CẢNH BÁO – {studentName}";
+            var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
+            var message = $@"
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #fff3e0; }}
+                .container {{ max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #ff5722; }}
+                .btn {{ background-color: #4caf50; color: white; padding: 12px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 20px 0; }}
+                .footer {{ font-size: 12px; color: #666; margin-top: 30px; }}
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <h2 style='color: #ff5722;'>🚨 THÔNG BÁO SỰ KIỆN Y TẾ</h2>
+                <p>Kính gửi Quý phụ huynh,</p>
+                <p><strong>Học sinh:</strong> {studentName}</p>
+                <p><strong>Sự kiện:</strong> {eventDescription}</p>
+                <p><strong>Xử lý:</strong> {treatmentProvided}</p>
+
+                <p>Quý phụ huynh vui lòng xác nhận đã nhận được thông báo:</p>
+                <a href='{ackLink}' class='btn'>✅ Tôi đã đọc và xác nhận</a>
+
+                <div class='footer'>
+                    <strong>{_emailSettings.SchoolName}</strong><br>
+                    📞 {_emailSettings.SchoolPhone} | 📧 {_emailSettings.HealthDepartmentEmail}
+                </div>
+            </div>
+        </body>
+        </html>";
+
+            await QueueEmailAsync(parentEmail, subject, message);
+        }
 
         private string GenerateVaccinationConsentEmail(string studentName, string vaccineName, DateTime scheduledDate)
         {

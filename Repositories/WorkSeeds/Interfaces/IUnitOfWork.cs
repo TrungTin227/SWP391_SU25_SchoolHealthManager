@@ -1,4 +1,6 @@
-﻿namespace Repositories.WorkSeeds.Interfaces
+﻿using Repositories.Interfaces;
+
+namespace Repositories.WorkSeeds.Interfaces
 {
 
     public interface IUnitOfWork : IGenericUnitOfWork
@@ -26,5 +28,10 @@
         ICounselingAppointmentRepository CounselingAppointmentRepository { get; }
         INurseProfileRepository NurseProfileRepository { get; }
         IVaccinationRecordRepository VaccinationRecordRepository { get; }
+
+        IMedicationUsageRecordRepository MedicationUsageRecordRepository { get; }
+
+        IParentMedicationDeliveryDetailRepository ParentMedicationDeliveryDetailRepository { get; }
+        IMedicationScheduleRepository MedicationScheduleRepository { get; }
     }
 }

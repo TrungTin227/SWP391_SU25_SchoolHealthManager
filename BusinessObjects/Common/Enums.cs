@@ -89,5 +89,9 @@
         NoShow = 4          // Không đến khám
     }
     public enum SeverityLevel { Minor, Moderate, Severe }
-
+    public enum ParentAcknowledgmentStatus
+    {
+        None = 0,
+        Acknowledged = 1
+    }
 }

@@ -32,6 +32,9 @@ namespace Repositories
         public DbSet<Dispense> Dispenses { get; set; }
         public DbSet<EventMedication> EventMedications { get; set; }
         public DbSet<ParentMedicationDelivery> ParentMedicationDeliveries { get; set; }
+        public DbSet<ParentMedicationDeliveryDetail> ParentMedicationDeliveryDetails { get; set; }
+        public DbSet<MedicationSchedule> MedicationSchedules { get; set; }
+        public DbSet<MedicationUsageRecord> MedicationUsageRecords { get; set; }
         #endregion
 
         #region Vaccination Management
@@ -148,6 +151,20 @@ namespace Repositories
                       .WithMany(cr => cr.HealthEvents)    
                       .HasForeignKey(he => he.CheckupRecordId)
                       .OnDelete(DeleteBehavior.NoAction);
+                // HealthEvent <-> EventMedication
+                builder.Entity<EventMedication>()
+                    .HasOne(em => em.HealthEvent)
+                    .WithMany(he => he.EventMedications)
+                    .HasForeignKey(em => em.HealthEventId)
+                    .OnDelete(DeleteBehavior.Cascade); // <-- SỬA Ở ĐÂY
+
+                // HealthEvent <-> Report
+                builder.Entity<Report>()
+                    .HasOne(r => r.HealthEvent)
+                    .WithMany(he => he.Reports)
+                    .HasForeignKey(r => r.HealthEventId)
+                    .IsRequired(false) // Giả sử Report có thể không có HealthEvent
+                    .OnDelete(DeleteBehavior.Cascade); // <-- SỬA Ở ĐÂY
             });
 
             // CheckupRecord relationships
@@ -196,6 +213,43 @@ namespace Repositories
                       .WithMany(vt => vt.MedicationLots)
                       .HasForeignKey(ml => ml.VaccineTypeId)
                       .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ParentMedicationDeliveryDetail configuration
+            builder.Entity<ParentMedicationDeliveryDetail>(entity =>
+            {
+                entity.HasOne(d => d.ParentMedicationDelivery)
+                      .WithMany(p => p.Details)
+                      .HasForeignKey(d => d.ParentMedicationDeliveryId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MedicationSchedule configuration
+            builder.Entity<MedicationSchedule>(entity =>
+            {
+                entity.HasOne(ms => ms.ParentMedicationDeliveryDetail)
+                      .WithMany(d => d.MedicationSchedules)
+                      .HasForeignKey(ms => ms.ParentMedicationDeliveryDetailId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MedicationUsageRecord configuration
+            builder.Entity<MedicationUsageRecord>(entity =>
+            {
+                entity.HasOne(mur => mur.DeliveryDetail)
+                      .WithMany(d => d.UsageRecords)
+                      .HasForeignKey(mur => mur.DeliveryDetailId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(mur => mur.MedicationSchedule)
+                      .WithMany(ms => ms.UsageRecords)
+                      .HasForeignKey(mur => mur.MedicationScheduleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(mur => mur.Nurse)
+                      .WithMany()
+                      .HasForeignKey(mur => mur.CheckedBy)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
         #endregion
@@ -309,7 +363,8 @@ namespace Repositories
             {
                 entity.HasOne(su => su.HealthEvent)
                       .WithMany(he => he.SupplyUsages)
-                      .OnDelete(DeleteBehavior.NoAction);
+                      .HasForeignKey(su => su.HealthEventId) 
+                      .OnDelete(DeleteBehavior.Cascade); 
 
                 entity.HasOne(su => su.UsedByNurse)
                       .WithMany()
@@ -528,6 +583,11 @@ namespace Repositories
             builder.Entity<HealthEvent>()
                 .Property(e => e.Severity)
                 .HasConversion(new EnumToStringConverter<SeverityLevel>()) // Chuyển đổi enum SeverityLevel sang chuỗi
+                .HasMaxLength(50)
+                .IsUnicode(true);
+            builder.Entity<HealthEvent>()
+                .Property(e => e.ParentAckStatus)
+                .HasConversion(new EnumToStringConverter<ParentAcknowledgmentStatus>()) 
                 .HasMaxLength(50)
                 .IsUnicode(true);
 

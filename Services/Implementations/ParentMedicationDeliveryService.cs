@@ -1,6 +1,9 @@
 ﻿using BusinessObjects.Common;
+using DTOs.ParentMedicationDeliveryDetail.Respond;
 using DTOs.ParentMedicationDeliveryDTOs.Request;
 using DTOs.ParentMedicationDeliveryDTOs.Respond;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Repositories;
 using Repositories.Interfaces;
 using Services.Commons;
@@ -16,199 +19,446 @@ namespace Services.Implementations
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
         private readonly ISchoolHealthEmailService _emailService;
-        private readonly ISchoolHealthEmailService _schoolHealthEmailService;
+        private readonly ILogger<ParentMedicationDeliveryService> _logger;
 
-        // Constructor sử dụng base service để khởi tạo repository, current user service và unit of work
-        public ParentMedicationDeliveryService(ISchoolHealthEmailService schoolHealthEmailService ,
+        public ParentMedicationDeliveryService(
             IGenericRepository<ParentMedicationDelivery, Guid> parentMedicationDeliveryRepository,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             SchoolHealthManagerDbContext dbContext,
             ICurrentTime currentTime,
-            ISchoolHealthEmailService emailService
+            ISchoolHealthEmailService emailService,
+            ILogger<ParentMedicationDeliveryService> logger
             )
         :
             base(parentMedicationDeliveryRepository, currentUserService, unitOfWork, currentTime)
         {
             _dbContext = dbContext;
             _emailService = emailService;
-            _schoolHealthEmailService = schoolHealthEmailService;
+            _logger = logger;
         }
 
-        public async Task<ApiResult<bool>> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
+        public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> CreateDeliveryAsync(CreateParentMedicationDeliveryRequestDTO request)
         {
             try
             {
-                var currentUserId = _currentUserService.GetUserId();
+                _logger.LogInformation("Bắt đầu tạo phiếu giao thuốc cho StudentId: {StudentId}", request.StudentId);
 
-                if (parentMedicationDeliveryid == Guid.Empty)
-                    return ApiResult<bool>.Failure(new Exception("ID đơn giao thuốc phụ huynh không hợp lệ."));
-
-
-                if (currentUserId == null)
-                    return ApiResult<bool>.Failure(new Exception("Đăng nhập trước khi thực hiện thao tác này!"));
-                if (await _unitOfWork.NurseProfileRepository.GetNurseByUserIdAsync(currentUserId.Value)==null)
-                        return ApiResult<bool>.Failure(new Exception("ID người dùng không phải là nurse!!."));
-
-                if (!Enum.IsDefined(typeof(StatusMedicationDelivery), status))
-                    return ApiResult<bool>.Failure(new Exception("Trạng thái không hợp lệ."));
-
-                var parentMedicationDelivery = await _unitOfWork.ParentMedicationDeliveryRepository
-                    .GetByIdAsync(parentMedicationDeliveryid);
-
-                if (parentMedicationDelivery == null)
-                    return ApiResult<bool>.Failure(new Exception($"Không tìm thấy đơn giao thuốc phụ huynh với ID: {parentMedicationDeliveryid}"));
-
-                if ((int)status < (int)parentMedicationDelivery.Status)
-                    return ApiResult<bool>.Failure(new Exception($"Không thể cập nhật trạng thái từ {parentMedicationDelivery.Status} về {status}."));
-
-                parentMedicationDelivery.Status = status;
-                parentMedicationDelivery.UpdatedAt = _currentTime.GetVietnamTime();
-                parentMedicationDelivery.UpdatedBy = currentUserId.Value;
-                parentMedicationDelivery.ReceivedBy = currentUserId.Value;
-                if (status == StatusMedicationDelivery.Delivered)
+                // Validation
+                if (request == null)
                 {
-                    var parent = await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(parentMedicationDelivery.ParentId);
-                    var student = await _unitOfWork.StudentRepository.GetByIdAsync(parentMedicationDelivery.StudentId);
-                    await _emailService.SendMedicationDeliverdAsync(parent.Email, student.FullName, parentMedicationDelivery.MedicationName);
+                    _logger.LogError("Request không được null");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentNullException(nameof(request)));
                 }
+
+                if (request.StudentId == Guid.Empty)
+                {
+                    _logger.LogError("StudentId không hợp lệ");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("StudentId không hợp lệ"));
+                }
+
+                if (request.Medications == null || !request.Medications.Any())
+                {
+                    _logger.LogError("Danh sách thuốc không được để trống");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Danh sách thuốc không được để trống"));
+                }
+
+                // Validate từng medication
+                foreach (var medication in request.Medications)
+                {
+                    if (string.IsNullOrWhiteSpace(medication.MedicationName))
+                    {
+                        _logger.LogError("Tên thuốc không được để trống");
+                        return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Tên thuốc không được để trống"));
+                    }
+
+                    if (medication.QuantityDelivered <= 0)
+                    {
+                        _logger.LogError("Số lượng thuốc phải lớn hơn 0. Thuốc: {MedicationName}", medication.MedicationName);
+                        return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Số lượng thuốc {medication.MedicationName} phải lớn hơn 0"));
+                    }
+
+                    if (medication.DailySchedule == null || !medication.DailySchedule.Any())
+                    {
+                        _logger.LogError("Lịch uống thuốc không được để trống. Thuốc: {MedicationName}", medication.MedicationName);
+                        return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Lịch uống thuốc {medication.MedicationName} không được để trống"));
+                    }
+
+                    // Validate daily schedule
+                    foreach (var schedule in medication.DailySchedule)
+                    {
+                        if (schedule.Dosage <= 0)
+                        {
+                            _logger.LogError("Liều lượng phải lớn hơn 0. Thuốc: {MedicationName}, Thời gian: {Time}", medication.MedicationName, schedule.Time);
+                            return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Liều lượng thuốc {medication.MedicationName} lúc {schedule.Time} phải lớn hơn 0"));
+                        }
+                    }
+
+                    // Kiểm tra tổng liều lượng mỗi ngày
+                    var totalDosagePerDay = medication.DailySchedule.Sum(s => s.Dosage);
+                    if (totalDosagePerDay <= 0)
+                    {
+                        _logger.LogError("Tổng liều lượng mỗi ngày phải lớn hơn 0. Thuốc: {MedicationName}", medication.MedicationName);
+                        return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Tổng liều lượng mỗi ngày của thuốc {medication.MedicationName} phải lớn hơn 0"));
+                    }
+
+                    // Kiểm tra số ngày có thể uống
+                    var numberOfDays = medication.QuantityDelivered / totalDosagePerDay;
+                    if (numberOfDays <= 0)
+                    {
+                        _logger.LogError("Số lượng thuốc không đủ cho 1 ngày. Thuốc: {MedicationName}, Số lượng: {Quantity}, Liều/ngày: {DosagePerDay}", 
+                            medication.MedicationName, medication.QuantityDelivered, totalDosagePerDay);
+                        return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Số lượng thuốc {medication.MedicationName} không đủ cho 1 ngày"));
+                    }
+
+                    _logger.LogInformation("Thuốc {MedicationName}: {Quantity} viên, {DosagePerDay} viên/ngày, {NumberOfDays} ngày", 
+                        medication.MedicationName, medication.QuantityDelivered, totalDosagePerDay, numberOfDays);
+                }
+
+                // Kiểm tra student có tồn tại không
+                var student = await _dbContext.Students.FirstOrDefaultAsync(s => s.Id == request.StudentId);
+                if (student == null)
+                {
+                    _logger.LogError("Không tìm thấy học sinh với ID: {StudentId}", request.StudentId);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Không tìm thấy học sinh"));
+                }
+
+                var currentUserId = _currentUserService.GetUserId();
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
+
+                var delivery = new ParentMedicationDelivery
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = request.StudentId,
+                    ParentId = currentUserId.Value,
+                    Notes = request.Notes,
+                    DeliveredAt = _currentTime.GetVietnamTime(),
+                    Status = StatusMedicationDelivery.Pending,
+                    Details = request.Medications.Select(m => new ParentMedicationDeliveryDetail
+                    {
+                        Id = Guid.NewGuid(),
+                        MedicationName = m.MedicationName,
+                        TotalQuantity = m.QuantityDelivered,
+                        QuantityUsed = 0, // Khởi tạo số lượng đã sử dụng = 0
+                        QuantityRemaining = m.QuantityDelivered, // Khởi tạo số lượng còn lại = tổng số lượng
+                        DosageInstruction = m.DosageInstruction,
+                        MedicationSchedules = m.DailySchedule.Select(schedule => new MedicationSchedule
+                        {
+                            Id = Guid.NewGuid(),
+                            Time = schedule.Time,
+                            Dosage = schedule.Dosage,
+                            Note = schedule.Note
+                        }).ToList()
+                    }).ToList()
+                };
+
+                await _unitOfWork.ParentMedicationDeliveryRepository.AddAsync(delivery);
                 await _unitOfWork.SaveChangesAsync();
 
-                return ApiResult<bool>.Success(true, "Cập nhật trạng thái giao thuốc phụ huynh thành công!");
+                _logger.LogInformation("Tạo phiếu giao thuốc thành công. DeliveryId: {DeliveryId}, StudentId: {StudentId}, Số loại thuốc: {MedicationCount}", 
+                    delivery.Id, delivery.StudentId, delivery.Details.Count);
+
+                var response = MapToResponseDTO(delivery);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Success(response, "Tạo phiếu giao thuốc thành công!");
             }
             catch (Exception ex)
             {
-                return ApiResult<bool>.Failure(new Exception($"Cập nhật trạng thái thất bại. Lỗi: {ex.Message}"));
+                _logger.LogError(ex, "Lỗi khi tạo phiếu giao thuốc cho StudentId: {StudentId}", request?.StudentId);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new Exception("Lỗi khi tạo đơn thuốc phụ huynh: " + ex.Message));
             }
         }
 
-
-        public async Task<ApiResult<CreateParentMedicationDeliveryRequestDTO>> CreateAsync(CreateParentMedicationDeliveryRequestDTO request)
+        public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> GetByIdAsync(Guid id)
         {
             try
             {
-                if (IsWithinWorkingHours(request.DeliveredAt) == false)
-                    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không thể tạo đơn thuốc phụ huynh giao ngoài giờ làm việc."));
+                _logger.LogInformation("Lấy phiếu giao thuốc theo ID: {Id}", id);
 
-                var student = await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId);
-
-                if (student == null)
-                    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
-
-                var parent = await _unitOfWork.UserRepository.GetByIdAsync(request.ParentId);
-                var isParent = await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId);
-                if (parent == null || isParent == null)
-                    return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
-
-                //await _unitOfWork.ParentMedicationDeliveryRepository.CreateParentMedicationDeliveryRequestDTO(request); // gọi base service để tạo entity
-                await CreateAsync(ParentMedicationDeliveryMappings.ToParentMedicationDelivery(request)); // map DTO thành entity và gọi base service để tạo entity
-
-                if (parent != null && !string.IsNullOrWhiteSpace(parent.Email))
-                    await _emailService.SendMedicationDeliveryConfirmationAsync(parent.Email, student.FullName, request.MedicationName);
-                return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Success(request, "Tạo đơn thuốc phụ huynh giao thành công!!!"); // ví dụ
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<CreateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Tạo đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
-            }
-        }
-
-        public async Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllAsync()
-        {
-            try
-            {
-                var list =await _unitOfWork.ParentMedicationDeliveryRepository.GetAllParentMedicationDeliveryDTO();
-                if (list == null || !list.Any())
+                if (id == Guid.Empty)
                 {
-                    return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Không có đơn thuốc phụ huynh giao nào được tìm thấy."));
-                }
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Success(list, "Lấy danh sách đơn thuốc phụ huynh giao thành công.");
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
-            }
-        }
-
-        public async Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllParentMedicationDeliveryByParentIdAsync(Guid parentId)
-        {
-            try
-            {
-                if (await _unitOfWork.ParentRepository.GetParentByUserIdAsync(parentId) == null)
-                    return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Không tìm thấy phụ huynh với ID : " + parentId));
-
-                var list = await _unitOfWork.ParentMedicationDeliveryRepository.GetAllParentMedicationDeliveryByParentIdDTO(parentId);
-                if (list == null || !list.Any())
-                    return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Không có đơn thuốc phụ huynh giao nào được tìm thấy."));
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Success(list, "Lấy danh sách đơn thuốc phụ huynh giao thành công.");
-            }
-            catch (Exception ex)
-            {
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
-            }
-        }
-
-        public async Task<ApiResult<List<GetParentMedicationDeliveryRespondDTO>>> GetAllPendingAsync()
-        {
-            try
-            {
-                var list = await _unitOfWork.ParentMedicationDeliveryRepository.GetAllAsync(x => x.Status == StatusMedicationDelivery.Pending);
-                if (list == null || !list.Any())
-                {
-                    return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Không có đơn thuốc phụ huynh giao nào được tìm thấy."));
+                    _logger.LogError("ID không hợp lệ");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("ID không hợp lệ"));
                 }
 
-                var responds = list.Select(x => ParentMedicationDeliveryMappings.ToResponds(x)).ToList();
+                var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Details)
+                        .ThenInclude(d => d.MedicationSchedules)
+                    .FirstOrDefaultAsync(d => d.Id == id);
 
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Success(responds, "Lấy danh sách đơn thuốc phụ huynh giao thành công.");
+                if (delivery == null)
+                {
+                    _logger.LogWarning("Không tìm thấy phiếu giao thuốc với ID: {Id}", id);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new Exception("Không tìm thấy phiếu giao thuốc."));
+                }
+
+                _logger.LogInformation("Lấy phiếu giao thuốc thành công. ID: {Id}, StudentId: {StudentId}", id, delivery.StudentId);
+
+                var response = MapToResponseDTO(delivery);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Success(response, "Lấy phiếu giao thuốc thành công!");
             }
             catch (Exception ex)
             {
-                return ApiResult<List<GetParentMedicationDeliveryRespondDTO>>.Failure(new Exception("Lấy danh sách đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
+                _logger.LogError(ex, "Lỗi khi lấy phiếu giao thuốc theo ID: {Id}", id);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(ex);
             }
         }
 
-        public async Task<ApiResult<GetParentMedicationDeliveryRespondDTO?>> GetByIdAsync(Guid id)
-        {
-            var results = await _unitOfWork.ParentMedicationDeliveryRepository.GetParentMedicationDeliveryByIdDTO(id);
-            if (results == null)
-                return ApiResult<GetParentMedicationDeliveryRespondDTO?>.Failure(new Exception("Không tìm thấy thuốc phụ huynh giao với Id " + id));
-            return ApiResult<GetParentMedicationDeliveryRespondDTO?>.Success(results, "Lấy thuốc của phụ huynh thành công!!");
-        }
-
-        public async Task<ApiResult<UpdateParentMedicationDeliveryRequestDTO>> UpdateAsync(UpdateParentMedicationDeliveryRequestDTO request)
+        public async Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetByStudentIdAsync(Guid studentId)
         {
             try
             {
-                var update = await _unitOfWork.ParentMedicationDeliveryRepository.GetByIdAsync(request.ParentMedicationDeliveryId);
-                if (update == null)
-                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy đơn thuốc phụ huynh giao với ID: " + request.ParentMedicationDeliveryId));
-                if (request.DeliveredAt != null && IsWithinWorkingHours(request.DeliveredAt.Value) == false)
-                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không thể cập nhật đơn thuốc phụ huynh giao ngoài giờ làm việc."));
+                _logger.LogInformation("Lấy danh sách phiếu giao thuốc theo StudentId: {StudentId}", studentId);
 
-                if (request.StudentId.HasValue && await _unitOfWork.StudentRepository.GetByIdAsync(request.StudentId.Value) == null)
-                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy học sinh với ID: " + request.StudentId));
+                if (studentId == Guid.Empty)
+                {
+                    _logger.LogError("StudentId không hợp lệ");
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(new ArgumentException("StudentId không hợp lệ"));
+                }
 
-                if (request.ReceivedBy.HasValue && await _unitOfWork.UserRepository.GetUserDetailsByIdAsync(request.ReceivedBy.Value) == null)
-                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy người nhận với ID: " + request.ReceivedBy));
+                var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Details)
+                        .ThenInclude(d => d.MedicationSchedules)
+                    .Where(d => d.StudentId == studentId)
+                    .ToListAsync();
 
-                if (request.ParentId.HasValue && await _unitOfWork.ParentRepository.GetParentByUserIdAsync(request.ParentId.Value) == null)
-                    return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Không tìm thấy phụ huynh với ID: " + request.ParentId));
-                ParentMedicationDeliveryMappings.ToUpdateParentMedicationDelivery(request, update);
-                var currentUserId = _currentUserService.GetUserId();
-                update.UpdatedAt = _currentTime.GetVietnamTime();
-                update.UpdatedBy = currentUserId ?? Guid.Empty;
-                // map DTO thành entity
-                //await base.UpdateAsync(entity); 
-                await _dbContext.SaveChangesAsync(); // Tự động update vào DB
+                _logger.LogInformation("Lấy danh sách phiếu giao thuốc thành công. StudentId: {StudentId}, Số lượng: {Count}", studentId, deliveries.Count);
 
-                return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Success(request, "Cập nhật đơn thuốc phụ huynh giao thành công!!!"); // ví dụ
-
+                var response = deliveries.Select(delivery => MapToResponseDTO(delivery)).ToList();
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(response, "Lấy danh sách phiếu giao thuốc theo học sinh thành công!");
             }
             catch (Exception ex)
             {
-                return ApiResult<UpdateParentMedicationDeliveryRequestDTO>.Failure(new Exception("Cập nhật đơn thuốc phụ huynh giao thất bại với exception: " + ex.Message));
+                _logger.LogError(ex, "Lỗi khi lấy danh sách phiếu giao thuốc theo StudentId: {StudentId}", studentId);
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(ex);
             }
+        }
+
+        public async Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetAllAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Lấy tất cả phiếu giao thuốc");
+
+                var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Details)
+                        .ThenInclude(d => d.MedicationSchedules)
+                    .ToListAsync();
+
+                _logger.LogInformation("Lấy tất cả phiếu giao thuốc thành công. Số lượng: {Count}", deliveries.Count);
+
+                var response = deliveries.Select(delivery => MapToResponseDTO(delivery)).ToList();
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(response, "Lấy tất cả phiếu giao thuốc thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy tất cả phiếu giao thuốc");
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> UpdateStatusAsync(Guid deliveryId, StatusMedicationDelivery status)
+        {
+            try
+            {
+                _logger.LogInformation("Cập nhật trạng thái phiếu giao thuốc. DeliveryId: {DeliveryId}, Status: {Status}", deliveryId, status);
+
+                if (deliveryId == Guid.Empty)
+                {
+                    _logger.LogError("DeliveryId không hợp lệ");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("DeliveryId không hợp lệ"));
+                }
+
+                var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Details)
+                        .ThenInclude(d => d.MedicationSchedules)
+                    .FirstOrDefaultAsync(d => d.Id == deliveryId);
+
+                if (delivery == null)
+                {
+                    _logger.LogWarning("Không tìm thấy phiếu giao thuốc với ID: {DeliveryId}", deliveryId);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new Exception("Không tìm thấy phiếu giao thuốc."));
+                }
+
+                // Kiểm tra trạng thái hiện tại
+                if (delivery.Status == StatusMedicationDelivery.Confirmed && status == StatusMedicationDelivery.Confirmed)
+                {
+                    _logger.LogWarning("Phiếu giao thuốc đã được xác nhận trước đó. DeliveryId: {DeliveryId}", deliveryId);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new InvalidOperationException("Phiếu giao thuốc đã được xác nhận trước đó"));
+                }
+
+                delivery.Status = status;
+                
+                // Nếu status là Confirmed, tự động tạo MedicationUsageRecord cho từng ngày
+                if (status == StatusMedicationDelivery.Confirmed)
+                {
+                    _logger.LogInformation("Bắt đầu tạo MedicationUsageRecord cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+                    await CreateMedicationUsageRecordsAsync(delivery);
+                    _logger.LogInformation("Tạo MedicationUsageRecord thành công cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+                }
+
+                await _unitOfWork.ParentMedicationDeliveryRepository.UpdateAsync(delivery);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Cập nhật trạng thái phiếu giao thuốc thành công. DeliveryId: {DeliveryId}, Status: {Status}", deliveryId, status);
+
+                var response = MapToResponseDTO(delivery);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Success(response, "Cập nhật trạng thái phiếu giao thuốc thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật trạng thái phiếu giao thuốc. DeliveryId: {DeliveryId}, Status: {Status}", deliveryId, status);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> DeleteAsync(Guid deliveryId)
+        {
+            try
+            {
+                _logger.LogInformation("Xóa phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+
+                if (deliveryId == Guid.Empty)
+                {
+                    _logger.LogError("DeliveryId không hợp lệ");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("DeliveryId không hợp lệ"));
+                }
+
+                var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Details)
+                        .ThenInclude(d => d.MedicationSchedules)
+                    .FirstOrDefaultAsync(d => d.Id == deliveryId);
+
+                if (delivery == null)
+                {
+                    _logger.LogWarning("Không tìm thấy phiếu giao thuốc với ID: {DeliveryId}", deliveryId);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new Exception("Không tìm thấy phiếu giao thuốc."));
+                }
+
+                // Kiểm tra xem có thể xóa không
+                if (delivery.Status == StatusMedicationDelivery.Confirmed)
+                {
+                    _logger.LogWarning("Không thể xóa phiếu giao thuốc đã được xác nhận. DeliveryId: {DeliveryId}", deliveryId);
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new InvalidOperationException("Không thể xóa phiếu giao thuốc đã được xác nhận"));
+                }
+
+                await _unitOfWork.ParentMedicationDeliveryRepository.DeleteAsync(deliveryId);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Xóa phiếu giao thuốc thành công. DeliveryId: {DeliveryId}", deliveryId);
+
+                var response = MapToResponseDTO(delivery);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Success(response, "Xóa phiếu giao thuốc thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+                return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(ex);
+            }
+        }
+
+        // Helper method để tạo MedicationUsageRecord tự động
+        private async Task CreateMedicationUsageRecordsAsync(ParentMedicationDelivery delivery)
+        {
+            try
+            {
+                var currentDate = _currentTime.GetVietnamTime().Date;
+                var usageRecords = new List<MedicationUsageRecord>();
+
+                _logger.LogInformation("Bắt đầu tạo MedicationUsageRecord. DeliveryId: {DeliveryId}, Số loại thuốc: {DetailCount}", 
+                    delivery.Id, delivery.Details.Count);
+
+                foreach (var detail in delivery.Details)
+                {
+                    // Tính tổng số viên uống mỗi ngày
+                    var totalDosagePerDay = detail.MedicationSchedules.Sum(s => s.Dosage);
+                    
+                    // Tính số ngày có thể uống
+                    var numberOfDays = detail.TotalQuantity / totalDosagePerDay;
+                    
+                    // Nếu không chia hết, làm tròn xuống
+                    if (detail.TotalQuantity % totalDosagePerDay != 0)
+                    {
+                        numberOfDays = (int)Math.Floor((double)detail.TotalQuantity / totalDosagePerDay);
+                    }
+
+                    _logger.LogInformation("Thuốc {MedicationName}: {TotalQuantity} viên, {TotalDosagePerDay} viên/ngày, {NumberOfDays} ngày", 
+                        detail.MedicationName, detail.TotalQuantity, totalDosagePerDay, numberOfDays);
+
+                    // Tạo record cho từng ngày
+                    for (int day = 0; day < numberOfDays; day++)
+                    {
+                        var currentDay = currentDate.AddDays(day);
+                        
+                        foreach (var schedule in detail.MedicationSchedules)
+                        {
+                            var scheduledDateTime = currentDay.Add(schedule.Time);
+                            
+                            usageRecords.Add(new MedicationUsageRecord
+                            {
+                                Id = Guid.NewGuid(),
+                                DeliveryDetailId = detail.Id,
+                                MedicationScheduleId = schedule.Id,
+                                ScheduledAt = scheduledDateTime,
+                                IsTaken = false,
+                                Note = null
+                            });
+                        }
+                    }
+                }
+
+                await _dbContext.MedicationUsageRecords.AddRangeAsync(usageRecords);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Tạo MedicationUsageRecord thành công. DeliveryId: {DeliveryId}, Số records: {RecordCount}", 
+                    delivery.Id, usageRecords.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo MedicationUsageRecord. DeliveryId: {DeliveryId}", delivery.Id);
+                throw;
+            }
+        }
+
+        // Helper method để map từ entity sang DTO
+        private ParentMedicationDeliveryResponseDTO MapToResponseDTO(ParentMedicationDelivery delivery)
+        {
+            return new ParentMedicationDeliveryResponseDTO
+            {
+                Id = delivery.Id,
+                StudentId = delivery.StudentId,
+                ParentId = delivery.ParentId,
+                ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
+                Notes = delivery.Notes,
+                DeliveredAt = delivery.DeliveredAt,
+                Status = delivery.Status,
+                Medications = delivery.Details.Select(md => new ParentMedicationDeliveryDetailResponseDTO
+                {
+                    Id = md.Id,
+                    MedicationName = md.MedicationName,
+                    TotalQuantity = md.TotalQuantity,
+                    QuantityUsed = md.QuantityUsed,
+                    QuantityRemaining = md.QuantityRemaining,
+                    DosageInstruction = md.DosageInstruction,
+                    ReturnedQuantity = md.ReturnedQuantity,
+                    ReturnedAt = md.ReturnedAt,
+                    DailySchedule = md.MedicationSchedules?.Select(ms => new MedicationScheduleResponseDTO
+                    {
+                        Id = ms.Id,
+                        Time = ms.Time,
+                        Dosage = ms.Dosage,
+                        Note = ms.Note
+                    }).ToList() ?? new List<MedicationScheduleResponseDTO>()
+                }).ToList()
+            };
         }
     }
 }

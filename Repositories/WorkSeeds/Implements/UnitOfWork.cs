@@ -35,6 +35,9 @@ namespace Repositories.WorkSeeds.Implements
         private ICounselingAppointmentRepository? _counselingAppointmentRepository;
         private INurseProfileRepository? _nurseProfileRepository;
         private IVaccinationRecordRepository? _vaccinationRecordRepository;
+        private IMedicationUsageRecordRepository? _medicationUsageRecordRepository;
+        private IParentMedicationDeliveryDetailRepository? _parentMedicationDeliveryDetailRepository;
+        private IMedicationScheduleRepository? _medicationScheduleRepository;
         public UnitOfWork(SchoolHealthManagerDbContext context, IRepositoryFactory repositoryFactory, ILogger<UnitOfWork> logger)
         {
             _context = context;
@@ -89,6 +92,15 @@ namespace Repositories.WorkSeeds.Implements
             _nurseProfileRepository ??= _repositoryFactory.GetCustomRepository<INurseProfileRepository>();
         public IVaccinationRecordRepository VaccinationRecordRepository => 
             _vaccinationRecordRepository ??= _repositoryFactory.GetCustomRepository<IVaccinationRecordRepository>();
+
+        public IMedicationUsageRecordRepository MedicationUsageRecordRepository => 
+            _medicationUsageRecordRepository ??= _repositoryFactory.GetCustomRepository<IMedicationUsageRecordRepository>();
+
+        public IParentMedicationDeliveryDetailRepository ParentMedicationDeliveryDetailRepository =>
+            _parentMedicationDeliveryDetailRepository ??= _repositoryFactory.GetCustomRepository<IParentMedicationDeliveryDetailRepository>();
+
+        public IMedicationScheduleRepository MedicationScheduleRepository =>
+            _medicationScheduleRepository ??= _repositoryFactory.GetCustomRepository<IMedicationScheduleRepository>();
         public IGenericRepository<TEntity, TKey> GetRepository<TEntity, TKey>()
             where TEntity : class
         {

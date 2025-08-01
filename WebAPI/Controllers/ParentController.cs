@@ -3,6 +3,7 @@ using DTOs.ParentMedicationDeliveryDTOs.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Org.BouncyCastle.Crypto;
+using Services.Interfaces;
 
 namespace WebAPI.Controllers
 {
@@ -14,11 +15,16 @@ namespace WebAPI.Controllers
     {
         private readonly IParentService _parentService;
         private readonly IParentMedicationDeliveryService _ParentMedicationDeliveryService;
+        private readonly IParentMedicationDeliveryDetailService _parentMedicationDeliveryDetailService;
 
-        public ParentController(IParentService parentService, IParentMedicationDeliveryService parentMedicationDeliveryService)
+        public ParentController(
+            IParentService parentService, 
+            IParentMedicationDeliveryService parentMedicationDeliveryService,
+            IParentMedicationDeliveryDetailService parentMedicationDeliveryDetailService)
         {
             _parentService = parentService;
             _ParentMedicationDeliveryService = parentMedicationDeliveryService;
+            _parentMedicationDeliveryDetailService = parentMedicationDeliveryDetailService;
         }
 
         [HttpPost("register")]
@@ -84,22 +90,22 @@ namespace WebAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _ParentMedicationDeliveryService.CreateAsync(request);
+            var result = await _ParentMedicationDeliveryService.CreateDeliveryAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPut("medication-deliveries")]
-        public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[HttpPut("medication-deliveries")]
+        //public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            if (request.QuantityDelivered <= 0)
-                return BadRequest("Số lượng phải lớn hơn 0");
+        //    if (request.QuantityDelivered <= 0)
+        //        return BadRequest("Số lượng phải lớn hơn 0");
 
-            var result = await _ParentMedicationDeliveryService.UpdateAsync(request);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //    var result = await _ParentMedicationDeliveryService.UpdateAsync(request);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
         [HttpGet("medication-deliveries")]
         public async Task<IActionResult> GetAllParentMedicationDelivery()
@@ -108,22 +114,22 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("medication-deliveries/by-parent/{parentId}")]
-        public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
-        {
-            if (parentId == Guid.Empty)
-                return BadRequest(new { Message = "Parent ID is required" });
+        //[HttpGet("medication-deliveries/by-parent/{parentId}")]
+        //public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
+        //{
+        //    if (parentId == Guid.Empty)
+        //        return BadRequest(new { Message = "Parent ID is required" });
 
-            var result = await _ParentMedicationDeliveryService.GetAllParentMedicationDeliveryByParentIdAsync(parentId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //    var result = await _ParentMedicationDeliveryService.GetAllParentMedicationDeliveryByParentIdAsync(parentId);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
-        [HttpGet("pending")]
-        public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
-        {
-            var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //[HttpGet("pending")]
+        //public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
+        //{
+        //    var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
 
         [HttpGet("medication-deliveries/{id}")]
@@ -142,7 +148,35 @@ namespace WebAPI.Controllers
             if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
                 return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
 
-            var result = await _ParentMedicationDeliveryService.UpdateStatus(parentMedicationDeliveryid, status);
+            var result = await _ParentMedicationDeliveryService.UpdateStatusAsync(parentMedicationDeliveryid, status);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Cập nhật ReturnedQuantity cho một delivery detail
+        /// </summary>
+        [HttpPost("medication-deliveries/delivery-details/{deliveryDetailId}/update-returned-quantity")]
+        [Authorize(Roles = "Admin,Nurse")]
+        public async Task<IActionResult> UpdateReturnedQuantity(Guid deliveryDetailId)
+        {
+            if (deliveryDetailId == Guid.Empty)
+                return BadRequest(new { Message = "Delivery Detail ID is required" });
+
+            var result = await _parentMedicationDeliveryDetailService.UpdateReturnedQuantityAsync(deliveryDetailId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Cập nhật ReturnedQuantity cho tất cả delivery details của một delivery
+        /// </summary>
+        [HttpPost("medication-deliveries/{deliveryId}/update-returned-quantity")]
+        [Authorize(Roles = "Admin,Nurse")]
+        public async Task<IActionResult> UpdateReturnedQuantityForDelivery(Guid deliveryId)
+        {
+            if (deliveryId == Guid.Empty)
+                return BadRequest(new { Message = "Delivery ID is required" });
+
+            var result = await _parentMedicationDeliveryDetailService.UpdateReturnedQuantityForDeliveryAsync(deliveryId);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
