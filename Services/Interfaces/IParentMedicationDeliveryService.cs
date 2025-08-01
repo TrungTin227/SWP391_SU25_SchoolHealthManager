@@ -15,6 +15,7 @@ namespace Services.Interfaces
         Task<ApiResult<ParentMedicationDeliveryResponseDTO>> GetByIdAsync(Guid id);
         Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetByStudentIdAsync(Guid studentId);
         Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetAllAsync();
+        Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetAllForCurrentParentAsync();
         Task<ApiResult<ParentMedicationDeliveryResponseDTO>> UpdateStatusAsync(Guid deliveryId, StatusMedicationDelivery status);
         Task<ApiResult<ParentMedicationDeliveryResponseDTO>> DeleteAsync(Guid deliveryId);
     }

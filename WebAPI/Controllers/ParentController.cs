@@ -142,6 +142,13 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("medication-deliveries/parent/CurrentParent")]
+        public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId()
+        {
+            var result = await _ParentMedicationDeliveryService.GetAllForCurrentParentAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         [HttpPost("medication-deliveries/update-status")]
         public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
         {
@@ -156,7 +163,7 @@ namespace WebAPI.Controllers
         /// Cập nhật ReturnedQuantity cho một delivery detail
         /// </summary>
         [HttpPost("medication-deliveries/delivery-details/{deliveryDetailId}/update-returned-quantity")]
-        [Authorize(Roles = "Admin,Nurse")]
+        //[Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> UpdateReturnedQuantity(Guid deliveryDetailId)
         {
             if (deliveryDetailId == Guid.Empty)
@@ -170,7 +177,7 @@ namespace WebAPI.Controllers
         /// Cập nhật ReturnedQuantity cho tất cả delivery details của một delivery
         /// </summary>
         [HttpPost("medication-deliveries/{deliveryId}/update-returned-quantity")]
-        [Authorize(Roles = "Admin,Nurse")]
+        //[Authorize(Roles = "Admin,Nurse")]
         public async Task<IActionResult> UpdateReturnedQuantityForDelivery(Guid deliveryId)
         {
             if (deliveryId == Guid.Empty)

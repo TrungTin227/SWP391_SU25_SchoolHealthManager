@@ -186,6 +186,7 @@ namespace Services.Implementations
 
                 var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
                     .FirstOrDefaultAsync(d => d.Id == id);
@@ -222,6 +223,7 @@ namespace Services.Implementations
 
                 var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
                     .Where(d => d.StudentId == studentId)
@@ -247,6 +249,7 @@ namespace Services.Implementations
 
                 var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
                     .ToListAsync();
@@ -262,6 +265,55 @@ namespace Services.Implementations
                 return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(ex);
             }
         }
+
+        public async Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetAllForCurrentParentAsync()
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserId();
+
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                        new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
+
+                var parent = await _dbContext.Parents
+                    .Include(p => p.Students)
+                    .FirstOrDefaultAsync(p => p.UserId == currentUserId);
+
+                if (parent == null)
+                {
+                    _logger.LogWarning("Không tìm thấy phụ huynh với UserId: {UserId}", currentUserId);
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                        new Exception("Phụ huynh không tồn tại hoặc không có quyền truy cập"));
+                }
+
+                _logger.LogInformation("Lấy danh sách giao thuốc cho phụ huynh {ParentId}", parent.UserId);
+
+                var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Student)
+                    .Include(d => d.Details)
+                        .ThenInclude(detail => detail.MedicationSchedules)
+                    .Where(d => d.ParentId == parent.UserId)
+                    .OrderByDescending(d => d.DeliveredAt)
+                    .ToListAsync();
+
+                _logger.LogInformation("Lấy thành công {Count} phiếu giao thuốc cho phụ huynh", deliveries.Count);
+
+                var response = deliveries.Select(delivery => MapToResponseDTO(delivery)).ToList();
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(response, "Lấy danh sách giao thuốc thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách giao thuốc cho phụ huynh");
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                    new Exception("Lỗi khi lấy danh sách giao thuốc: " + ex.Message));
+            }
+        }
+
 
         public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> UpdateStatusAsync(Guid deliveryId, StatusMedicationDelivery status)
         {
@@ -300,6 +352,7 @@ namespace Services.Implementations
                 if (status == StatusMedicationDelivery.Confirmed)
                 {
                     _logger.LogInformation("Bắt đầu tạo MedicationUsageRecord cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+                    delivery.ReceivedBy = _currentUserService.GetUserId() ?? Guid.Empty;
                     await CreateMedicationUsageRecordsAsync(delivery);
                     _logger.LogInformation("Tạo MedicationUsageRecord thành công cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
                 }
@@ -435,9 +488,10 @@ namespace Services.Implementations
             {
                 Id = delivery.Id,
                 StudentId = delivery.StudentId,
+                StudentName = delivery.Student?.FirstName+" "+delivery.Student?.LastName ?? string.Empty,
                 ParentId = delivery.ParentId,
                 ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
-                Notes = delivery.Notes,
+                Notes = delivery.Notes ?? string.Empty,
                 DeliveredAt = delivery.DeliveredAt,
                 Status = delivery.Status,
                 Medications = delivery.Details.Select(md => new ParentMedicationDeliveryDetailResponseDTO
@@ -460,5 +514,6 @@ namespace Services.Implementations
                 }).ToList()
             };
         }
+
     }
 }

@@ -12,6 +12,7 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Respond
     {
         public Guid Id { get; set; }
         public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = string.Empty;
         public Guid ParentId { get; set; }
         public Guid ReceivedBy { get; set; }
         public string Notes { get; set; } = string.Empty;
