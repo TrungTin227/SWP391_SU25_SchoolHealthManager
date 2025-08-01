@@ -30,6 +30,7 @@ namespace Services.Implementations
         {
             try
             {
+                // 1. Kiểm tra duplicate
                 var exists = await _recordRepository.HasDuplicateEntryAsync(request.StudentId, request.ScheduleId);
                 if (exists)
                 {
@@ -37,6 +38,7 @@ namespace Services.Implementations
                         new InvalidOperationException("Học sinh đã có phiếu tiêm trong lịch này."));
                 }
 
+                // 2. Lấy thông tin lịch tiêm
                 var schedule = await _unitOfWork.VaccinationScheduleRepository.GetByIdAsync(request.ScheduleId);
                 if (schedule == null)
                 {
@@ -44,13 +46,24 @@ namespace Services.Implementations
                         new KeyNotFoundException("Không tìm thấy lịch tiêm."));
                 }
 
-                var reservedLot = await _recordRepository.TryReserveVaccineLotAsync(schedule.VaccinationTypeId);
-                if (reservedLot == null)
+                // 3. Kiểm tra thời hạn chiến dịch
+                var now = _currentTime.GetVietnamTime();
+                if (schedule.Campaign != null)
                 {
-                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
-                        new InvalidOperationException("Không còn lô vaccine phù hợp còn tồn."));
+                    if (now < schedule.Campaign.StartDate)
+                    {
+                        return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                            new InvalidOperationException("Chiến dịch tiêm chủng chưa bắt đầu."));
+                    }
+
+                    if (now > schedule.Campaign.EndDate)
+                    {
+                        return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                            new InvalidOperationException("Chiến dịch tiêm chủng đã kết thúc."));
+                    }
                 }
 
+                // 4. Lấy thông tin session student
                 var sessionStudent = await _unitOfWork.SessionStudentRepository
                     .GetByStudentAndScheduleAsync(request.StudentId, request.ScheduleId);
                 if (sessionStudent == null)
@@ -59,6 +72,31 @@ namespace Services.Implementations
                         new KeyNotFoundException("Không tìm thấy mối liên kết học sinh và lịch tiêm."));
                 }
 
+                // 5. Kiểm tra consent status - CHỈ cho phép khi đã đồng ý
+                if (sessionStudent.ConsentStatus != ParentConsentStatus.Approved)
+                {
+                    var consentStatusText = sessionStudent.ConsentStatus switch
+                    {
+                        ParentConsentStatus.Pending => "chưa phản hồi",
+                        ParentConsentStatus.Sent => "đã gửi thông báo và chưa phản hồi",
+                        ParentConsentStatus.Rejected => "đã từ chối",
+                        ParentConsentStatus.Expired => "đã hết hạn",
+                        _ => "không xác định"
+                    };
+
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new InvalidOperationException($"Không thể tạo phiếu tiêm vì phụ huynh {consentStatusText}."));
+                }
+
+                // 6. Kiểm tra vaccine lot
+                var reservedLot = await _recordRepository.TryReserveVaccineLotAsync(schedule.VaccinationTypeId);
+                if (reservedLot == null)
+                {
+                    return ApiResult<CreateVaccinationRecordResponse>.Failure(
+                        new InvalidOperationException("Không còn lô vaccine phù hợp còn tồn."));
+                }
+
+                // 7. Tạo vaccination record
                 var record = new VaccinationRecord
                 {
                     Id = Guid.NewGuid(),
@@ -82,7 +120,7 @@ namespace Services.Implementations
                     sessionStudent.Status = SessionStatus.Completed;
                     await _unitOfWork.SessionStudentRepository.UpdateAsync(sessionStudent);
 
-                    // ✅ Save changes nếu chưa có trong base.CreateAsync
+                    // ✅ Save changes
                     await _unitOfWork.SaveChangesAsync();
 
                     var fullRecord = await _recordRepository.GetRecordWithDetailsAsync(created.Id);

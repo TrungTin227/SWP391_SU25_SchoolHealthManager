@@ -39,6 +39,10 @@
                 RejectedConsentCount = sessionStudents.Count(ss =>
                     ss.ConsentStatus == ParentConsentStatus.Rejected),
 
+                // Chỉ 1 trường vaccine dự kiến = số học sinh đã đồng ý 
+                VaccineExpectedCount = sessionStudents.Count(ss =>
+                    ss.ConsentStatus == ParentConsentStatus.Approved),
+
                 SessionStudents = sessionStudents.Select(MapToSessionStudentResponseDTO).ToList(),
                 Records = sessionStudents.SelectMany(ss => ss.VaccinationRecords)
                     .Select(MapToVaccinationRecordSummaryDTO).ToList()
