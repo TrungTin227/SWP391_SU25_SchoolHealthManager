@@ -10,11 +10,11 @@ namespace Repositories.Interfaces
 {
     public interface IParentMedicationDeliveryRepository : IGenericRepository<ParentMedicationDelivery,Guid>
     {
-        Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryDTO();
-        Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryByParentIdDTO(Guid id);
+        //Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryDTO();
+        //Task<List<GetParentMedicationDeliveryRespondDTO>> GetAllParentMedicationDeliveryByParentIdDTO(Guid id);
 
-        Task<CreateParentMedicationDeliveryRequestDTO> CreateParentMedicationDeliveryRequestDTO(CreateParentMedicationDeliveryRequestDTO request);
-        Task<GetParentMedicationDeliveryRespondDTO?> GetParentMedicationDeliveryByIdDTO(Guid id);
+        //Task<CreateParentMedicationDeliveryRequestDTO> CreateParentMedicationDeliveryRequestDTO(CreateParentMedicationDeliveryRequestDTO request);
+        //Task<GetParentMedicationDeliveryRespondDTO?> GetParentMedicationDeliveryByIdDTO(Guid id);
 
 
     }

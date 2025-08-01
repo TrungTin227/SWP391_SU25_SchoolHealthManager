@@ -84,22 +84,22 @@ namespace WebAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _ParentMedicationDeliveryService.CreateAsync(request);
+            var result = await _ParentMedicationDeliveryService.CreateDeliveryAsync(request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPut("medication-deliveries")]
-        public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[HttpPut("medication-deliveries")]
+        //public async Task<IActionResult> UpdateParentMedicationDelivery([FromBody] UpdateParentMedicationDeliveryRequestDTO request)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            if (request.QuantityDelivered <= 0)
-                return BadRequest("Số lượng phải lớn hơn 0");
+        //    if (request.QuantityDelivered <= 0)
+        //        return BadRequest("Số lượng phải lớn hơn 0");
 
-            var result = await _ParentMedicationDeliveryService.UpdateAsync(request);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //    var result = await _ParentMedicationDeliveryService.UpdateAsync(request);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
         [HttpGet("medication-deliveries")]
         public async Task<IActionResult> GetAllParentMedicationDelivery()
@@ -108,22 +108,22 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("medication-deliveries/by-parent/{parentId}")]
-        public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
-        {
-            if (parentId == Guid.Empty)
-                return BadRequest(new { Message = "Parent ID is required" });
+        //[HttpGet("medication-deliveries/by-parent/{parentId}")]
+        //public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId(Guid parentId)
+        //{
+        //    if (parentId == Guid.Empty)
+        //        return BadRequest(new { Message = "Parent ID is required" });
 
-            var result = await _ParentMedicationDeliveryService.GetAllParentMedicationDeliveryByParentIdAsync(parentId);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //    var result = await _ParentMedicationDeliveryService.GetAllParentMedicationDeliveryByParentIdAsync(parentId);
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
-        [HttpGet("pending")]
-        public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
-        {
-            var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        //[HttpGet("pending")]
+        //public async Task<IActionResult> GetAllPendingParentMedicationDelivery()
+        //{
+        //    var result = await _ParentMedicationDeliveryService.GetAllPendingAsync();
+        //    return result.IsSuccess ? Ok(result) : BadRequest(result);
+        //}
 
 
         [HttpGet("medication-deliveries/{id}")]
@@ -142,7 +142,7 @@ namespace WebAPI.Controllers
             if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
                 return BadRequest(new { Message = "Parent Medication Delivery ID, Receiver ID, and a valid status are required" });
 
-            var result = await _ParentMedicationDeliveryService.UpdateStatus(parentMedicationDeliveryid, status);
+            var result = await _ParentMedicationDeliveryService.UpdateStatusAsync(parentMedicationDeliveryid, status);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

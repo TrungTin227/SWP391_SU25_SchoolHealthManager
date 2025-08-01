@@ -26,5 +26,9 @@
         ICounselingAppointmentRepository CounselingAppointmentRepository { get; }
         INurseProfileRepository NurseProfileRepository { get; }
         IVaccinationRecordRepository VaccinationRecordRepository { get; }
+
+        IMedicationUsageRecordRepository MedicationUsageRecordRepository { get; }
+
+        IParentMedicationDeliveryDetailRepository ParentMedicationDeliveryDetailRepository { get; }
     }
 }
