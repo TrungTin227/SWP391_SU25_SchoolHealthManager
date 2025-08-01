@@ -13,5 +13,12 @@ namespace DTOs.VaccinationScheduleDTOs.Response
         public DateTime? CheckInTime { get; set; }
         public string? Notes { get; set; }
         public DateTime? ParentNotifiedAt { get; set; }
+        // Thêm các trường consent
+        public ParentConsentStatus ConsentStatus { get; set; }
+        public string ConsentStatusName => ConsentStatus.ToString();
+        public DateTime? ParentSignedAt { get; set; }
+        public string? ParentNotes { get; set; }
+        public string? ParentSignature { get; set; }
+        public DateTime? ConsentDeadline { get; set; }
     }
 }

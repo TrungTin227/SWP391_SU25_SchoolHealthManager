@@ -44,5 +44,7 @@ namespace DTOs.VaccinationCampaignDTOs.Response
         public DateTime ScheduledAt { get; set; }
         public ScheduleStatus ScheduleStatus { get; set; }
         public string StudentName { get; set; } = default!;
+        public ParentConsentStatus ConsentStatus { get; set; } // status của học sinh được ba mẹ xác nhận tiêm trong lịch 
+        public string ConsentStatusName => ConsentStatus.ToString(); // thêm
     }
 }
