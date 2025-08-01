@@ -208,10 +208,58 @@ namespace Services.Implementations
                     return ApiResult<MedicationUsageRecordResponseDTO>.Failure(new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
                 }
 
+                // Cập nhật số lượng thuốc trong ParentMedicationDeliveryDetail
+                if (request.IsTaken && !record.IsTaken) // Chỉ khi chuyển từ chưa uống sang đã uống
+                {
+                    var deliveryDetail = record.DeliveryDetail;
+                    if (deliveryDetail != null)
+                    {
+                        // Tính số lượng thuốc đã dùng cho lần uống này
+                        var dosageForThisRecord = record.MedicationSchedule?.Dosage ?? 0;
+
+                        if (dosageForThisRecord > 0)
+                        {
+                            // Cập nhật số lượng thuốc đã sử dụng và còn lại
+                            deliveryDetail.QuantityUsed += dosageForThisRecord;
+                            deliveryDetail.QuantityRemaining = Math.Max(0, deliveryDetail.TotalQuantity - deliveryDetail.QuantityUsed);
+
+                            _logger.LogInformation("Đã cập nhật số lượng thuốc. DeliveryDetailId: {DeliveryDetailId}, Đã dùng: {QuantityUsed}, Còn lại: {QuantityRemaining}",
+                                deliveryDetail.Id, deliveryDetail.QuantityUsed, deliveryDetail.QuantityRemaining);
+
+                            // Cập nhật delivery detail
+                            await _unitOfWork.ParentMedicationDeliveryDetailRepository.UpdateAsync(deliveryDetail);
+                        }
+                    }
+                }
+
                 record.IsTaken = request.IsTaken;
                 record.TakenAt = request.IsTaken ? currentTime : null;
                 record.Note = request.Note;
                 record.CheckedBy = currentUserId;
+
+                //// Cập nhật số lượng thuốc trong ParentMedicationDeliveryDetail
+                //if (request.IsTaken && !record.IsTaken) // Chỉ khi chuyển từ chưa uống sang đã uống
+                //{
+                //    var deliveryDetail = record.DeliveryDetail;
+                //    if (deliveryDetail != null)
+                //    {
+                //        // Tính số lượng thuốc đã dùng cho lần uống này
+                //        var dosageForThisRecord = record.MedicationSchedule?.Dosage ?? 0;
+                        
+                //        if (dosageForThisRecord > 0)
+                //        {
+                //            // Cập nhật số lượng thuốc đã sử dụng và còn lại
+                //            deliveryDetail.QuantityUsed += dosageForThisRecord;
+                //            deliveryDetail.QuantityRemaining = Math.Max(0, deliveryDetail.TotalQuantity - deliveryDetail.QuantityUsed);
+                            
+                //            _logger.LogInformation("Đã cập nhật số lượng thuốc. DeliveryDetailId: {DeliveryDetailId}, Đã dùng: {QuantityUsed}, Còn lại: {QuantityRemaining}", 
+                //                deliveryDetail.Id, deliveryDetail.QuantityUsed, deliveryDetail.QuantityRemaining);
+                            
+                //            // Cập nhật delivery detail
+                //            await _unitOfWork.ParentMedicationDeliveryDetailRepository.UpdateAsync(deliveryDetail);
+                //        }
+                //    }
+                //}
 
                 await _unitOfWork.MedicationUsageRecordRepository.UpdateAsync(record);
                 await _unitOfWork.SaveChangesAsync();
@@ -301,10 +349,59 @@ namespace Services.Implementations
                             continue;
                         }
 
+                        // Cập nhật số lượng thuốc trong ParentMedicationDeliveryDetail
+                        if (request.IsTaken && !record.IsTaken) // Chỉ khi chuyển từ chưa uống sang đã uống
+                        {
+                            var deliveryDetail = record.DeliveryDetail;
+                            if (deliveryDetail != null)
+                            {
+                                // Tính số lượng thuốc đã dùng cho lần uống này
+                                var dosageForThisRecord = record.MedicationSchedule?.Dosage ?? 0;
+
+                                if (dosageForThisRecord > 0)
+                                {
+                                    // Cập nhật số lượng thuốc đã sử dụng và còn lại
+                                    deliveryDetail.QuantityUsed += dosageForThisRecord;
+                                    deliveryDetail.QuantityRemaining = Math.Max(0, deliveryDetail.TotalQuantity - deliveryDetail.QuantityUsed);
+
+                                    _logger.LogInformation("Bulk update - Đã cập nhật số lượng thuốc. DeliveryDetailId: {DeliveryDetailId}, Đã dùng: {QuantityUsed}, Còn lại: {QuantityRemaining}",
+                                        deliveryDetail.Id, deliveryDetail.QuantityUsed, deliveryDetail.QuantityRemaining);
+
+                                    // Cập nhật delivery detail
+                                    await _unitOfWork.ParentMedicationDeliveryDetailRepository.UpdateAsync(deliveryDetail);
+                                }
+                            }
+                        }
+
                         record.IsTaken = request.IsTaken;
                         record.TakenAt = request.IsTaken ? currentTime : null;
                         record.Note = request.Note;
                         record.CheckedBy = currentUserId;
+
+                        //// Cập nhật số lượng thuốc trong ParentMedicationDeliveryDetail
+                        //if (request.IsTaken && !record.IsTaken) // Chỉ khi chuyển từ chưa uống sang đã uống
+                        //{
+                        //    var deliveryDetail = record.DeliveryDetail;
+                        //    if (deliveryDetail != null)
+                        //    {
+                        //        // Tính số lượng thuốc đã dùng cho lần uống này
+                        //        var dosageForThisRecord = record.MedicationSchedule?.Dosage ?? 0;
+                                
+                        //        if (dosageForThisRecord > 0)
+                        //        {
+                        //            // Cập nhật số lượng thuốc đã sử dụng và còn lại
+                        //            deliveryDetail.QuantityUsed += dosageForThisRecord;
+                        //            deliveryDetail.QuantityRemaining = Math.Max(0, deliveryDetail.TotalQuantity - deliveryDetail.QuantityUsed);
+                                    
+                        //            _logger.LogInformation("Bulk update - Đã cập nhật số lượng thuốc. DeliveryDetailId: {DeliveryDetailId}, Đã dùng: {QuantityUsed}, Còn lại: {QuantityRemaining}", 
+                        //                deliveryDetail.Id, deliveryDetail.QuantityUsed, deliveryDetail.QuantityRemaining);
+                                    
+                        //            // Cập nhật delivery detail
+                        //            await _unitOfWork.ParentMedicationDeliveryDetailRepository.UpdateAsync(deliveryDetail);
+                        //        }
+                        //    }
+                        //}
+
                         updatedCount++;
                     }
                 }
