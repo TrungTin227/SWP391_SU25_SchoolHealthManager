@@ -20,6 +20,7 @@ namespace DTOs.HealProfile.Requests
         public VisionLevel? Vision { get; set; }
         public HearingLevel? Hearing { get; set; }
         public string? VaccinationSummary { get; set; }
-        
+        public Gender? Gender { get; set; }
+
     }
 }

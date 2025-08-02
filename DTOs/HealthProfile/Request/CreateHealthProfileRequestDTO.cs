@@ -31,5 +31,6 @@ namespace DTOs.HealthProfile.Request
 
         public HearingLevel Hearing { get; set; }
         public string VaccinationSummary { get; set; }
+        
     }
 }
