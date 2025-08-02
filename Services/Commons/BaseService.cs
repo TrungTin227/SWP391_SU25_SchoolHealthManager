@@ -175,6 +175,10 @@
             var hour = time.Hour;
             return hour >= 8 && hour < 18;
         }
+        public bool IsWithinWorkingHours(TimeSpan time)
+        {
+            return time >= TimeSpan.FromHours(7) && time <= TimeSpan.FromHours(22);
+        }
 
         // Helper methods
         private bool IsInheritedFromBaseEntity(Type type)
