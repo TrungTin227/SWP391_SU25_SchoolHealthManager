@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObjects;
+using BusinessObjects.Common;
 using DTOs.StudentDTOs.Request;
 using DTOs.StudentDTOs.Response;
 using static Quartz.Logging.OperationName;
@@ -24,6 +26,7 @@ namespace Services.Helpers.Mapers
                 Grade = studentDto.Grade,
                 Section = studentDto.Section,
                 Image = studentDto.Image,
+                Gender = studentDto.Gender,
                 ParentUserId = studentDto.ParentID
 
             };
@@ -55,6 +58,9 @@ namespace Services.Helpers.Mapers
             if (!string.IsNullOrEmpty(dto.Image))
                 existingStudent.Image = dto.Image;
 
+            if (dto.Gender.HasValue)
+                existingStudent.Gender = dto.Gender.Value;
+
             return existingStudent;
         }
 
@@ -71,6 +77,7 @@ namespace Services.Helpers.Mapers
                 Grade = dto.Grade,
                 Section = dto.Section,
                 Image = dto.Image,
+                Gender = dto.Gender
             };
         }
 

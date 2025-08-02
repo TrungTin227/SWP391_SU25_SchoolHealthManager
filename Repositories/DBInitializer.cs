@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using BusinessObjects.Common;
 
 namespace Repositories
 {
@@ -262,6 +263,9 @@ namespace Repositories
             var ageVariation = random.Next(0, 2); // Add 0-1 years variation
             var studentAge = baseAge + ageVariation;
 
+            // Randomly assign gender (0 = Male, 1 = Female)
+            var randomGender = random.Next(2); // 0 or 1
+
             return new Student
             {
                 Id = Guid.NewGuid(),
@@ -271,6 +275,7 @@ namespace Repositories
                 DateOfBirth = now.AddYears(-studentAge).AddDays(random.Next(-180, 180)), // Random within the year
                 Grade = grade,
                 Section = section,
+                Gender = (Gender)randomGender,
                 ParentUserId = parentUserId,
                 CreatedAt = now,
                 CreatedBy = SystemGuid,

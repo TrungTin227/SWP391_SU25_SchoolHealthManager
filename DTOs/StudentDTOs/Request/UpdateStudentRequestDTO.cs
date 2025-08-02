@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObjects.Common;
 
 namespace DTOs.StudentDTOs.Request
 {
@@ -30,5 +31,7 @@ namespace DTOs.StudentDTOs.Request
 
         [MaxLength(150)]
         public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
+
+        public Gender? Gender { get; set; }           // Giới tính
     }
 }
