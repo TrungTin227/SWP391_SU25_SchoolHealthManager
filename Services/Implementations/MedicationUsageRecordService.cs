@@ -493,6 +493,11 @@ namespace Services.Implementations
             {
                 Id = record.Id,
                 DeliveryDetailId = record.DeliveryDetailId,
+                MedicationName = record.DeliveryDetail.MedicationName ?? string.Empty,
+                dosageInstruction = record.DeliveryDetail.DosageInstruction ?? string.Empty,
+                totalQuantity = record.DeliveryDetail.TotalQuantity,
+                QuantityUsed = record.DeliveryDetail.QuantityUsed,
+                QuantityRemaining = record.DeliveryDetail.QuantityRemaining,
                 UsedAt = record.ScheduledAt,
                 IsTaken = record.IsTaken,
                 Note = record.Note,

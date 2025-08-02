@@ -10,6 +10,11 @@ namespace DTOs.MedicationUsageRecord.Respond
     {
         public Guid Id { get; set; }
         public Guid DeliveryDetailId { get; set; }
+        public string MedicationName { get; set; } = string.Empty;
+        public int totalQuantity { get; set; }
+        public int QuantityUsed { get; set; }
+        public int QuantityRemaining { get; set; }
+        public string dosageInstruction { get; set; } = string.Empty;
         public DateTime UsedAt { get; set; }
         public bool IsTaken { get; set; }
         public string? Note { get; set; }

@@ -133,6 +133,8 @@ namespace WebAPI.Controllers
 
 
         [HttpGet("medication-deliveries/{id}")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
+
         public async Task<IActionResult> GetAllParentMedicationDeliveryById(Guid id)
         {
             if (id == Guid.Empty)
@@ -142,7 +144,18 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("medication-deliveries/parent/CurrentParent")]
+        [Authorize(Roles = "Parent")]
+
+        public async Task<IActionResult> GetAllParentMedicationDeliveryByParentId()
+        {
+            var result = await _ParentMedicationDeliveryService.GetAllForCurrentParentAsync();
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         [HttpPost("medication-deliveries/update-status")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
+
         public async Task<IActionResult> UpdateStatus(Guid parentMedicationDeliveryid, StatusMedicationDelivery status)
         {
             if (parentMedicationDeliveryid == Guid.Empty || !Enum.IsDefined(typeof(StatusMedicationDelivery), status))
@@ -156,7 +169,7 @@ namespace WebAPI.Controllers
         /// Cập nhật ReturnedQuantity cho một delivery detail
         /// </summary>
         [HttpPost("medication-deliveries/delivery-details/{deliveryDetailId}/update-returned-quantity")]
-        [Authorize(Roles = "Admin,Nurse")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
         public async Task<IActionResult> UpdateReturnedQuantity(Guid deliveryDetailId)
         {
             if (deliveryDetailId == Guid.Empty)
@@ -170,7 +183,7 @@ namespace WebAPI.Controllers
         /// Cập nhật ReturnedQuantity cho tất cả delivery details của một delivery
         /// </summary>
         [HttpPost("medication-deliveries/{deliveryId}/update-returned-quantity")]
-        [Authorize(Roles = "Admin,Nurse")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
         public async Task<IActionResult> UpdateReturnedQuantityForDelivery(Guid deliveryId)
         {
             if (deliveryId == Guid.Empty)

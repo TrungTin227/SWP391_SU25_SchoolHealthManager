@@ -5,7 +5,7 @@ namespace DTOs.HealthEventDTOs.Request
 {
     public class TreatHealthEventRequest
     {
-        [Required] public Guid HealthEventId { get; init; }
+        //[Required] public Guid HealthEventId { get; init; }
 
         /* ---- thông tin sơ cứu ---- */
         [Required] public DateTime FirstAidAt { get; init; }

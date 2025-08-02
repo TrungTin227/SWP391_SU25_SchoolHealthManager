@@ -52,6 +52,8 @@ namespace WebAPI.Controllers
         /// Cập nhật trạng thái uống thuốc
         /// </summary>
         [HttpPatch("update-taken")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
+
         public async Task<IActionResult> UpdateTakenStatus([FromBody] UpdateMedicationUsageRecordDTO request)
         {
             if (!ModelState.IsValid)
@@ -65,6 +67,8 @@ namespace WebAPI.Controllers
         /// Cập nhật hàng loạt trạng thái uống thuốc
         /// </summary>
         [HttpPatch("bulk-update")]
+        [Authorize(Roles = "SchoolNurse,Admin")]
+
         public async Task<IActionResult> BulkUpdateTakenStatus([FromBody] List<UpdateMedicationUsageRecordDTO> requests)
         {
             if (!ModelState.IsValid)
@@ -80,7 +84,7 @@ namespace WebAPI.Controllers
         /// Lấy danh sách record uống thuốc hôm nay cho y tá (nurse)
         /// </summary>
         [HttpGet("today")]
-        //[Authorize(Roles = "Nurse")]
+        [Authorize(Roles = "SchoolNurse")]
         public async Task<IActionResult> GetTodayRecords()
         {
             var today = DateTime.UtcNow.Date;
@@ -92,7 +96,7 @@ namespace WebAPI.Controllers
         /// Lấy danh sách record uống thuốc chưa xác nhận (IsTaken = false) cho y tá
         /// </summary>
         [HttpGet("pending")]
-        //[Authorize(Roles = "Nurse")]
+        [Authorize(Roles = "SchoolNurse")]
         public async Task<IActionResult> GetPendingRecords()
         {
             var result = await _medicationUsageRecordService.GetPendingRecordsAsync();
@@ -103,7 +107,7 @@ namespace WebAPI.Controllers
         /// Xác nhận đã uống thuốc cho nhiều record (nurse bulk confirm)
         /// </summary>
         [HttpPatch("nurse/bulk-confirm")]
-        //[Authorize(Roles = "Nurse")]
+        [Authorize(Roles = "SchoolNurse")]
         public async Task<IActionResult> NurseBulkConfirm([FromBody] List<Guid> recordIds)
         {
             if (recordIds == null || !recordIds.Any())

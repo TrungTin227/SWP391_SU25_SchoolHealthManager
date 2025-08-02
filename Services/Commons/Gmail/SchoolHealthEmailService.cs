@@ -96,95 +96,170 @@ namespace Services.Implementations
         }
 
         #region Email Templates
+        // Thay thế hoàn toàn phương thức cũ bằng phương thức này
         public async Task SendHospitalReferralAckAsync(
-    string parentEmail,
-    string studentName,
-    string referralHospital,
-    DateTime departureTime,
-    string transportBy,
-    Guid eventId,
-    string ackToken)
+            string parentEmail,
+            string studentName,
+            string referralHospital,
+            DateTime departureTime,
+            string transportBy,
+            string initialSymptoms,
+            string injuredBodyParts,
+            string firstAidDescription,
+            Guid eventId,
+            string ackToken)
         {
+            // 1. Chuẩn bị dữ liệu cho email
+            var subject = $"[THÔNG BÁO KHẨN CẤP] Về việc học sinh {studentName} nhập viện";
             var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
 
+            // Tạo một mô tả sự việc súc tích, dễ hiểu
+            string eventSummary = $"{initialSymptoms}. Vị trí chấn thương: {injuredBodyParts}.";
+            // Đảm bảo có nội dung cho phần sơ cứu
+            string firstAidText = string.IsNullOrWhiteSpace(firstAidDescription)
+                                    ? "Chưa có sơ cứu hoặc không cần thiết."
+                                    : firstAidDescription;
+
+            // 2. Tạo nội dung email từ template mới
             var message = $@"
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #fff3e0; }}
-                .container {{ max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #e53935; }}
-                .btn {{ background-color: #4caf50; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 20px 0; }}
-                .footer {{ font-size: 12px; color: #666; margin-top: 30px; }}
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <h2 style='color: #e53935;'>🚑 THÔNG BÁO CHUYỂN VIỆN</h2>
-
-                <p>Kính gửi Quý phụ huynh học sinh <strong>{studentName}</strong>,</p>
-
-                <p>Chúng tôi thông báo rằng con em Quý vị đã được chuyển đến cơ sở y tế để theo dõi và điều trị thêm.</p>
-                
-                <ul>
-                    <li><strong>Bệnh viện:</strong> {referralHospital}</li>
-                    <li><strong>Thời gian rời trường:</strong> {departureTime:HH:mm, dd/MM/yyyy}</li>
-                    <li><strong>Phương tiện:</strong> {transportBy}</li>
-                </ul>
-
-                <p>Vui lòng xác nhận đã nhận thông báo:</p>
-                <a href='{ackLink}' class='btn'>✅ Tôi đã biết và xác nhận</a>
-
-                <div class='footer'>
-                    <strong>{_emailSettings.SchoolName}</strong><br>
-                    📞 Liên hệ khẩn cấp: {_emailSettings.SchoolPhone}<br>
-                    📧 Email: {_emailSettings.HealthDepartmentEmail}
-                </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>{subject}</title>
+</head>
+<body style='font-family: ""Segoe UI"", Tahoma, Geneva, Verdana, sans-serif; line-height: 1.7; color: #333; background-color: #f9f9f9; margin: 0; padding: 20px;'>
+    <div style='max-width: 600px; margin: auto; background-color: white; border: 2px solid #d32f2f; border-radius: 10px; overflow: hidden;'>
+        <div style='text-align: center; background-color: #d32f2f; color: white; padding: 20px;'>
+            <h1 style='margin: 0; font-size: 28px; letter-spacing: 1px;'>🚑 THÔNG BÁO KHẨN CẤP</h1>
+            <p style='margin: 5px 0 0; font-size: 16px;'>V/v sức khỏe của học sinh</p>
+        </div>
+        <div style='padding: 25px 30px;'>
+            <p style='font-size: 16px;'>Kính gửi Quý phụ huynh của học sinh <strong>{studentName}</strong>,</p>
+            <p>Phòng Y tế trường <strong>{_emailSettings.SchoolName}</strong> xin thông báo khẩn: do tình hình sức khỏe, nhà trường đã tiến hành thủ tục chuyển con em đến cơ sở y tế để được chăm sóc tốt nhất.</p>
+            
+            <div style='background-color: #fff3e0; border-left: 5px solid #ffb300; padding: 15px 20px; margin: 25px 0; border-radius: 5px;'>
+                <h3 style='margin-top: 0; color: #c66900;'>Tóm Tắt Sự Việc & Sơ Cứu Ban Đầu</h3>
+                <p style='margin: 5px 0;'><strong>• Tình trạng ban đầu:</strong> {eventSummary}</p>
+                <p style='margin: 5px 0;'><strong>• Sơ cứu đã thực hiện:</strong> {firstAidText}</p>
             </div>
-        </body>
-        </html>";
 
-            var subject = $"[{_emailSettings.SchoolName}] THÔNG BÁO CHUYỂN VIỆN - {studentName}";
+            <div style='background-color: #ffebee; border: 1px solid #d32f2f; border-radius: 8px; padding: 20px; text-align: center;'>
+                <h2 style='margin-top: 0; color: #c62828;'>THÔNG TIN CHUYỂN VIỆN</h2>
+                <p style='font-size: 18px; margin: 10px 0;'><strong>Bệnh viện tiếp nhận:</strong></p>
+                <p style='font-size: 22px; font-weight: bold; margin: 5px 0; color: #d32f2f;'>{referralHospital}</p>
+                <hr style='border: 0; border-top: 1px solid #ffcdd2; margin: 20px 0;'>
+                <table style='width: 100%; text-align: left; font-size: 15px;'>
+                    <tr>
+                        <td style='padding: 5px;'><strong>Thời gian rời trường:</strong></td>
+                        <td style='padding: 5px; font-weight: bold;'>{departureTime:HH:mm 'ngày' dd/MM/yyyy}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 5px;'><strong>Phương tiện di chuyển:</strong></td>
+                        <td style='padding: 5px; font-weight: bold;'>{transportBy}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <p style='margin-top: 25px;'><strong>Khuyến nghị:</strong> Quý phụ huynh vui lòng bình tĩnh và di chuyển đến bệnh viện để cùng phối hợp. Vui lòng nhấn nút dưới đây để xác nhận đã nhận được thông báo này.</p>
+            
+            <div style='text-align: center; margin: 30px 0;'>
+                <a href='{ackLink}' style='background-color: #c62828; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold; display: inline-block;'>⚠️ Tôi đã nhận được thông báo</a>
+            </div>
+        </div>
+        <div style='background-color: #f7f7f7; padding: 20px 30px; font-size: 13px; color: #666;'>
+            <p style='margin: 0;'>Nếu cần thêm thông tin, vui lòng liên hệ khẩn cấp:</p>
+            <strong>Phòng Y tế - {_emailSettings.SchoolName}</strong><br>
+            <strong>Điện thoại: {_emailSettings.SchoolPhone}</strong> | Email: {_emailSettings.HealthDepartmentEmail}
+        </div>
+    </div>
+</body>
+</html>";
+
+            // 3. Gửi email vào hàng đợi
             await QueueEmailAsync(parentEmail, subject, message);
         }
 
+        // Đừng quên cập nhật lại method này để sử dụng _schoolSettings thay vì _emailSettings
+        // cho các thông tin của trường học nhé.
+
         public async Task SendHealthEventAckMailAsync(
-    string parentEmail,
-    string studentName,
-    string eventDescription,
-    string treatmentProvided,
-    Guid eventId,
-    string ackToken)
+            string parentEmail,
+            string studentName,
+            string eventDescription,
+            string treatmentProvided,
+            DateTime occurredAt, 
+            string location,    
+            string symptoms,    
+            Guid eventId,
+            string ackToken)
         {
-            var subject = $"[{_emailSettings.SchoolName}] CẢNH BÁO – {studentName}";
+            // Lấy thông tin từ _schoolSettings (như đã hướng dẫn ở câu trả lời trước)
+            var subject = $"[{_emailSettings.FromName}] Thông báo về sức khỏe của học sinh {studentName}";
             var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
+
             var message = $@"
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #fff3e0; }}
-                .container {{ max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #ff5722; }}
-                .btn {{ background-color: #4caf50; color: white; padding: 12px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 20px 0; }}
-                .footer {{ font-size: 12px; color: #666; margin-top: 30px; }}
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <h2 style='color: #ff5722;'>🚨 THÔNG BÁO SỰ KIỆN Y TẾ</h2>
-                <p>Kính gửi Quý phụ huynh,</p>
-                <p><strong>Học sinh:</strong> {studentName}</p>
-                <p><strong>Sự kiện:</strong> {eventDescription}</p>
-                <p><strong>Xử lý:</strong> {treatmentProvided}</p>
-
-                <p>Quý phụ huynh vui lòng xác nhận đã nhận được thông báo:</p>
-                <a href='{ackLink}' class='btn'>✅ Tôi đã đọc và xác nhận</a>
-
-                <div class='footer'>
-                    <strong>{_emailSettings.SchoolName}</strong><br>
-                    📞 {_emailSettings.SchoolPhone} | 📧 {_emailSettings.HealthDepartmentEmail}
-                </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>{subject}</title>
+</head>
+<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 20px;'>
+    <div style='max-width: 600px; margin: auto; background-color: white; border: 1px solid #ddd; border-radius: 10px; overflow: hidden;'>
+        <div style='text-align: center; background-color: #f7f7f7; padding: 20px;'>
+            <img src='{_emailSettings.SchoolLogoUrl}' alt='Logo Trường' style='max-height: 70px; margin-bottom: 15px;'>
+            <h2 style='margin: 0; color: #e53935; font-size: 24px;'>THÔNG BÁO VỀ SỨC KHỎE HỌC SINH</h2>
+        </div>
+        <div style='padding: 25px 30px;'>
+            <p>Kính gửi Quý phụ huynh học sinh <strong>{studentName}</strong>,</p>
+            <p>Phòng Y tế trường <strong>{_emailSettings.SchoolName}</strong> xin thông báo về một sự việc liên quan đến sức khỏe của con em đã xảy ra tại trường, cụ thể như sau:</p>
+            
+            <div style='background-color: #fff3e0; border-left: 5px solid #ff9800; padding: 15px 20px; margin: 25px 0; border-radius: 5px;'>
+                <h3 style='margin-top: 0; color: #ff5722;'>CHI TIẾT SỰ VIỆC</h3>
+                <table style='width: 100%; border-collapse: collapse; font-size: 14px;'>
+                    <tbody>
+                        <tr>
+                            <td style='padding: 8px 0; width: 150px; vertical-align: top;'><strong>Thời gian:</strong></td>
+                            <td style='padding: 8px 0; vertical-align: top;'>{occurredAt:HH:mm 'ngày' dd/MM/yyyy}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; vertical-align: top;'><strong>Địa điểm:</strong></td>
+                            <td style='padding: 8px 0; vertical-align: top;'>{location}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; vertical-align: top;'><strong>Mô tả sự việc:</strong></td>
+                            <td style='padding: 8px 0; vertical-align: top;'>{eventDescription}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; vertical-align: top;'><strong>Triệu chứng:</strong></td>
+                            <td style='padding: 8px 0; vertical-align: top;'>{symptoms}</td>
+                        </tr>
+                        <tr style='font-weight: bold;'>
+                            <td style='padding: 8px 0; vertical-align: top;'><strong>Sơ cứu tại trường:</strong></td>
+                            <td style='padding: 8px 0; vertical-align: top;'>{treatmentProvided}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </body>
-        </html>";
+
+            <p>Để đảm bảo Quý phụ huynh đã nắm được thông tin, vui lòng nhấn nút xác nhận bên dưới. Việc này rất quan trọng để nhà trường biết rằng thông báo đã được gửi đến Quý vị.</p>
+            
+            <div style='text-align: center; margin: 30px 0;'>
+                <a href='{ackLink}' style='background-color: #4CAF50; color: white; padding: 14px 25px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; display: inline-block;'>✅ Xác nhận đã nhận thông báo</a>
+            </div>
+
+            <p><strong>Khuyến nghị:</strong> Quý phụ huynh vui lòng tiếp tục theo dõi tình trạng của con tại nhà. Nếu có bất kỳ câu hỏi nào hoặc cần trao đổi thêm, xin đừng ngần ngại liên hệ với Phòng Y tế.</p>
+        </div>
+        <div style='background-color: #f7f7f7; padding: 20px 30px; font-size: 12px; color: #666; text-align: left;'>
+            <hr style='border: 0; border-top: 1px solid #ddd; margin-bottom: 15px;'>
+            <strong>{_emailSettings.SchoolName}</strong><br>
+            Địa chỉ: {_emailSettings.SchoolAddress}<br>
+            Điện thoại khẩn cấp: {_emailSettings.SchoolPhone} | Email: {_emailSettings.HealthDepartmentEmail}
+        </div>
+    </div>
+</body>
+</html>";
 
             await QueueEmailAsync(parentEmail, subject, message);
         }

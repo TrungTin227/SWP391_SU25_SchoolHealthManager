@@ -63,6 +63,13 @@ namespace Services.Implementations
                     return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Danh sách thuốc không được để trống"));
                 }
 
+                var currentTime = _currentTime.GetVietnamTime();
+                if (currentTime.Hour < 8 || currentTime.Hour > 17)
+                {
+                    _logger.LogError("Thời gian hiện tại không hợp lệ. Chỉ cho phép tạo phiếu giao thuốc trong giờ làm việc (08:00 - 17:00)");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Chỉ cho phép tạo phiếu giao thuốc trong giờ làm việc (08:00 - 17:00)"));
+                }
+
                 // Validate từng medication
                 foreach (var medication in request.Medications)
                 {
@@ -91,6 +98,12 @@ namespace Services.Implementations
                         {
                             _logger.LogError("Liều lượng phải lớn hơn 0. Thuốc: {MedicationName}, Thời gian: {Time}", medication.MedicationName, schedule.Time);
                             return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Liều lượng thuốc {medication.MedicationName} lúc {schedule.Time} phải lớn hơn 0"));
+                        }
+
+                        if (IsWithinWorkingHours(schedule.Time) == false)
+                        {
+                            _logger.LogError("Thời gian uống thuốc phải trong giờ làm việc. Thuốc: {MedicationName}, Thời gian: {Time}", medication.MedicationName, schedule.Time);
+                            return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Thời gian uống thuốc {medication.MedicationName} lúc {schedule.Time} phải trong giờ làm việc"));
                         }
                     }
 
@@ -186,8 +199,10 @@ namespace Services.Implementations
 
                 var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .OrderByDescending(d => d.DeliveredAt)
                     .FirstOrDefaultAsync(d => d.Id == id);
 
                 if (delivery == null)
@@ -222,8 +237,10 @@ namespace Services.Implementations
 
                 var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .OrderByDescending(d => d.DeliveredAt)
                     .Where(d => d.StudentId == studentId)
                     .ToListAsync();
 
@@ -247,8 +264,10 @@ namespace Services.Implementations
 
                 var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
+                    .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .OrderByDescending(d => d.DeliveredAt)
                     .ToListAsync();
 
                 _logger.LogInformation("Lấy tất cả phiếu giao thuốc thành công. Số lượng: {Count}", deliveries.Count);
@@ -263,6 +282,55 @@ namespace Services.Implementations
             }
         }
 
+        public async Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetAllForCurrentParentAsync()
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserId();
+
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                        new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
+
+                var parent = await _dbContext.Parents
+                    .Include(p => p.Students)
+                    .FirstOrDefaultAsync(p => p.UserId == currentUserId);
+
+                if (parent == null)
+                {
+                    _logger.LogWarning("Không tìm thấy phụ huynh với UserId: {UserId}", currentUserId);
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                        new Exception("Phụ huynh không tồn tại hoặc không có quyền truy cập"));
+                }
+
+                _logger.LogInformation("Lấy danh sách giao thuốc cho phụ huynh {ParentId}", parent.UserId);
+
+                var deliveries = await _unitOfWork.ParentMedicationDeliveryRepository
+                    .GetQueryable()
+                    .Include(d => d.Student)
+                    .Include(d => d.Details)
+                        .ThenInclude(detail => detail.MedicationSchedules)
+                    .Where(d => d.ParentId == parent.UserId)
+                    .OrderByDescending(d => d.DeliveredAt)
+                    .ToListAsync();
+
+                _logger.LogInformation("Lấy thành công {Count} phiếu giao thuốc cho phụ huynh", deliveries.Count);
+
+                var response = deliveries.Select(delivery => MapToResponseDTO(delivery)).ToList();
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(response, "Lấy danh sách giao thuốc thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách giao thuốc cho phụ huynh");
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(
+                    new Exception("Lỗi khi lấy danh sách giao thuốc: " + ex.Message));
+            }
+        }
+
+
         public async Task<ApiResult<ParentMedicationDeliveryResponseDTO>> UpdateStatusAsync(Guid deliveryId, StatusMedicationDelivery status)
         {
             try
@@ -275,6 +343,12 @@ namespace Services.Implementations
                     return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("DeliveryId không hợp lệ"));
                 }
 
+                var currentid = _currentUserService.GetUserId();    
+                if (currentid == null || currentid == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
                 var delivery = await _unitOfWork.ParentMedicationDeliveryRepository
                     .GetQueryable()
                     .Include(d => d.Details)
@@ -300,6 +374,7 @@ namespace Services.Implementations
                 if (status == StatusMedicationDelivery.Confirmed)
                 {
                     _logger.LogInformation("Bắt đầu tạo MedicationUsageRecord cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
+                    delivery.ReceivedBy = _currentUserService.GetUserId() ?? Guid.Empty;
                     await CreateMedicationUsageRecordsAsync(delivery);
                     _logger.LogInformation("Tạo MedicationUsageRecord thành công cho phiếu giao thuốc. DeliveryId: {DeliveryId}", deliveryId);
                 }
@@ -435,9 +510,10 @@ namespace Services.Implementations
             {
                 Id = delivery.Id,
                 StudentId = delivery.StudentId,
+                StudentName = delivery.Student?.FirstName+" "+delivery.Student?.LastName ?? string.Empty,
                 ParentId = delivery.ParentId,
                 ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
-                Notes = delivery.Notes,
+                Notes = delivery.Notes ?? string.Empty,
                 DeliveredAt = delivery.DeliveredAt,
                 Status = delivery.Status,
                 Medications = delivery.Details.Select(md => new ParentMedicationDeliveryDetailResponseDTO
@@ -460,5 +536,6 @@ namespace Services.Implementations
                 }).ToList()
             };
         }
+
     }
 }

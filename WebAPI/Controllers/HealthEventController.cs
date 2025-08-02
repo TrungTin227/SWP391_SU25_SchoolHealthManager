@@ -117,11 +117,8 @@ namespace WebAPI.Controllers
      Guid id,
      [FromBody] TreatHealthEventRequest request)
         {
-            // đảm bảo id trong route khớp id trong body
-            if (id != request.HealthEventId)
-                return BadRequest("ID không khớp.");
 
-            var result = await _healthEventService.TreatHealthEventAsync(request);
+            var result = await _healthEventService.TreatHealthEventAsync(id, request);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
