@@ -78,7 +78,7 @@ namespace Services.Implementations
                     var consentStatusText = sessionStudent.ConsentStatus switch
                     {
                         ParentConsentStatus.Pending => "chưa phản hồi",
-                        ParentConsentStatus.Sent => "đã gửi thông báo và chưa phản hồi",
+                        ParentConsentStatus.Sent => "đã được gửi thông báo và chưa phản hồi",
                         ParentConsentStatus.Rejected => "đã từ chối",
                         ParentConsentStatus.Expired => "đã hết hạn",
                         _ => "không xác định"
