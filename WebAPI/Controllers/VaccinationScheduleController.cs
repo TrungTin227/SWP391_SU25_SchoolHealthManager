@@ -74,13 +74,7 @@ namespace WebAPI.Controllers
         {
             var result = await _scheduleService.GetScheduleByIdAsync(id);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
-        [HttpGet("with-parent-acpt{id}")]
-        public async Task<IActionResult> GetScheduleWithParentAcptById(Guid id)
-        {
-            var result = await _scheduleService.GetScheduleByIdWithParentAcptAsync(id);
-            return result.IsSuccess ? Ok(result) : BadRequest(result);
-        }
+        }   
         #endregion
 
         #region Student Management

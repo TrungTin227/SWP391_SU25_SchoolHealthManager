@@ -341,27 +341,6 @@ namespace Services.Implementations
             }
         }
 
-        public async Task<ApiResult<VaccinationScheduleDetailResponseDTO>> GetScheduleByIdWithParentAcptAsync(Guid id)
-        {
-            try
-            {
-                var schedule = await _unitOfWork.VaccinationScheduleRepository.GetScheduleWithDetailsWithParentAcptAsync(id);
-                if (schedule == null)
-                {
-                    return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(
-                        new KeyNotFoundException($"Không tìm thấy lịch tiêm với ID: {id}"));
-                }
-
-                var response = VaccinationScheduleMapper.MapToDetailResponseDTO(schedule);
-                return ApiResult<VaccinationScheduleDetailResponseDTO>.Success(response, "Lấy thông tin lịch tiêm thành công");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy thông tin lịch tiêm với ID: {Id}", id);
-                return ApiResult<VaccinationScheduleDetailResponseDTO>.Failure(ex);
-            }
-        }
-
         public async Task<ApiResult<PagedList<VaccinationScheduleResponseDTO>>> GetSchedulesByCampaignAsync(
             Guid campaignId, int pageNumber, int pageSize, string? searchTerm = null)
         {
