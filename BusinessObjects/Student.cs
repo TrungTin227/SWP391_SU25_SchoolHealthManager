@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using BusinessObjects.Common;
 
 namespace BusinessObjects
 {
@@ -31,6 +32,8 @@ namespace BusinessObjects
 
         [MaxLength(150)]
         public string? Image { get; set; }
+
+        public Gender? Gender { get; set; }
 
         public Guid ParentUserId { get; set; }
         [ForeignKey(nameof(ParentUserId))]
