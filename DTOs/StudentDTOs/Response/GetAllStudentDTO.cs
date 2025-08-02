@@ -18,6 +18,7 @@ namespace DTOs.StudentDTOs.Response
         public string? Grade { get; set; }            // Khối lớp (ví dụ: "5")
         public string? Section { get; set; }          // Lớp (ví dụ: "5A")
         public string? Image { get; set; }            // Ảnh đại diện (URL hoặc path)
+        public Gender? Gender { get; set; }              // Giới tính (0 = Male, 1 = Female, 2 = Other)
 
     }
 }

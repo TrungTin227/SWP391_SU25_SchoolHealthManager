@@ -61,7 +61,8 @@ namespace Repositories.Implementations
                        DateOfBirth = s.DateOfBirth,
                        Grade = s.Grade,
                        Section = s.Section,
-                       Image = s.Image
+                       Image = s.Image,
+                       Gender = s.Gender
                    })
                    .ToListAsync();
         }
@@ -80,7 +81,8 @@ namespace Repositories.Implementations
                     DateOfBirth = s.DateOfBirth,
                     Grade = s.Grade,
                     Section = s.Section,
-                    Image = s.Image
+                    Image = s.Image,
+                    Gender = s.Gender
                 })
                 .FirstOrDefaultAsync();
         }
@@ -99,7 +101,8 @@ namespace Repositories.Implementations
                     DateOfBirth = s.DateOfBirth,
                     Grade = s.Grade,
                     Section = s.Section,
-                    Image = s.Image
+                    Image = s.Image,
+                    Gender = s.Gender
                 })
                 .FirstOrDefaultAsync();
         }
@@ -119,7 +122,8 @@ namespace Repositories.Implementations
                     DateOfBirth = s.DateOfBirth,
                     Grade = s.Grade,
                     Section = s.Section,
-                    Image = s.Image
+                    Image = s.Image,
+                    Gender = s.Gender
                 })
                 .ToListAsync();
         }
