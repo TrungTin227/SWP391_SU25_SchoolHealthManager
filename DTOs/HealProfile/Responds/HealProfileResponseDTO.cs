@@ -22,5 +22,6 @@ namespace DTOs.HealProfile.Responds
         public string? Vision { get; set; }
         public string? Hearing { get; set; }
         public string? VaccinationSummary { get; set; }
+        public string? Gender { get; set; }
     }
 }

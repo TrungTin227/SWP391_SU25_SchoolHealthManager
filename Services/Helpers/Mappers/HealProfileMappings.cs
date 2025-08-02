@@ -4,6 +4,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObjects;
+using BusinessObjects.Common;
 using DTOs.HealProfile.Requests;
 using DTOs.HealProfile.Responds;
 
@@ -24,7 +26,8 @@ namespace Services.Helpers.Mapers
                     TreatmentHistory = dto.TreatmentHistory ?? string.Empty,
                     Vision = dto.Vision ?? VisionLevel.Normal, // gán default nếu null
                     Hearing = dto.Hearing ?? HearingLevel.Normal, // gán default nếu null
-                    VaccinationSummary = dto.VaccinationSummary ?? string.Empty
+                    VaccinationSummary = dto.VaccinationSummary ?? string.Empty,
+                    Gender = dto.Gender
                 };
             }
 
@@ -40,7 +43,8 @@ namespace Services.Helpers.Mapers
                     TreatmentHistory = entity.TreatmentHistory,
                     Vision = entity.Vision.ToString(),
                     Hearing = entity.Hearing.ToString(),
-                    VaccinationSummary = entity.VaccinationSummary
+                    VaccinationSummary = entity.VaccinationSummary,
+                    Gender = entity.Gender?.ToString()
                 };
             }
     }

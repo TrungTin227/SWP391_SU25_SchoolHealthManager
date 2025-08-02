@@ -120,6 +120,9 @@ namespace Services.Implementations
                 if (request.Hearing.HasValue)
                     entity.Hearing = request.Hearing.Value;
 
+                if (request.Gender.HasValue)
+                    entity.Gender = request.Gender.Value;
+
                 // Audit info nếu hàm dc mở
                 // SetAuditFieldsForUpdate(entity);
 
