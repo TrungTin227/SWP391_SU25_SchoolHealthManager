@@ -270,6 +270,10 @@ namespace Services.Implementations
             {
                 try
                 {
+                    if (request == null)
+                    {
+                        return ApiResult<HealthEventResponseDTO>.Failure(new ArgumentNullException(nameof(request), "Yêu cầu (request body) không được để trống."));
+                    }
                     var nurseExists = await _unitOfWork.GetRepository<NurseProfile, Guid>()
                                    .AnyAsync(n => n.UserId == request.FirstResponderId);
                     if (!nurseExists)
