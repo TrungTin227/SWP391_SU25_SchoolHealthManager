@@ -24,19 +24,17 @@ namespace WebAPI.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(token))
-                    return BadRequest("Token không hợp lệ.");
+                    return BadRequest(new { success = false, message = "Token không hợp lệ." });
 
                 var correctedToken = token.Replace(' ', '+');
-
                 var secret = _config["JwtSettings:Key"];
 
                 if (string.IsNullOrWhiteSpace(secret))
-                    return StatusCode(500, "Cấu hình hệ thống không hợp lệ.");
+                    return StatusCode(500, new { success = false, message = "Cấu hình hệ thống không hợp lệ." });
 
                 var isValidToken = false;
                 var maxDaysValid = 7;
 
-                // ✅ SỬA: Dùng Vietnam Time như lúc tạo
                 var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
                 var currentVietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
@@ -44,7 +42,6 @@ namespace WebAPI.Controllers
                 {
                     var checkDate = currentVietnamTime.AddDays(-i);
                     var payload = $"{id}|{checkDate:yyyyMMdd}";
-
                     using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret));
                     var computed = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
 
@@ -56,19 +53,25 @@ namespace WebAPI.Controllers
                 }
 
                 if (!isValidToken)
-                    return BadRequest("Liên kết không hợp lệ hoặc đã hết hạn.");
+                    return BadRequest(new { success = false, message = "Liên kết không hợp lệ hoặc đã hết hạn." });
 
-                // Tiếp tục logic...
                 var result = await _service.RecordParentAckAsync(id);
 
                 if (result.IsSuccess)
-                    return Redirect("https://localhost:5173/parent/ack-success");
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Xác nhận thành công",
+                        redirectUrl = "/parent/ack-success"
+                    });
+                }
 
-                return BadRequest(result.Message ?? "Lỗi khi xác nhận");
+                return BadRequest(new { success = false, message = result.Message ?? "Lỗi khi xác nhận" });
             }
             catch (Exception ex)
             {
-                return BadRequest("Có lỗi xảy ra, vui lòng thử lại sau.");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra, vui lòng thử lại sau." });
             }
         }
     }
