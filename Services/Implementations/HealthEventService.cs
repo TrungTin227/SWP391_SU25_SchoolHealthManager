@@ -113,6 +113,12 @@ namespace Services.Implementations
                     var parentEmail = student?.Parent?.User?.Email;
                     if (!string.IsNullOrWhiteSpace(parentEmail))
                     {
+                        created.ParentNotifiedAt = _currentTime.GetVietnamTime();
+                        created.ParentNotificationMethod = "Email";
+
+                        // 2. Lưu lại thay đổi này vào cơ sở dữ liệu
+                        // Điều này quan trọng vì SaveChangesAsync() trước đó chưa chứa thông tin này
+                        await _unitOfWork.SaveChangesAsync();
                         // 1. Lấy secret (tên đúng trong User-Secrets / appsettings)
                         var secret = _configuration["JwtSettings:Key"];
                         if (string.IsNullOrWhiteSpace(secret))
