@@ -982,36 +982,37 @@ namespace Services.Implementations
                     if (request.ParentArrivalAt < healthEvent.OccurredAt)
                         return ApiResult<HealthEventDetailResponseDTO>.Failure(
                             new Exception("Thời điểm phụ huynh đến không thể trước khi sự kiện xảy ra."));
-                    if (!string.IsNullOrWhiteSpace(request.ParentSignatureUrl) &&
-    !request.ParentSignatureUrl.StartsWith("data:image/"))
-                    {
-                        return ApiResult<HealthEventDetailResponseDTO>.Failure(
-                            new Exception("Chữ ký phải là ảnh dạng Base64 hợp lệ."));
-                    }
+    //                if (!string.IsNullOrWhiteSpace(request.ParentSignatureUrl) &&
+    //!request.ParentSignatureUrl.StartsWith("data:image/"))
+    //                {
+    //                    return ApiResult<HealthEventDetailResponseDTO>.Failure(
+    //                        new Exception("Chữ ký phải là ảnh dạng Base64 hợp lệ."));
+    //                }
 
-                    const int maxSignatureSizeBytes = 2 * 1024 * 1024; // 2MB
-                    if (!string.IsNullOrWhiteSpace(request.ParentSignatureUrl))
-                    {
-                        var base64Length = request.ParentSignatureUrl.Length - request.ParentSignatureUrl.IndexOf(',') - 1;
-                        if (Convert.FromBase64String(request.ParentSignatureUrl.Substring(request.ParentSignatureUrl.IndexOf(',') + 1)).Length > maxSignatureSizeBytes)
-                            return ApiResult<HealthEventDetailResponseDTO>.Failure(
-                                new Exception("Chữ ký không được vượt quá 2MB."));
-                    }
+    //                const int maxSignatureSizeBytes = 2 * 1024 * 1024; // 2MB
+    //                if (!string.IsNullOrWhiteSpace(request.ParentSignatureUrl))
+    //                {
+    //                    var base64Length = request.ParentSignatureUrl.Length - request.ParentSignatureUrl.IndexOf(',') - 1;
+    //                    if (Convert.FromBase64String(request.ParentSignatureUrl.Substring(request.ParentSignatureUrl.IndexOf(',') + 1)).Length > maxSignatureSizeBytes)
+    //                        return ApiResult<HealthEventDetailResponseDTO>.Failure(
+    //                            new Exception("Chữ ký không được vượt quá 2MB."));
+    //                }
                     if (string.IsNullOrWhiteSpace(currentUserFullName))
                         return ApiResult<HealthEventDetailResponseDTO>.Failure(
                             new Exception("Không thể xác định tên người bàn giao."));
                     // Xử lý upload chữ ký (giả sử bạn có IFileStorageService)
-                    string? finalSignatureUrl = request.ParentSignatureUrl;
-                    if (request.ParentSignatureUrl != null && request.ParentSignatureUrl.StartsWith("data:image"))
-                    {
-                        // Giả định có dịch vụ IFileStorageService để xử lý upload
-                        // finalSignatureUrl = await _fileStorageService.UploadImageFromBase64Async(request.ParentSignatureUrl, "signatures");
-                    }
+                    //string? finalSignatureUrl = request.ParentSignatureUrl;
+                    //if (request.ParentSignatureUrl != null && request.ParentSignatureUrl.StartsWith("data:image"))
+                    //{
+                    //    // Giả định có dịch vụ IFileStorageService để xử lý upload
+                    //    // finalSignatureUrl = await _fileStorageService.UploadImageFromBase64Async(request.ParentSignatureUrl, "signatures");
+                    //}
 
                     // Cập nhật các trường thông tin bàn giao
                     healthEvent.ParentArrivalAt = request.ParentArrivalAt;
                     healthEvent.ParentReceivedBy = currentUserFullName; // Lấy từ FullName của User
-                    healthEvent.ParentSignatureUrl = finalSignatureUrl;
+                    healthEvent.ParentSignatureUrl = request.ParentSignatureUrl; // Giả sử đã upload thành công
+                    //finalSignatureUrl;
 
                     // Cập nhật thông tin audit
                     healthEvent.UpdatedAt = _currentTime.GetVietnamTime();
