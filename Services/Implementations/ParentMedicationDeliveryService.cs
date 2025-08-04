@@ -100,6 +100,13 @@ namespace Services.Implementations
                             return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Liều lượng thuốc {medication.MedicationName} lúc {schedule.Time} phải lớn hơn 0"));
                         }
 
+                        if (schedule.Dosage > medication.QuantityDelivered)
+                        {
+                            _logger.LogError("Liều lượng không được lớn hơn số lượng thuốc. Thuốc: {MedicationName}, Thời gian: {Time}, Liều lượng: {Dosage}, Số lượng: {Quantity}", 
+                                medication.MedicationName, schedule.Time, schedule.Dosage, medication.QuantityDelivered);
+                            return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException($"Liều lượng thuốc {medication.MedicationName} lúc {schedule.Time} không được lớn hơn số lượng"));
+                        }
+
                         if (IsWithinWorkingHours(schedule.Time) == false)
                         {
                             _logger.LogError("Thời gian uống thuốc phải trong giờ làm việc. Thuốc: {MedicationName}, Thời gian: {Time}", medication.MedicationName, schedule.Time);
