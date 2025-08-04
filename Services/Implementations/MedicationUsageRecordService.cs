@@ -194,12 +194,12 @@ namespace Services.Implementations
                 }
 
                 // Kiểm tra xem record đã được cập nhật chưa
-                if (record.IsTaken == request.IsTaken)
-                {
-                    _logger.LogWarning("Record đã có trạng thái này. RecordId: {RecordId}, CurrentStatus: {CurrentStatus}, RequestedStatus: {RequestedStatus}", 
-                        request.Id, record.IsTaken, request.IsTaken);
-                    return ApiResult<MedicationUsageRecordResponseDTO>.Failure(new InvalidOperationException("Record đã có trạng thái này"));
-                }
+                //if (record.IsTaken == request.IsTaken)
+                //{
+                //    _logger.LogWarning("Record đã có trạng thái này. RecordId: {RecordId}, CurrentStatus: {CurrentStatus}, RequestedStatus: {RequestedStatus}", 
+                //        request.Id, record.IsTaken, request.IsTaken);
+                //    return ApiResult<MedicationUsageRecordResponseDTO>.Failure(new InvalidOperationException("Record đã có trạng thái này"));
+                //}
 
                 var currentUserId = _currentUserService.GetUserId();
                 if (currentUserId == null || currentUserId == Guid.Empty)

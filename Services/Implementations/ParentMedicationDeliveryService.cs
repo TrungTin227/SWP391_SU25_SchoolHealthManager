@@ -66,7 +66,7 @@ namespace Services.Implementations
                 var currentTime = _currentTime.GetVietnamTime();
                 if (currentTime.Hour < 7 || currentTime.Hour > 23)
                 {
-                    _logger.LogError("Thời gian hiện tại không hợp lệ. Chỉ cho phép tạo phiếu giao thuốc trong giờ làm việc (08:00 - 17:00)");
+                    _logger.LogError("Thời gian hiện tại không hợp lệ. Chỉ cho phép tạo phiếu giao thuốc trong giờ làm việc (08:00 - 23:00)");
                     return ApiResult<ParentMedicationDeliveryResponseDTO>.Failure(new ArgumentException("Chỉ cho phép tạo phiếu giao thuốc trong giờ làm việc (08:00 - 17:00)"));
                 }
 
