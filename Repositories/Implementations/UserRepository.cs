@@ -13,10 +13,10 @@ namespace Repositories.Implementations
         }
 
         public async Task<PagedList<User>> SearchUsersAsync(
-    string? searchTerm,
-    RoleType? role,
-    int page,
-    int size)
+        string? searchTerm,
+        RoleType? role,
+        int page,
+        int size)
         {
             var predicate = PredicateBuilder.True<User>()
                 .And(u => !u.IsDeleted);
@@ -35,6 +35,10 @@ namespace Repositories.Implementations
                         join r in _context.Roles on userRole.RoleId equals r.Id
                         where r.Name == roleName
                         select user;
+                if (role.Value == RoleType.SchoolNurse) // Giả sử RoleType là một enum và có giá trị là Nurse
+                {
+                    query = query.Where(u => u.StaffProfile != null);
+                }
                 query = query.Where(predicate);
             }
             else

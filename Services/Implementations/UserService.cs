@@ -190,10 +190,10 @@ namespace Services.Implementations
         }
 
         public async Task<ApiResult<PagedList<UserDetailsDTO>>> SearchUsersAsync(
-    string? searchTerm,
-    RoleType? roleId,
-    int page,
-    int size)
+        string? searchTerm,
+        RoleType? roleId,
+        int page,
+        int size)
         {
             if (page < 1 || size < 1)
                 return ApiResult<PagedList<UserDetailsDTO>>.Failure(

@@ -46,10 +46,10 @@ namespace WebAPI.Controllers
         }
         [HttpGet]
         public async Task<IActionResult> GetUsers(
-    [FromQuery] int pageNumber = 1,
-    [FromQuery] int pageSize = 10,
-    [FromQuery] string? searchTerm = null,
-    [FromQuery] RoleType? role = null)
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] RoleType? role = null)
         {
             var result = await _userService.SearchUsersAsync(searchTerm, role, pageNumber, pageSize);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
