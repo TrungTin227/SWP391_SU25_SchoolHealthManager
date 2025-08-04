@@ -23,7 +23,7 @@ namespace WebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMedicalSupplyLots(
             [FromQuery] int pageNumber = 1,
-            [FromQuery][Range(1, 100)] int pageSize = 10,
+            [FromQuery][Range(1, 100)] int pageSize = 100,
             [FromQuery] string? searchTerm = null,
             [FromQuery] Guid? medicalSupplyId = null,
             [FromQuery] bool? isExpired = null,

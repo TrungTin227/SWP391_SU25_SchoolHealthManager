@@ -22,30 +22,80 @@ namespace Repositories.Implementations
     Guid? medicationId = null, bool? isExpired = null,
     int? daysBeforeExpiry = null, bool includeDeleted = false)
         {
-            var predicate = BuildMedicationLotPredicate(searchTerm, medicationId, isExpired, daysBeforeExpiry, includeDeleted);
+            // 1. Lấy các lô thuốc THẬT từ cơ sở dữ liệu
+            var realLotsQuery = _dbContext.MedicationLots
+                .IgnoreQueryFilters()
+                .Include(ml => ml.Medication)
+                .Where(ml => ml.MedicationId != null)
+                .Where(ml => ml.IsDeleted == includeDeleted);
 
-            IQueryable<MedicationLot> query = _dbContext.MedicationLots
-                .IgnoreQueryFilters() // Bỏ global filter nếu có
-                .Include(ml => ml.Medication);
+            // Lọc theo thuốc (giữ nguyên)
+            if (medicationId != null)
+                realLotsQuery = realLotsQuery.Where(ml => ml.MedicationId == medicationId);
 
-            // Áp dụng điều kiện IsDeleted rõ ràng
-            query = query.Where(ml => ml.IsDeleted == includeDeleted);
+            // Lọc theo từ khóa (giữ nguyên)
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+                realLotsQuery = realLotsQuery.Where(ml =>
+                    ml.LotNumber.Contains(searchTerm) ||
+                    ml.Medication.Name.Contains(searchTerm));
 
-            // Apply filter + sort
-            var orderedQuery = query.Where(predicate)
-                                    .OrderBy(ml => ml.ExpiryDate)
-                                    .ThenBy(ml => ml.LotNumber);
+            // Lọc theo tình trạng hết hạn (giữ nguyên)
+            if (isExpired.HasValue)
+            {
+                if (isExpired.Value)
+                    realLotsQuery = realLotsQuery.Where(ml => ml.ExpiryDate.Date <= DateTime.UtcNow.Date);
+                else
+                    realLotsQuery = realLotsQuery.Where(ml => ml.ExpiryDate.Date > DateTime.UtcNow.Date);
+            }
 
-            var totalCount = await orderedQuery.CountAsync();
-            var items = await orderedQuery
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+            if (daysBeforeExpiry.HasValue)
+            {
+                var limitDate = DateTime.UtcNow.AddDays(daysBeforeExpiry.Value);
+                realLotsQuery = realLotsQuery.Where(ml => ml.ExpiryDate.Date <= limitDate.Date);
+            }
+
+            var realLots = await realLotsQuery
+                .OrderBy(ml => ml.ExpiryDate)
+                .ThenBy(ml => ml.LotNumber)
                 .ToListAsync();
 
-            return new PagedList<MedicationLot>(items, totalCount, pageNumber, pageSize);
+            // 2. Thuốc không có lô (logic này vẫn đúng và không bị ảnh hưởng)
+            var medsWithoutLot = await _dbContext.Medications
+                .Where(m => !m.IsDeleted)
+                .Where(m => medicationId == null || m.Id == medicationId)
+                .Where(m => string.IsNullOrWhiteSpace(searchTerm) || m.Name.Contains(searchTerm))
+                // Dòng này hoạt động đúng vì realLotsQuery giờ chỉ chứa các MedicationId khác null
+                .Where(m => !realLotsQuery.Select(l => l.MedicationId).Contains(m.Id))
+                .ToListAsync();
+
+            // 3. Tạo lô ảo (giữ nguyên)
+            var virtualLots = medsWithoutLot.Select(m => new MedicationLot
+            {
+                Id = Guid.Empty,
+                MedicationId = m.Id,
+                Medication = m,
+                LotNumber = "Tồn kho chung",
+                Quantity = 0,
+                ExpiryDate = DateTime.MaxValue,
+                StorageLocation = "-",
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            // 4. Gộp và phân trang (giữ nguyên)
+            var combined = realLots
+                .Concat(virtualLots)
+                .OrderBy(ml => ml.Medication?.Name ?? "")
+                .ThenBy(ml => ml.LotNumber)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var totalCount = await realLotsQuery.CountAsync() + medsWithoutLot.Count;
+
+            return new PagedList<MedicationLot>(combined, totalCount, pageNumber, pageSize);
         }
-
-
         public async Task<MedicationLot?> GetLotWithMedicationAsync(Guid lotId)
         {
             return await FirstOrDefaultAsync(

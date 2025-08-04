@@ -114,8 +114,8 @@ namespace WebAPI.Controllers
         /// </summary>
         [HttpPut("{id:guid}/treat")]
         public async Task<IActionResult> TreatHealthEvent(
-     Guid id,
-     [FromBody] TreatHealthEventRequest request)
+         Guid id,
+         [FromBody] TreatHealthEventRequest request)
         {
 
             var result = await _healthEventService.TreatHealthEventAsync(id, request);
