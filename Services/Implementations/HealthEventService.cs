@@ -275,6 +275,11 @@ namespace Services.Implementations
 
                     if (he.EventStatus == EventStatus.Resolved)
                         return ApiResult<HealthEventResponseDTO>.Failure(new Exception("Sự kiện đã hoàn tất, không thể chỉnh sửa."));
+                    if (request.FirstAidAt < he.OccurredAt)
+                    {
+                        return ApiResult<HealthEventResponseDTO>.Failure(new Exception("Thời gian sơ cứu không được nhỏ hơn thời gian xảy ra sự kiện."));
+                    }
+
 
                     var currentUserId = _currentUserService.GetUserId() ?? Guid.Empty;
                     var vnTime = _currentTime.GetVietnamTime();
@@ -731,6 +736,14 @@ namespace Services.Implementations
             if (request.OccurredAt > _currentTime.GetVietnamTime())
             {
                 return (false, "Thời điểm xảy ra không được lớn hơn thời điểm hiện tại");
+            }
+
+            // Validate OccurredAt is not earlier than when health events are created
+            var currentTime = _currentTime.GetVietnamTime();
+            var minimumAllowedTime = currentTime.AddDays(-2); // Allow events up to 2 days in the past
+            if (request.OccurredAt < minimumAllowedTime)
+            {
+                return (false, "Thời điểm xảy ra không được quá xa trong quá khứ (tối đa 2 ngày trước)");
             }
 
             return (true, "Valid");
