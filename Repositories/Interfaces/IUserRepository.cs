@@ -10,9 +10,9 @@
         Task UpdateRolesAsync(User user, IEnumerable<string> roleNames);
 
         Task<PagedList<User>> SearchUsersAsync(
-    string? searchTerm,
-    RoleType? role,
-    int page,
-    int size);
+        string? searchTerm,
+        RoleType? role,
+        int page,
+        int size);
     }
 }
