@@ -96,7 +96,6 @@ namespace Services.Implementations
         }
 
         #region Email Templates
-        // Thay thế hoàn toàn phương thức cũ bằng phương thức này
         public async Task SendHospitalReferralAckAsync(
             string parentEmail,
             string studentName,
@@ -111,7 +110,7 @@ namespace Services.Implementations
         {
             // 1. Chuẩn bị dữ liệu cho email
             var subject = $"[THÔNG BÁO KHẨN CẤP] Về việc học sinh {studentName} nhập viện";
-            var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
+            var ackLink = $"{_emailSettings.BaseUrl}/confirm-health-event/{eventId}/parent-ack?token={ackToken}";
 
             // Tạo một mô tả sự việc súc tích, dễ hiểu
             string eventSummary = $"{initialSymptoms}. Vị trí chấn thương: {injuredBodyParts}.";
@@ -196,7 +195,7 @@ namespace Services.Implementations
         {
             // Lấy thông tin từ _schoolSettings (như đã hướng dẫn ở câu trả lời trước)
             var subject = $"[{_emailSettings.FromName}] Thông báo về sức khỏe của học sinh {studentName}";
-            var ackLink = $"{_emailSettings.BaseUrl}/api/health-events/{eventId}/parent-ack?token={ackToken}";
+            var ackLink = $"{_emailSettings.BaseUrl}/confirm-health-event/{eventId}/parent-ack?token={ackToken}";
 
             var message = $@"
 <!DOCTYPE html>

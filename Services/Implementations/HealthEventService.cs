@@ -764,7 +764,7 @@ namespace Services.Implementations
                     return (false, $"Số lượng thuốc {medicationLot.Medication?.Name} không đủ. Còn lại: {medicationLot.Quantity}, yêu cầu: {medication.Quantity}");
                 }
 
-                if (medicationLot.ExpiryDate.Date <= DateTime.UtcNow.Date)
+                if (medicationLot.ExpiryDate.Date <= _currentTime.GetVietnamTime().Date)
                 {
                     return (false, $"Lô thuốc {medicationLot.LotNumber} đã hết hạn");
                 }
@@ -798,7 +798,7 @@ namespace Services.Implementations
                     return (false, $"Số lượng vật tư {medicalSupplyLot.MedicalSupply?.Name} không đủ. Còn lại: {medicalSupplyLot.Quantity}, yêu cầu: {supply.QuantityUsed}");
                 }
 
-                if (medicalSupplyLot.ExpirationDate.Date <= DateTime.UtcNow.Date)
+                if (medicalSupplyLot.ExpirationDate.Date <= _currentTime.GetVietnamTime().Date)
                 {
                     return (false, $"Lô vật tư {medicalSupplyLot.LotNumber} đã hết hạn");
                 }

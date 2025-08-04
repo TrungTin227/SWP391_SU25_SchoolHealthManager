@@ -17,7 +17,7 @@ namespace WebAPI.Controllers
             _config = config;
         }
 
-        [HttpPut("{id:guid}/confirm-health-event")]
+        [HttpPut("{id:guid}/parent-ack")]
         [AllowAnonymous]
         public async Task<IActionResult> ParentAcknowledge(Guid id, [FromQuery] string token)
         {
