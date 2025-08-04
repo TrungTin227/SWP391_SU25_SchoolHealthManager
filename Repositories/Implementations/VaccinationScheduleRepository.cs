@@ -111,7 +111,7 @@ namespace Repositories.Implementations
         //  DETAIL VIEW - Sử dụng AsSplitQuery() và include đầy đủ
         public async Task<VaccinationSchedule?> GetScheduleWithDetailsAsync(Guid id)
         {
-            return await _context.VaccinationSchedules
+            var schedule = await _context.VaccinationSchedules
                 .AsSplitQuery() // ✅ Tách query để tránh Cartesian product
                 .Include(vs => vs.Campaign)
                 .Include(vs => vs.VaccinationType)
@@ -121,6 +121,16 @@ namespace Repositories.Implementations
                     .ThenInclude(ss => ss.VaccinationRecords)
                         .ThenInclude(vr => vr.VaccinatedBy)
                 .FirstOrDefaultAsync(vs => vs.Id == id && !vs.IsDeleted);
+
+            if (schedule != null && schedule.SessionStudents != null)
+            {
+                schedule.SessionStudents = schedule.SessionStudents
+                    .OrderByDescending(ss => ss.ConsentStatus == ParentConsentStatus.Approved)
+                    .ThenBy(ss => ss.Student.FullName)
+                    .ToList();
+            }
+
+            return schedule;
         }
 
         public async Task<VaccinationSchedule?> GetScheduleWithDetailsWithParentAcptAsync(Guid id)
