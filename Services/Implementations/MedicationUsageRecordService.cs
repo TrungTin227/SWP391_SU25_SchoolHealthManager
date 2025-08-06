@@ -201,36 +201,46 @@ namespace Services.Implementations
                     .GroupBy(r => r.DeliveryDetailId)
                     .ToDictionary(g => g.Key, g => g.Select(MapToResponseDTO).ToList());
 
-                var result = deliveries.Select(delivery => new ParentMedicationDeliveryResponseDTO
-                {
-                    Id = delivery.Id,
-                    StudentId = delivery.StudentId,
-                    StudentName = delivery.Student?.FirstName + " " + delivery.Student?.LastName ?? string.Empty,
-                    ParentId = delivery.ParentId,
-                    ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
-                    Notes = delivery.Notes ?? string.Empty,
-                    DeliveredAt = delivery.DeliveredAt,
-                    Status = delivery.Status,
-                    Medications = delivery.Details.Select(md => new ParentMedicationDeliveryDetailResponseDTO
+                var result = deliveries
+                    .Where(delivery => delivery.Details.Any(detail => usageRecordMap.ContainsKey(detail.Id))) // lọc delivery có usage
+                    .Select(delivery => new ParentMedicationDeliveryResponseDTO
                     {
-                        Id = md.Id,
-                        MedicationName = md.MedicationName,
-                        TotalQuantity = md.TotalQuantity,
-                        QuantityUsed = md.QuantityUsed,
-                        QuantityRemaining = md.QuantityRemaining,
-                        DosageInstruction = md.DosageInstruction,
-                        ReturnedQuantity = md.ReturnedQuantity,
-                        ReturnedAt = md.ReturnedAt,
-                        DailySchedule = md.MedicationSchedules?.Select(ms => new MedicationScheduleResponseDTO
-                        {
-                            Id = ms.Id,
-                            Time = ms.Time,
-                            Dosage = ms.Dosage,
-                            Note = ms.Note
-                        }).ToList() ?? new List<MedicationScheduleResponseDTO>(),
-                        UsageRecords = usageRecordMap.ContainsKey(md.Id) ? usageRecordMap[md.Id] : new List<MedicationUsageRecordResponseDTO>()
-                    }).ToList()
-                }).ToList();
+                        Id = delivery.Id,
+                        StudentId = delivery.StudentId,
+                        StudentName = delivery.Student?.FirstName + " " + delivery.Student?.LastName ?? string.Empty,
+                        ParentId = delivery.ParentId,
+                        ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
+                        Notes = delivery.Notes ?? string.Empty,
+                        DeliveredAt = delivery.DeliveredAt,
+                        Status = delivery.Status,
+                        Medications = delivery.Details
+                            .Where(md => usageRecordMap.ContainsKey(md.Id)) // chỉ lấy detail có usage
+                            .Select(md => new ParentMedicationDeliveryDetailResponseDTO
+                            {
+                                Id = md.Id,
+                                MedicationName = md.MedicationName,
+                                TotalQuantity = md.TotalQuantity,
+                                QuantityUsed = md.QuantityUsed,
+                                QuantityRemaining = md.QuantityRemaining,
+                                DosageInstruction = md.DosageInstruction,
+                                ReturnedQuantity = md.ReturnedQuantity,
+                                ReturnedAt = md.ReturnedAt,
+                                DailySchedule = md.MedicationSchedules?.Select(ms => new MedicationScheduleResponseDTO
+                                {
+                                    Id = ms.Id,
+                                    Time = ms.Time,
+                                    Dosage = ms.Dosage,
+                                    Note = ms.Note
+                                }).ToList() ?? new List<MedicationScheduleResponseDTO>(),
+                                UsageRecords = usageRecordMap[md.Id] // guaranteed tồn tại key rồi
+                            }).ToList()
+                    }).ToList();
+
+                if (!result.Any())
+                {
+                    _logger.LogInformation("Không có lịch uống thuốc nào trong ngày: {Date}", date.ToString("yyyy-MM-dd"));
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(new List<ParentMedicationDeliveryResponseDTO>(), "Không có ParentMedicationDelivery nào trong ngày này.");
+                }
 
                 return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(result, "Lấy danh sách ParentMedicationDelivery theo ngày thành công!");
             }
