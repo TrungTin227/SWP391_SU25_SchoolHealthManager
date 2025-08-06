@@ -92,6 +92,13 @@ namespace WebAPI.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("Parent/getByDay")]
+        public async Task<IActionResult> GetTodayRecordsParent(DateTime day)
+        {
+            var result = await _medicationUsageRecordService.GetByDateParentAsync(day);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
         /// <summary>
         /// Lấy danh sách record uống thuốc chưa xác nhận (IsTaken = false) cho y tá
         /// </summary>

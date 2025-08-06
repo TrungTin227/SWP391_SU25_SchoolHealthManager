@@ -1,17 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BusinessObjects;
 using BusinessObjects.Common;
 using DTOs.MedicationUsageRecord.Request;
 using DTOs.MedicationUsageRecord.Respond;
+using DTOs.ParentMedicationDeliveryDetail.Respond;
+using DTOs.ParentMedicationDeliveryDTOs.Respond;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Repositories;
 using Repositories.Interfaces;
 using Services.Commons;
 using Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Services.Implementations
 {
@@ -124,20 +127,28 @@ namespace Services.Implementations
         {
             try
             {
+
+                var currentUserId = _currentUserService.GetUserId();
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<List<MedicationUsageRecordResponseDTO>>.Failure(new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
                 _logger.LogInformation("Lấy danh sách record uống thuốc theo ngày: {Date}", date.ToString("yyyy-MM-dd"));
 
                 var startDate = date.Date;
                 var endDate = startDate.AddDays(1);
 
                 var records = await _dbContext.MedicationUsageRecords
-                    .Include(r => r.DeliveryDetail)
-                        .ThenInclude(d => d.ParentMedicationDelivery)
-                            .ThenInclude(p => p.Student)
-                    .Include(r => r.MedicationSchedule)
-                    .Include(r => r.Nurse)
-                    .Where(r => r.ScheduledAt >= startDate && r.ScheduledAt < endDate)
-                    .OrderBy(r => r.ScheduledAt)
-                    .ToListAsync();
+                     .Include(r => r.DeliveryDetail)
+                         .ThenInclude(d => d.ParentMedicationDelivery)
+                             .ThenInclude(p => p.Student)
+                     .Include(r => r.MedicationSchedule)
+                     .Include(r => r.Nurse)
+                     .Where(r => r.ScheduledAt >= startDate
+                              && r.ScheduledAt < endDate)
+                     .OrderBy(r => r.ScheduledAt)
+                     .ToListAsync();
 
                 _logger.LogInformation("Lấy danh sách record uống thuốc theo ngày thành công. Ngày: {Date}, Số lượng: {Count}", 
                     date.ToString("yyyy-MM-dd"), records.Count);
@@ -149,6 +160,84 @@ namespace Services.Implementations
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách record uống thuốc theo ngày: {Date}", date.ToString("yyyy-MM-dd"));
                 return ApiResult<List<MedicationUsageRecordResponseDTO>>.Failure(ex);
+            }
+        }
+
+        public async Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetByDateParentAsync(DateTime date)
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserId();
+                if (currentUserId == null || currentUserId == Guid.Empty)
+                {
+                    _logger.LogError("Không thể xác định người dùng hiện tại");
+                    return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(new UnauthorizedAccessException("Không thể xác định người dùng hiện tại"));
+                }
+                _logger.LogInformation("Lấy danh sách ParentMedicationDelivery theo ngày: {Date}", date.ToString("yyyy-MM-dd"));
+
+                var startDate = date.Date;
+                var endDate = startDate.AddDays(1);
+
+                // Lấy tất cả các delivery của parent hiện tại
+                var deliveries = await _dbContext.ParentMedicationDeliveries
+                    .Include(d => d.Student)
+                    .Include(d => d.Details)
+                        .ThenInclude(detail => detail.MedicationSchedules)
+                    .Include(d => d.Details)
+                        .ThenInclude(detail => detail.UsageRecords)
+                    .Where(d => d.ParentId == currentUserId)
+                    .OrderByDescending(r => r.DeliveredAt)
+                    .ToListAsync();
+
+                // Lấy tất cả usage record của parent trong ngày
+                var usageRecords = await _dbContext.MedicationUsageRecords
+                    .Include(r => r.DeliveryDetail)
+                        .ThenInclude(detail => detail.ParentMedicationDelivery)
+                    .Where(r => r.ScheduledAt >= startDate && r.ScheduledAt < endDate && r.DeliveryDetail.ParentMedicationDelivery.ParentId == currentUserId)
+                    .ToListAsync();
+
+                // Map usage record theo detailId
+                var usageRecordMap = usageRecords
+                    .GroupBy(r => r.DeliveryDetailId)
+                    .ToDictionary(g => g.Key, g => g.Select(MapToResponseDTO).ToList());
+
+                var result = deliveries.Select(delivery => new ParentMedicationDeliveryResponseDTO
+                {
+                    Id = delivery.Id,
+                    StudentId = delivery.StudentId,
+                    StudentName = delivery.Student?.FirstName + " " + delivery.Student?.LastName ?? string.Empty,
+                    ParentId = delivery.ParentId,
+                    ReceivedBy = delivery.ReceivedBy ?? Guid.Empty,
+                    Notes = delivery.Notes ?? string.Empty,
+                    DeliveredAt = delivery.DeliveredAt,
+                    Status = delivery.Status,
+                    Medications = delivery.Details.Select(md => new ParentMedicationDeliveryDetailResponseDTO
+                    {
+                        Id = md.Id,
+                        MedicationName = md.MedicationName,
+                        TotalQuantity = md.TotalQuantity,
+                        QuantityUsed = md.QuantityUsed,
+                        QuantityRemaining = md.QuantityRemaining,
+                        DosageInstruction = md.DosageInstruction,
+                        ReturnedQuantity = md.ReturnedQuantity,
+                        ReturnedAt = md.ReturnedAt,
+                        DailySchedule = md.MedicationSchedules?.Select(ms => new MedicationScheduleResponseDTO
+                        {
+                            Id = ms.Id,
+                            Time = ms.Time,
+                            Dosage = ms.Dosage,
+                            Note = ms.Note
+                        }).ToList() ?? new List<MedicationScheduleResponseDTO>(),
+                        UsageRecords = usageRecordMap.ContainsKey(md.Id) ? usageRecordMap[md.Id] : new List<MedicationUsageRecordResponseDTO>()
+                    }).ToList()
+                }).ToList();
+
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Success(result, "Lấy danh sách ParentMedicationDelivery theo ngày thành công!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách ParentMedicationDelivery theo ngày: {Date}", date.ToString("yyyy-MM-dd"));
+                return ApiResult<List<ParentMedicationDeliveryResponseDTO>>.Failure(ex);
             }
         }
 

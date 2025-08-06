@@ -1,11 +1,12 @@
-﻿using System;
+﻿using BusinessObjects.Common;
+using DTOs.MedicationUsageRecord.Request;
+using DTOs.MedicationUsageRecord.Respond;
+using DTOs.ParentMedicationDeliveryDTOs.Respond;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using BusinessObjects.Common;
-using DTOs.MedicationUsageRecord.Request;
-using DTOs.MedicationUsageRecord.Respond;
 
 namespace Services.Interfaces
 {
@@ -18,5 +19,6 @@ namespace Services.Interfaces
         Task<ApiResult<List<MedicationUsageRecordResponseDTO>>> BulkUpdateTakenStatusAsync(List<UpdateMedicationUsageRecordDTO> requests);
         Task<ApiResult<List<MedicationUsageRecordResponseDTO>>> NurseBulkConfirmAsync(List<Guid> recordIds);
         Task<ApiResult<List<MedicationUsageRecordResponseDTO>>> GetPendingRecordsAsync();
+        Task<ApiResult<List<ParentMedicationDeliveryResponseDTO>>> GetByDateParentAsync(DateTime date);
     }
 }

@@ -17,6 +17,7 @@ namespace DTOs.ParentMedicationDeliveryDetail.Respond
         public int? ReturnedQuantity { get; set; }
         public DateTime? ReturnedAt { get; set; }
         public List<MedicationScheduleResponseDTO> DailySchedule { get; set; } = new();
+        public List<DTOs.MedicationUsageRecord.Respond.MedicationUsageRecordResponseDTO> UsageRecords { get; set; } = new();
     }
     
     public class MedicationScheduleResponseDTO
