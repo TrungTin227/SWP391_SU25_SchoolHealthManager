@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Repositories;
 using Repositories.Interfaces;
 using Services.Commons;
+using Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,7 @@ namespace Services.Implementations
     {
         private readonly SchoolHealthManagerDbContext _dbContext;
         private readonly ISchoolHealthEmailService _emailService;
+        private readonly IFileStorageService _fileStorageService;
         private readonly ILogger<ParentMedicationDeliveryService> _logger;
 
         public ParentMedicationDeliveryService(
@@ -28,6 +30,7 @@ namespace Services.Implementations
             SchoolHealthManagerDbContext dbContext,
             ICurrentTime currentTime,
             ISchoolHealthEmailService emailService,
+            IFileStorageService fileStorageService,
             ILogger<ParentMedicationDeliveryService> logger
             )
         :
@@ -35,6 +38,7 @@ namespace Services.Implementations
         {
             _dbContext = dbContext;
             _emailService = emailService;
+            _fileStorageService = fileStorageService;
             _logger = logger;
         }
 
@@ -176,6 +180,37 @@ namespace Services.Implementations
                     }).ToList()
                 };
 
+                // Xử lý upload file đơn thuốc
+                if (request.PrescriptionImages != null && request.PrescriptionImages.Any())
+                {
+                    var attachments = new List<FileAttachment>();
+                    foreach (var image in request.PrescriptionImages)
+                    {
+                        if (image != null && image.Length > 0)
+                        {
+                            try
+                            {
+                                var filePath = await _fileStorageService.UploadFileAsync(image, "prescriptions");
+                                var attachment = new FileAttachment
+                                {
+                                    Id = Guid.NewGuid(),
+                                    ReferenceType = ReferenceType.ParentMedicationDelivery,
+                                    ReferenceId = delivery.Id,
+                                    FilePath = filePath,
+                                    FileType = FileType.Image
+                                };
+                                attachments.Add(attachment);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Lỗi khi upload file đơn thuốc: {FileName}", image.FileName);
+                                // Không dừng quá trình nếu upload file thất bại
+                            }
+                        }
+                    }
+                    delivery.Attachments = attachments;
+                }
+
                 await _unitOfWork.ParentMedicationDeliveryRepository.AddAsync(delivery);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -209,6 +244,7 @@ namespace Services.Implementations
                     .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .Include(d => d.Attachments)
                     .OrderByDescending(d => d.DeliveredAt)
                     .FirstOrDefaultAsync(d => d.Id == id);
 
@@ -247,6 +283,7 @@ namespace Services.Implementations
                     .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .Include(d => d.Attachments)
                     .OrderByDescending(d => d.DeliveredAt)
                     .Where(d => d.StudentId == studentId)
                     .ToListAsync();
@@ -274,6 +311,7 @@ namespace Services.Implementations
                     .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(d => d.MedicationSchedules)
+                    .Include(d => d.Attachments)
                     .OrderByDescending(d => d.DeliveredAt)
                     .ToListAsync();
 
@@ -320,6 +358,7 @@ namespace Services.Implementations
                     .Include(d => d.Student)
                     .Include(d => d.Details)
                         .ThenInclude(detail => detail.MedicationSchedules)
+                    .Include(d => d.Attachments)
                     .Where(d => d.ParentId == parent.UserId)
                     .OrderByDescending(d => d.DeliveredAt)
                     .ToListAsync();
@@ -513,6 +552,23 @@ namespace Services.Implementations
         // Helper method để map từ entity sang DTO
         private ParentMedicationDeliveryResponseDTO MapToResponseDTO(ParentMedicationDelivery delivery)
         {
+            var attachmentUrls = new List<string>();
+            if (delivery.Attachments != null && delivery.Attachments.Any())
+            {
+                foreach (var attachment in delivery.Attachments)
+                {
+                    try
+                    {
+                        var fileUrl = _fileStorageService.GetFileUrlAsync(attachment.FilePath).Result;
+                        attachmentUrls.Add(fileUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Lỗi khi lấy URL cho file: {FilePath}", attachment.FilePath);
+                    }
+                }
+            }
+
             return new ParentMedicationDeliveryResponseDTO
             {
                 Id = delivery.Id,
@@ -540,7 +596,8 @@ namespace Services.Implementations
                         Dosage = ms.Dosage,
                         Note = ms.Note
                     }).ToList() ?? new List<MedicationScheduleResponseDTO>()
-                }).ToList()
+                }).ToList(),
+                AttachmentUrls = attachmentUrls
             };
         }
 

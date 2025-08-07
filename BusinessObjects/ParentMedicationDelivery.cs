@@ -20,4 +20,5 @@ public class ParentMedicationDelivery : BaseEntity
 
     // Quan hệ
     public List<ParentMedicationDeliveryDetail> Details { get; set; } = new();
+    public List<FileAttachment> Attachments { get; set; } = new();
 }

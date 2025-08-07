@@ -1,6 +1,7 @@
 ﻿using BusinessObjects;
 using BusinessObjects.Common;
 using DTOs.ParentMedicationDeliveryDetail.Request;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -17,5 +18,6 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Request
         public Guid StudentId { get; set; }
         public string Notes { get; set; } = string.Empty;
         public List<CreateParentMedicationDeliveryDetailDTO> Medications { get; set; } = new();
+        public List<IFormFile>? PrescriptionImages { get; set; } = new();
     }
 }

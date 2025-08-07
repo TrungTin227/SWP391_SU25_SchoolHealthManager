@@ -85,7 +85,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("medication-deliveries")]
-        public async Task<IActionResult> CreateParentMedicationDelivery([FromBody] CreateParentMedicationDeliveryRequestDTO request)
+        public async Task<IActionResult> CreateParentMedicationDelivery([FromForm] CreateParentMedicationDeliveryRequestDTO request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);

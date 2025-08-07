@@ -19,6 +19,7 @@ namespace DTOs.ParentMedicationDeliveryDTOs.Respond
         public DateTime DeliveredAt { get; set; }
         public StatusMedicationDelivery Status { get; set; }
         public List<ParentMedicationDeliveryDetailResponseDTO> Medications { get; set; } = new();
+        public List<string> AttachmentUrls { get; set; } = new();
     }
 
 }

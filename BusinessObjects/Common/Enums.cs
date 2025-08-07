@@ -4,7 +4,7 @@
     public enum Relationship { Father, Mother, Guardian, Other }
     public enum EventType { Accident, Fever, Fall, Disease, Other, VaccineReaction }
     public enum ScheduleStatus { Pending, InProgress, Completed, Cancelled }
-    public enum ReferenceType { ConsentForm, HealthEvent, ScreeningResult }
+    public enum ReferenceType { ConsentForm, HealthEvent, ScreeningResult, ParentMedicationDelivery }
     public enum RoleType{Student, Parent, SchoolNurse, Manager, Admin }
     public enum ScheduleType {Vaccination, Consultation }
     public enum StatusMedicationDelivery { Pending, Confirmed, Rejected, Delivered }
