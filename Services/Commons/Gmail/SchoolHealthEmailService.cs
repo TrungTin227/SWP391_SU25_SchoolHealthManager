@@ -303,7 +303,7 @@ namespace Services.Implementations
                             
                             <p><strong>Quý phụ huynh vui lòng:</strong></p>
                             <ul>
-                                <li>Xác nhận đồng ý tiêm chủng cho con em qua đường link sau: <a href=""http://localhost:5173/parents/vaccine-overview"">link</a>
+                                <li>Xác nhận đồng ý tiêm chủng cho con em qua đường link sau: <a href=""http://localhost:5173/parents/vaccine-consent"">link</a>
 </li>
                                 <li>Đảm bảo con em có mặt đúng thời gian</li>
                                 <li>Thông báo nếu con em có tiền sử dị ứng</li>
@@ -361,7 +361,7 @@ namespace Services.Implementations
                             
                             <p><strong>Chuẩn bị trước khi kiểm tra:</strong></p>
                             <ul>
-                                <li>Xác nhận đồng ý khám cho con em qua đường link sau: <a href=""http://localhost:5173/checkup-schedules"">link</a>
+                                <li>Xác nhận đồng ý khám cho con em qua đường link sau: <a href=""http://localhost:5173/parents/checkup-schedules"">link</a>
                                 <li>Cho con em ăn sáng nhẹ</li>
                                 <li>Đảm bảo con em ngủ đủ giấc</li>
                                 <li>Mang theo sổ sức khỏe (nếu có)</li>
